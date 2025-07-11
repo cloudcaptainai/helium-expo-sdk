@@ -1,20 +1,27 @@
-import {addHeliumPaywallEventListener, initialize, presentUpsell} from 'expo-paywall-sdk';
+
+import {initialize, presentUpsell} from 'expo-paywall-sdk';
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import {useEffect} from "react";
+import {createCustomPurchaseConfig} from "expo-paywall-sdk";
 
 export default function App() {
   useEffect(() => {
     initialize({
       apiKey: 'api-key-here',
+      purchaseConfig: createCustomPurchaseConfig({
+        makePurchase: async (productId) => {
+          // Your purchase logic here
+          return { status: 'purchased' };
+        },
+        restorePurchases: async () => {
+          // Your restore logic here
+          return true;
+        }
+      }),
+      onHeliumPaywallEvent: function (event: any): void {
+        console.log('Helium Paywall Event:', event);
+      }
     });
-  }, []);
-
-  useEffect(() => {
-    const subscription = addHeliumPaywallEventListener((event) => {
-      console.log('Helium Paywall Event:', event);
-    });
-
-    return () => subscription.remove();
   }, []);
 
   return (

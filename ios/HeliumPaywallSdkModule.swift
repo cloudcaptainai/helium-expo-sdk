@@ -2,7 +2,18 @@ import ExpoModulesCore
 import Helium
 import SwiftUI
 
+// Define purchase error enum
+enum PurchaseError: Error {
+    case unknownStatus(status: String)
+    case purchaseFailed
+}
+
 public class HeliumPaywallSdkModule: Module {
+  // Single continuations for ongoing operations
+  private var currentProductId: String? = nil
+  private var purchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>? = nil
+  private var restoreContinuation: CheckedContinuation<Bool, Never>? = nil
+
   // Each module class must implement the definition function. The definition consists of components
   // that describes the module's functionality and behavior.
   // See https://docs.expo.dev/modules/module-api for more details about available components.
@@ -13,20 +24,64 @@ public class HeliumPaywallSdkModule: Module {
     Name("HeliumPaywallSdk")
 
     // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
-    Constants([
-      "PI": Double.pi
-    ])
+//     Constants([
+//       "PI": Double.pi
+//     ])
 
     // Defines event names that the module can send to JavaScript.
     Events("onHeliumPaywallEvent")
 
+    Events("delegateActionEvent")
+
+    // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
 
-      // Create delegate with closure that sends events to JavaScript
-      let delegate = InternalDelegate { [weak self] event in
-        self?.sendEvent("onHeliumPaywallEvent", event.toDictionary())
-      }
+      // Create delegate with closures that send events to JavaScript
+      let delegate = InternalDelegate(
+        eventHandler: { [weak self] event in
+          self?.sendEvent("onHeliumPaywallEvent", event.toDictionary())
+        },
+        purchaseHandler: { [weak self] productId in
+          guard let self else { return .failed(PurchaseError.purchaseFailed) }
+          // Check if there's already a purchase in progress and cancel it
+          if let existingContinuation = self.purchaseContinuation {
+            existingContinuation.resume(returning: .cancelled)
+            self.purchaseContinuation = nil
+            self.currentProductId = nil
+          }
+
+          return await withCheckedContinuation { continuation in
+            // Store the continuation and product ID
+            self.currentProductId = productId
+            self.purchaseContinuation = continuation
+
+            // Send event to JavaScript
+            self.sendEvent("delegateActionEvent", [
+              "type": "purchase",
+              "productId": productId
+            ])
+          }
+        },
+        restoreHandler: { [weak self] in
+          guard let self else { return false }
+          // Check if there's already a restore in progress and cancel it
+          if let existingContinuation = self.restoreContinuation {
+            existingContinuation.resume(returning: false)
+            self.restoreContinuation = nil
+          }
+
+          return await withCheckedContinuation { continuation in
+            // Store the continuation
+            self.restoreContinuation = continuation
+
+            // Send event to JavaScript
+            self.sendEvent("delegateActionEvent", [
+              "type": "restore"
+            ])
+          }
+        }
+      )
 
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
@@ -39,12 +94,50 @@ public class HeliumPaywallSdkModule: Module {
       )
     }
 
+    // Function for JavaScript to provide purchase result
+    Function("handlePurchaseResult") { (statusString: String) -> Bool in
+      guard let continuation = self.purchaseContinuation else {
+        return false
+      }
+
+      // Parse status string
+      let lowercasedStatus = statusString.lowercased()
+      let status: HeliumPaywallTransactionStatus
+
+      switch lowercasedStatus {
+      case "purchased": status = .purchased
+      case "cancelled": status = .cancelled
+      case "restored":  status = .restored
+      case "pending":   status = .pending
+      default:          status = .failed(PurchaseError.unknownStatus(status: lowercasedStatus))
+      }
+
+      // Clear the references
+      self.purchaseContinuation = nil
+      self.currentProductId = nil
+
+      // Resume the continuation with the status
+      continuation.resume(returning: status)
+      return true
+    }
+
+    // Function for JavaScript to provide restore result
+    Function("handleRestoreResult") { (success: Bool) -> Bool in
+      guard let continuation = self.restoreContinuation else {
+        return false
+      }
+
+      self.restoreContinuation = nil
+      continuation.resume(returning: success)
+      return true
+    }
+
     Function("presentUpsell") { (trigger: String) in
       Helium.shared.presentUpsell(trigger: trigger);
     }
 
     Function("hideUpsell") {
-      let _ result = Helium.shared.hideUpsell();
+      let _ = Helium.shared.hideUpsell();
     }
 
     Function("hideAllUpsells") {
@@ -85,19 +178,25 @@ public class HeliumPaywallSdkModule: Module {
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {
     private let eventHandler: (HeliumPaywallEvent) -> Void
+    private let purchaseHandler: (String) async -> HeliumPaywallTransactionStatus
+    private let restoreHandler: () async -> Bool
 
-    init(eventHandler: @escaping (HeliumPaywallEvent) -> Void) {
+    init(
+        eventHandler: @escaping (HeliumPaywallEvent) -> Void,
+        purchaseHandler: @escaping (String) async -> HeliumPaywallTransactionStatus,
+        restoreHandler: @escaping () async -> Bool
+    ) {
         self.eventHandler = eventHandler
+        self.purchaseHandler = purchaseHandler
+        self.restoreHandler = restoreHandler
     }
 
     public func makePurchase(productId: String) async -> HeliumPaywallTransactionStatus {
-        print("make purchase!")
-        return .purchased
+        return await purchaseHandler(productId)
     }
 
     public func restorePurchases() async -> Bool {
-        print("restore purchase!")
-        return true
+        return await restoreHandler()
     }
 
     public func onHeliumPaywallEvent(event: HeliumPaywallEvent) {

@@ -6,10 +6,14 @@ export type OnLoadEventPayload = {
 
 export type HeliumPaywallSdkModuleEvents = {
   onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
+  onDelegateActionEvent: (params: DelegateActionEvent) => void;
 };
-
 export type HeliumPaywallEvent = {
   value: string;
+};
+export type DelegateActionEvent = {
+  type: string;
+  productId?: string;
 };
 
 export type HeliumPaywallSdkViewProps = {
@@ -57,8 +61,15 @@ export interface HeliumConfig {
   onHeliumPaywallEvent: (event: any) => void; // Still mandatory
 
   // Optional configurations
-  fallbackView?: number;
   triggers?: string[];
+  customUserId?: string;
+  customAPIEndpoint?: string;
+  customUserTraits?: Record<string, any>;
+  revenueCatAppUserId?: string;
+}
+
+export interface NativeHeliumConfig {
+  apiKey: string;
   customUserId?: string;
   customAPIEndpoint?: string;
   customUserTraits?: Record<string, any>;

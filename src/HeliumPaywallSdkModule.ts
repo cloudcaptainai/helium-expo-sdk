@@ -1,13 +1,13 @@
 import { NativeModule, requireNativeModule } from "expo";
 
 import {
-  HeliumConfig,
   HeliumDownloadStatus,
   HeliumPaywallSdkModuleEvents,
+  NativeHeliumConfig,
 } from "./HeliumPaywallSdk.types";
 
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
-  initialize(config: HeliumConfig): void;
+  initialize(config: NativeHeliumConfig): void;
 
   presentUpsell(triggerName: string): void;
 

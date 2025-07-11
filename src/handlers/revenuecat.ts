@@ -1,6 +1,6 @@
 import Purchases, { PURCHASES_ERROR_CODE } from 'react-native-purchases';
-import type { HeliumPurchaseConfig, HeliumPurchaseResult } from '../types';
 import type { PurchasesError, PurchasesPackage, CustomerInfoUpdateListener, CustomerInfo, PurchasesEntitlementInfo } from 'react-native-purchases';
+import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 
 // Rename the factory function
 export function createRevenueCatPurchaseConfig(config?: {

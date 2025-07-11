@@ -1,5 +1,4 @@
-// Reexport the native module. On web, it will be resolved to HeliumPaywallSdkModule.web.ts
-// and on native platforms to HeliumPaywallSdkModule.ts
+
 import {HeliumPaywallEvent} from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
@@ -39,8 +38,9 @@ export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
 
+export {createCustomPurchaseConfig} from './HeliumPaywallSdk.types';
+
 export type {
-  createCustomPurchaseConfig,
   HeliumTransactionStatus,
   HeliumConfig,
   HELIUM_CTA_NAMES

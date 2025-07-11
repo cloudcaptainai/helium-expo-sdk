@@ -1,6 +1,6 @@
 {
   "name": "expo-paywall-sdk",
-  "version": "0.1.0",
+  "version": "0.7.0",
   "description": "My new module",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -33,11 +33,18 @@
     "@types/react": "~19.0.0",
     "expo-module-scripts": "^4.1.9",
     "expo": "~53.0.0",
-    "react-native": "0.79.1"
+    "react-native": "0.79.1",
+    "react-native-purchases": ">=5.1.0"
   },
   "peerDependencies": {
     "expo": "*",
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "react-native-purchases": ">=5.1.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native-purchases": {
+      "optional": true
+    }
   }
 }
