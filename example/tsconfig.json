@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "expo-paywall-sdk": ["../src/index"],
+      "expo-paywall-sdk/*": ["../src/*"]
+    }
+  }
+}

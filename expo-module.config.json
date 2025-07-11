@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["HeliumPaywallSdkModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.paywallsdk.HeliumPaywallSdkModule"]
+  }
+}
