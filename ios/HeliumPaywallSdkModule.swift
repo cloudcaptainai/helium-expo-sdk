@@ -20,11 +20,6 @@ public class HeliumPaywallSdkModule: Module {
     // Defines event names that the module can send to JavaScript.
     Events("onHeliumPaywallEvent")
 
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      return "Hello world! 👋"
-    }
-
     Function("initialize") { (config: [String : Any]) in
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
 
@@ -48,14 +43,30 @@ public class HeliumPaywallSdkModule: Module {
       Helium.shared.presentUpsell(trigger: trigger);
     }
 
+    Function("hideUpsell") {
+      let _ result = Helium.shared.hideUpsell();
+    }
+
+    Function("hideAllUpsells") {
+      Helium.shared.hideAllUpsells();
+    }
+
+    Function("getDownloadStatus") {
+      return Helium.shared.getDownloadStatus().rawValue;
+    }
+
+    Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
+      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType)
+    }
+
     // Defines a JavaScript function that always returns a Promise and whose native code
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { (value: String) in
-      // Send an event to JavaScript.
-      self.sendEvent("onHeliumPaywallEvent", [
-        "value": value
-      ])
-    }
+//     AsyncFunction("setValueAsync") { (value: String) in
+//       // Send an event to JavaScript.
+//       self.sendEvent("onHeliumPaywallEvent", [
+//         "value": value
+//       ])
+//     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
     // view definition: Prop, Events.

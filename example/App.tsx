@@ -1,10 +1,10 @@
-import HeliumPaywallSdk, {addHeliumPaywallEventListener} from 'expo-paywall-sdk';
+import {addHeliumPaywallEventListener, initialize, presentUpsell} from 'expo-paywall-sdk';
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import {useEffect} from "react";
 
 export default function App() {
   useEffect(() => {
-    HeliumPaywallSdk.initialize({
+    initialize({
       apiKey: 'api-key-here',
     });
   }, []);
@@ -25,7 +25,7 @@ export default function App() {
           <Button
             title="Show paywall!"
             onPress={async () => {
-              HeliumPaywallSdk.presentUpsell('trigger-name-here');
+              presentUpsell('profile_banner');
             }}
           />
         </Group>
