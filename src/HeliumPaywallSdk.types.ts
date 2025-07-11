@@ -5,10 +5,10 @@ export type OnLoadEventPayload = {
 };
 
 export type HeliumPaywallSdkModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
+  onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
 };
 
-export type ChangeEventPayload = {
+export type HeliumPaywallEvent = {
   value: string;
 };
 

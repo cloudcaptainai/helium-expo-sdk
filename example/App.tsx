@@ -1,36 +1,32 @@
-import { useEvent } from 'expo';
-import HeliumPaywallSdk, { HeliumPaywallSdkView } from 'expo-paywall-sdk';
+import HeliumPaywallSdk, {addHeliumPaywallEventListener} from 'expo-paywall-sdk';
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import {useEffect} from "react";
 
 export default function App() {
-  const onChangePayload = useEvent(HeliumPaywallSdk, 'onChange');
+  useEffect(() => {
+    HeliumPaywallSdk.initialize({
+      apiKey: 'api-key-here',
+    });
+  }, []);
+
+  useEffect(() => {
+    const subscription = addHeliumPaywallEventListener((event) => {
+      console.log('Helium Paywall Event:', event);
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.container}>
-        <Text style={styles.header}>Module API Example</Text>
-        <Group name="Constants">
-          <Text>{HeliumPaywallSdk.PI}</Text>
-        </Group>
-        <Group name="Functions">
-          <Text>{HeliumPaywallSdk.hello()}</Text>
-        </Group>
+        <Text style={styles.header}>Helium Example</Text>
         <Group name="Async functions">
           <Button
-            title="Set value"
+            title="Show paywall!"
             onPress={async () => {
-              await HeliumPaywallSdk.setValueAsync('Hello from JS!');
+              HeliumPaywallSdk.presentUpsell('trigger-name-here');
             }}
-          />
-        </Group>
-        <Group name="Events">
-          <Text>{onChangePayload?.value}</Text>
-        </Group>
-        <Group name="Views">
-          <HeliumPaywallSdkView
-            url="https://www.example.com"
-            onLoad={({ nativeEvent: { url } }) => console.log(`Loaded: ${url}`)}
-            style={styles.view}
           />
         </Group>
       </ScrollView>

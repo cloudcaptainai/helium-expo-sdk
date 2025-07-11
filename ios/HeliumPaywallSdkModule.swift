@@ -18,7 +18,7 @@ public class HeliumPaywallSdkModule: Module {
     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onChange")
+    Events("onHeliumPaywallEvent")
 
     // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
     Function("hello") {
@@ -28,13 +28,18 @@ public class HeliumPaywallSdkModule: Module {
     Function("initialize") { (config: [String : Any]) in
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
 
+      // Create delegate with closure that sends events to JavaScript
+      let delegate = InternalDelegate { [weak self] event in
+        self?.sendEvent("onHeliumPaywallEvent", event.toDictionary())
+      }
+
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
-        heliumPaywallDelegate: SimpleDelegate(),
+        heliumPaywallDelegate: delegate,
         fallbackPaywall: FallbackView(),
         customUserId: config["customUserId"] as? String,
         customAPIEndpoint: config["customAPIEndpoint"] as? String,
-        customUserTraits: userTraitsMap == nil ? HeliumUserTraits(userTraitsMap!) : nil,
+        customUserTraits: userTraitsMap != nil ? HeliumUserTraits(userTraitsMap!) : nil,
         revenueCatAppUserId: config["revenueCatAppUserId"] as? String
       )
     }
@@ -47,7 +52,7 @@ public class HeliumPaywallSdkModule: Module {
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
     AsyncFunction("setValueAsync") { (value: String) in
       // Send an event to JavaScript.
-      self.sendEvent("onChange", [
+      self.sendEvent("onHeliumPaywallEvent", [
         "value": value
       ])
     }
@@ -67,7 +72,12 @@ public class HeliumPaywallSdkModule: Module {
   }
 }
 
-fileprivate class SimpleDelegate: HeliumPaywallDelegate {
+fileprivate class InternalDelegate: HeliumPaywallDelegate {
+    private let eventHandler: (HeliumPaywallEvent) -> Void
+
+    init(eventHandler: @escaping (HeliumPaywallEvent) -> Void) {
+        self.eventHandler = eventHandler
+    }
 
     public func makePurchase(productId: String) async -> HeliumPaywallTransactionStatus {
         print("make purchase!")
@@ -80,12 +90,42 @@ fileprivate class SimpleDelegate: HeliumPaywallDelegate {
     }
 
     public func onHeliumPaywallEvent(event: HeliumPaywallEvent) {
-        print("onHeliumPaywallEvent!, \(event)")
+        eventHandler(event)
     }
 }
 
 fileprivate struct FallbackView: View {
+    @Environment(\.presentationMode) var presentationMode
+
     var body: some View {
-        Text("FallbackView!")
+        VStack(spacing: 20) {
+            Spacer()
+
+            Text("Fallback Paywall")
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text("Something went wrong loading the paywall")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Button(action: {
+                presentationMode.wrappedValue.dismiss()
+            }) {
+                Text("Close")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(10)
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 40)
+        }
+        .padding()
     }
 }

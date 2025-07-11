@@ -1,5 +1,10 @@
 PODS:
+  - AnalyticsSwiftCocoapod (1.7.3):
+    - JSONSafeEncoding (= 2.0.0)
+    - Sovran (= 1.1.1)
+  - AnyCodable-FlightSchool (0.6.7)
   - boost (1.84.0)
+  - DeviceKit (4.0.0)
   - DoubleConversion (1.1.6)
   - EXConstants (17.1.7):
     - ExpoModulesCore
@@ -67,11 +72,20 @@ PODS:
   - FBLazyVector (0.79.5)
   - fmt (11.0.2)
   - glog (0.3.5)
+  - Helium (2.0.11):
+    - AnalyticsSwiftCocoapod (~> 1.7.3)
+    - AnyCodable-FlightSchool (~> 0.6.0)
+    - DeviceKit (~> 4.0.0)
+    - Kingfisher (~> 7.0)
+    - SwiftyJSON (~> 5.0.2)
   - HeliumPaywallSdk (0.1.0):
     - ExpoModulesCore
+    - Helium (= 2.0.11)
   - hermes-engine (0.79.5):
     - hermes-engine/Pre-built (= 0.79.5)
   - hermes-engine/Pre-built (0.79.5)
+  - JSONSafeEncoding (2.0.0)
+  - Kingfisher (7.12.0)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -1719,6 +1733,8 @@ PODS:
     - React-perflogger (= 0.79.5)
     - React-utils (= 0.79.5)
   - SocketRocket (0.7.1)
+  - Sovran (1.1.1)
+  - SwiftyJSON (5.0.2)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1805,7 +1821,15 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - AnalyticsSwiftCocoapod
+    - AnyCodable-FlightSchool
+    - DeviceKit
+    - Helium
+    - JSONSafeEncoding
+    - Kingfisher
     - SocketRocket
+    - Sovran
+    - SwiftyJSON
 
 EXTERNAL SOURCES:
   boost:
@@ -1967,7 +1991,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  AnalyticsSwiftCocoapod: da397b55bc7e2d90c59c8b359271ba4b3e1b57c8
+  AnyCodable-FlightSchool: 261cbe76757802b17d471b9059b21e6fa5edf57b
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
+  DeviceKit: 8d3a6ce9f98c3a1a591a84b4edf69693c3552083
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   EXConstants: 98bcf0f22b820f9b28f9fee55ff2daededadd2f8
   Expo: cd501e0be567d779626d89da336c8103bbcb74de
@@ -1980,8 +2007,11 @@ SPEC CHECKSUMS:
   FBLazyVector: d2a9cd223302b6c9aa4aa34c1a775e9db609eb52
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
-  HeliumPaywallSdk: b247237f6fa6e18e3dbcda3fa9f5bab2a566eb00
+  Helium: 94b491964102f7f7121e119280057e1a8a5ba29d
+  HeliumPaywallSdk: 9401bf4afdc0b20997c6b73df174380d0a5ad432
   hermes-engine: f03b0e06d3882d71e67e45b073bb827da1a21aae
+  JSONSafeEncoding: 54722ebc4fe1482e3e60a8450e1287481e32dd8b
+  Kingfisher: 53a10ea35051a436b5fb626ca2dd8f3144d755e9
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 5f638f65935e273753b1f31a365db6a8d6dc53b5
   RCTRequired: 8b46a520ea9071e2bc47d474aa9ca31b4a935bd8
@@ -2045,6 +2075,8 @@ SPEC CHECKSUMS:
   ReactCodegen: 6cb6e0d0b52471abc883541c76589d1c367c64c7
   ReactCommon: 1ab5451fc5da87c4cc4c3046e19a8054624ca763
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  Sovran: f8212bb3855042a24689a73ea0219ca5295235da
+  SwiftyJSON: f5b1bf1cd8dd53cd25887ac0eabcfd92301c6a5a
   Yoga: adb397651e1c00672c12e9495babca70777e411e
 
 PODFILE CHECKSUM: f928849fbe6fe8105c2601b9863f53210acb0478
