@@ -1,4 +1,6 @@
 import ExpoModulesCore
+import Helium
+import SwiftUI
 
 public class HeliumPaywallSdkModule: Module {
   // Each module class must implement the definition function. The definition consists of components
@@ -23,6 +25,24 @@ public class HeliumPaywallSdkModule: Module {
       return "Hello world! 👋"
     }
 
+    Function("initialize") { (config: [String : Any]) in
+      let userTraitsMap = config["customUserTraits"] as? [String : Any]
+
+      Helium.shared.initialize(
+        apiKey: config["apiKey"] as? String ?? "",
+        heliumPaywallDelegate: SimpleDelegate(),
+        fallbackPaywall: FallbackView(),
+        customUserId: config["customUserId"] as? String,
+        customAPIEndpoint: config["customAPIEndpoint"] as? String,
+        customUserTraits: userTraitsMap == nil ? HeliumUserTraits(userTraitsMap!) : nil,
+        revenueCatAppUserId: config["revenueCatAppUserId"] as? String
+      )
+    }
+
+    Function("presentUpsell") { (trigger: String) in
+      Helium.shared.presentUpsell(trigger: trigger);
+    }
+
     // Defines a JavaScript function that always returns a Promise and whose native code
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
     AsyncFunction("setValueAsync") { (value: String) in
@@ -45,4 +65,27 @@ public class HeliumPaywallSdkModule: Module {
       Events("onLoad")
     }
   }
+}
+
+fileprivate class SimpleDelegate: HeliumPaywallDelegate {
+
+    public func makePurchase(productId: String) async -> HeliumPaywallTransactionStatus {
+        print("make purchase!")
+        return .purchased
+    }
+
+    public func restorePurchases() async -> Bool {
+        print("restore purchase!")
+        return true
+    }
+
+    public func onHeliumPaywallEvent(event: HeliumPaywallEvent) {
+        print("onHeliumPaywallEvent!, \(event)")
+    }
+}
+
+fileprivate struct FallbackView: View {
+    var body: some View {
+        Text("FallbackView!")
+    }
 }

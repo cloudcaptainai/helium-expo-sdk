@@ -6,6 +6,9 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   PI: number;
   hello(): string;
   setValueAsync(value: string): Promise<void>;
+
+  initialize(config: any): void;
+  presentUpsell(trigger: string): void;
 }
 
 // This call loads the native module object from the JSI.
