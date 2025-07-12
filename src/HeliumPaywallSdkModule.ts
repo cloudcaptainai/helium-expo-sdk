@@ -3,6 +3,7 @@ import { NativeModule, requireNativeModule } from "expo";
 import {
   HeliumDownloadStatus,
   HeliumPaywallSdkModuleEvents,
+  HeliumTransactionStatus,
   NativeHeliumConfig,
 } from "./HeliumPaywallSdk.types";
 
@@ -22,6 +23,10 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
     isOpen: boolean,
     viewType: string,
   ): void;
+
+  handlePurchaseResult(statusString: HeliumTransactionStatus): void;
+
+  handleRestoreResult(success: boolean): void;
 }
 
 // This call loads the native module object from the JSI.

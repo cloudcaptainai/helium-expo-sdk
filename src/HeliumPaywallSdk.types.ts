@@ -12,7 +12,7 @@ export type HeliumPaywallEvent = {
   value: string;
 };
 export type DelegateActionEvent = {
-  type: string;
+  type: 'purchase' | 'restore';
   productId?: string;
 };
 

@@ -31,7 +31,7 @@ public class HeliumPaywallSdkModule: Module {
     // Defines event names that the module can send to JavaScript.
     Events("onHeliumPaywallEvent")
 
-    Events("delegateActionEvent")
+    Events("onDelegateActionEvent")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -57,7 +57,7 @@ public class HeliumPaywallSdkModule: Module {
             self.purchaseContinuation = continuation
 
             // Send event to JavaScript
-            self.sendEvent("delegateActionEvent", [
+            self.sendEvent("onDelegateActionEvent", [
               "type": "purchase",
               "productId": productId
             ])
@@ -76,7 +76,7 @@ public class HeliumPaywallSdkModule: Module {
             self.restoreContinuation = continuation
 
             // Send event to JavaScript
-            self.sendEvent("delegateActionEvent", [
+            self.sendEvent("onDelegateActionEvent", [
               "type": "restore"
             ])
           }

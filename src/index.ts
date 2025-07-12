@@ -1,5 +1,9 @@
-
-import {HeliumPaywallEvent} from "./HeliumPaywallSdk.types";
+import {
+  DelegateActionEvent,
+  HeliumConfig,
+  HeliumPaywallEvent,
+  NativeHeliumConfig,
+} from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
 
@@ -7,11 +11,64 @@ export { default } from './HeliumPaywallSdkModule';
 // export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
 export * from  './HeliumPaywallSdk.types';
 
-export function addHeliumPaywallEventListener(listener: (event: HeliumPaywallEvent) => void): EventSubscription {
+function addHeliumPaywallEventListener(listener: (event: HeliumPaywallEvent) => void): EventSubscription {
   return HeliumPaywallSdkModule.addListener('onHeliumPaywallEvent', listener);
 }
 
-export const initialize = HeliumPaywallSdkModule.initialize;
+function addDelegateActionEventListener(listener: (event: DelegateActionEvent) => void): EventSubscription {
+  return HeliumPaywallSdkModule.addListener('onDelegateActionEvent', listener);
+}
+
+let isInitialized = false;
+export const initialize = (config: HeliumConfig) => {
+  if (isInitialized) {
+    return;
+  }
+  isInitialized = true;
+
+  // Set up listener for paywall events
+  addHeliumPaywallEventListener((event) => {
+    config.onHeliumPaywallEvent(event);
+  });
+
+  // Set up delegate action listener for purchase and restore operations
+  addDelegateActionEventListener(async (event) => {
+    try {
+      if (event.type === 'purchase') {
+        if (event.productId) {
+          const result = await config.purchaseConfig.makePurchase(event.productId);
+          HeliumPaywallSdkModule.handlePurchaseResult(result.status);
+        } else {
+          HeliumPaywallSdkModule.handlePurchaseResult('failed');
+        }
+      }
+      else if (event.type === 'restore') {
+        const success = await config.purchaseConfig.restorePurchases();
+        HeliumPaywallSdkModule.handleRestoreResult(success);
+      }
+    } catch (error) {
+      // Send failure result based on action type
+      if (event.type === 'purchase') {
+        HeliumPaywallSdkModule.handlePurchaseResult('failed');
+      } else if (event.type === 'restore') {
+        HeliumPaywallSdkModule.handleRestoreResult(false);
+      }
+    }
+  });
+
+  // Create native config object
+  const nativeConfig: NativeHeliumConfig = {
+    apiKey: config.apiKey,
+    customUserId: config.customUserId,
+    customAPIEndpoint: config.customAPIEndpoint,
+    customUserTraits: config.customUserTraits,
+    revenueCatAppUserId: config.revenueCatAppUserId
+  };
+
+  // Initialize the native module
+  HeliumPaywallSdkModule.initialize(nativeConfig);
+};
+
 export const presentUpsell = (triggerName: string, onFallback?: () => void) => {
   // todo check HeliumBridge.getFetchedTriggerNames((triggerNames: string[]) ??
   const downloadStatus = getDownloadStatus();
@@ -32,8 +89,8 @@ export const presentUpsell = (triggerName: string, onFallback?: () => void) => {
     onFallback?.();
     HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
   }
-
 };
+
 export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
