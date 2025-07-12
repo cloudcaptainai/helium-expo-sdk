@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0C3A90DC4E598FDB67037DA0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3FCC0B25D257A673D11E8D50 /* PrivacyInfo.xcprivacy */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		392E042F33B724DE9CF3899C /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C936B4B7225FE93B427D706 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		B6E2F1CF2DFF95789799C662 /* libPods-expopaywallsdkexample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 349DE00B10CE9F6ABF2EC8D6 /* libPods-expopaywallsdkexample.a */; };
+		6510914B7197C859ADF7640A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 927E2A39DBA04E88C36424B2 /* PrivacyInfo.xcprivacy */; };
+		8D1B6DC4FEF73F9189DA76A6 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA2208854671A288BFE398D /* ExpoModulesProvider.swift */; };
+		B5D8714533DE1616E3689427 /* libPods-expopaywallsdkexample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6D94EE5DE7D673A79510A78E /* libPods-expopaywallsdkexample.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -20,13 +20,13 @@
 		13B07F961A680F5B00A75B9A /* expopaywallsdkexample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = expopaywallsdkexample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = expopaywallsdkexample/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = expopaywallsdkexample/Info.plist; sourceTree = "<group>"; };
-		15AFD952DAB3366F1EED98E0 /* Pods-expopaywallsdkexample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-expopaywallsdkexample.debug.xcconfig"; path = "Target Support Files/Pods-expopaywallsdkexample/Pods-expopaywallsdkexample.debug.xcconfig"; sourceTree = "<group>"; };
-		349DE00B10CE9F6ABF2EC8D6 /* libPods-expopaywallsdkexample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-expopaywallsdkexample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		3C936B4B7225FE93B427D706 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-expopaywallsdkexample/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		3FCC0B25D257A673D11E8D50 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = expopaywallsdkexample/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6D94EE5DE7D673A79510A78E /* libPods-expopaywallsdkexample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-expopaywallsdkexample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		75D32E1AB3E6ECB7CCF3ED6F /* Pods-expopaywallsdkexample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-expopaywallsdkexample.release.xcconfig"; path = "Target Support Files/Pods-expopaywallsdkexample/Pods-expopaywallsdkexample.release.xcconfig"; sourceTree = "<group>"; };
+		8B3867A69B89CF7F49874DFF /* Pods-expopaywallsdkexample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-expopaywallsdkexample.debug.xcconfig"; path = "Target Support Files/Pods-expopaywallsdkexample/Pods-expopaywallsdkexample.debug.xcconfig"; sourceTree = "<group>"; };
+		927E2A39DBA04E88C36424B2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = expopaywallsdkexample/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		9FA2208854671A288BFE398D /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-expopaywallsdkexample/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = expopaywallsdkexample/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		E3A972C28CDC89C6FE3AA240 /* Pods-expopaywallsdkexample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-expopaywallsdkexample.release.xcconfig"; path = "Target Support Files/Pods-expopaywallsdkexample/Pods-expopaywallsdkexample.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = expopaywallsdkexample/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* expopaywallsdkexample-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "expopaywallsdkexample-Bridging-Header.h"; path = "expopaywallsdkexample/expopaywallsdkexample-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B6E2F1CF2DFF95789799C662 /* libPods-expopaywallsdkexample.a in Frameworks */,
+				B5D8714533DE1616E3689427 /* libPods-expopaywallsdkexample.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,34 +53,44 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				3FCC0B25D257A673D11E8D50 /* PrivacyInfo.xcprivacy */,
+				927E2A39DBA04E88C36424B2 /* PrivacyInfo.xcprivacy */,
 			);
 			name = expopaywallsdkexample;
+			sourceTree = "<group>";
+		};
+		19D9C0638F5E96E3F76AC547 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				8B3867A69B89CF7F49874DFF /* Pods-expopaywallsdkexample.debug.xcconfig */,
+				75D32E1AB3E6ECB7CCF3ED6F /* Pods-expopaywallsdkexample.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		2095919EA621A5F426846101 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				4C8ED6CCC26B98A43F185788 /* expopaywallsdkexample */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				349DE00B10CE9F6ABF2EC8D6 /* libPods-expopaywallsdkexample.a */,
+				6D94EE5DE7D673A79510A78E /* libPods-expopaywallsdkexample.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		5F3D89848C13B319619A725C /* expopaywallsdkexample */ = {
+		4C8ED6CCC26B98A43F185788 /* expopaywallsdkexample */ = {
 			isa = PBXGroup;
 			children = (
-				3C936B4B7225FE93B427D706 /* ExpoModulesProvider.swift */,
+				9FA2208854671A288BFE398D /* ExpoModulesProvider.swift */,
 			);
 			name = expopaywallsdkexample;
-			sourceTree = "<group>";
-		};
-		770EAEB0BE0F1E7B1D712EBD /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				5F3D89848C13B319619A725C /* expopaywallsdkexample */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -97,8 +107,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				B88434702E0BD2D118F2F6FF /* Pods */,
-				770EAEB0BE0F1E7B1D712EBD /* ExpoModulesProviders */,
+				19D9C0638F5E96E3F76AC547 /* Pods */,
+				2095919EA621A5F426846101 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -111,16 +121,6 @@
 				13B07F961A680F5B00A75B9A /* expopaywallsdkexample.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		B88434702E0BD2D118F2F6FF /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				15AFD952DAB3366F1EED98E0 /* Pods-expopaywallsdkexample.debug.xcconfig */,
-				E3A972C28CDC89C6FE3AA240 /* Pods-expopaywallsdkexample.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "expopaywallsdkexample" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				3254F78D651056F0501C7ACC /* [Expo] Configure project */,
+				6A7C3D49AE7F32D10E79B089 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				10DAEDB7B0A710B79F5672B2 /* [CP] Embed Pods Frameworks */,
+				3F9D15A7F1C1D93BA2DEC4F3 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				0C3A90DC4E598FDB67037DA0 /* PrivacyInfo.xcprivacy in Resources */,
+				6510914B7197C859ADF7640A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,7 +240,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		10DAEDB7B0A710B79F5672B2 /* [CP] Embed Pods Frameworks */ = {
+		3F9D15A7F1C1D93BA2DEC4F3 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -258,7 +258,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-expopaywallsdkexample/Pods-expopaywallsdkexample-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		3254F78D651056F0501C7ACC /* [Expo] Configure project */ = {
+		6A7C3D49AE7F32D10E79B089 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -323,7 +323,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				392E042F33B724DE9CF3899C /* ExpoModulesProvider.swift in Sources */,
+				8D1B6DC4FEF73F9189DA76A6 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -332,12 +332,13 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 15AFD952DAB3366F1EED98E0 /* Pods-expopaywallsdkexample.debug.xcconfig */;
+			baseConfigurationReference = 8B3867A69B89CF7F49874DFF /* Pods-expopaywallsdkexample.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = expopaywallsdkexample/expopaywallsdkexample.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9R6LQ56TM3;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -368,12 +369,13 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E3A972C28CDC89C6FE3AA240 /* Pods-expopaywallsdkexample.release.xcconfig */;
+			baseConfigurationReference = 75D32E1AB3E6ECB7CCF3ED6F /* Pods-expopaywallsdkexample.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = expopaywallsdkexample/expopaywallsdkexample.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9R6LQ56TM3;
 				INFOPLIST_FILE = expopaywallsdkexample/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (

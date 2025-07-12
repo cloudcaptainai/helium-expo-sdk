@@ -78,7 +78,7 @@ PODS:
     - DeviceKit (~> 4.0.0)
     - Kingfisher (~> 7.0)
     - SwiftyJSON (~> 5.0.2)
-  - HeliumPaywallSdk (0.1.0):
+  - HeliumPaywallSdk (0.7.0):
     - ExpoModulesCore
     - Helium (= 2.0.11)
   - hermes-engine (0.79.5):
@@ -2008,7 +2008,7 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   Helium: 94b491964102f7f7121e119280057e1a8a5ba29d
-  HeliumPaywallSdk: 9401bf4afdc0b20997c6b73df174380d0a5ad432
+  HeliumPaywallSdk: 5781878794fae312689f7dd5051f4796f0ca9361
   hermes-engine: f03b0e06d3882d71e67e45b073bb827da1a21aae
   JSONSafeEncoding: 54722ebc4fe1482e3e60a8450e1287481e32dd8b
   Kingfisher: 53a10ea35051a436b5fb626ca2dd8f3144d755e9

@@ -9,7 +9,19 @@ export type HeliumPaywallSdkModuleEvents = {
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
 };
 export type HeliumPaywallEvent = {
-  value: string;
+  type: string;
+  triggerName?: string;
+  paywallTemplateName?: string;
+  productKey?: string;
+  ctaName?: string;
+  configId?: string;
+  numAttempts?: number;
+  downloadTimeTakenMS?: number;
+  webviewRenderTimeTakenMS?: number;
+  imagesDownloadTimeTakenMS?: number;
+  fontsDownloadTimeTakenMS?: number;
+  bundleDownloadTimeMS?: number;
+  dismissAll?: boolean;
 };
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
@@ -58,7 +70,7 @@ export interface HeliumConfig {
   /** Configuration for handling purchases. Can be custom functions or a pre-built handler config. */
   purchaseConfig: HeliumPurchaseConfig;
   /** Callback for receiving all Helium paywall events. */
-  onHeliumPaywallEvent: (event: any) => void; // Still mandatory
+  onHeliumPaywallEvent: (event: HeliumPaywallEvent) => void; // Still mandatory
 
   // Optional configurations
   triggers?: string[];

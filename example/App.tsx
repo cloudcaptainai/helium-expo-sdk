@@ -1,5 +1,5 @@
 
-import {initialize, presentUpsell} from 'expo-paywall-sdk';
+import {HeliumPaywallEvent, initialize, presentUpsell} from 'expo-paywall-sdk';
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import {useEffect} from "react";
 import {createCustomPurchaseConfig} from "expo-paywall-sdk";
@@ -18,7 +18,7 @@ export default function App() {
           return true;
         }
       }),
-      onHeliumPaywallEvent: function (event: any): void {
+      onHeliumPaywallEvent: function (event: HeliumPaywallEvent): void {
         console.log('Helium Paywall Event:', event);
       }
     });
@@ -28,7 +28,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.container}>
         <Text style={styles.header}>Helium Example</Text>
-        <Group name="Async functions">
+        <Group name="Paywall actions">
           <Button
             title="Show paywall!"
             onPress={async () => {

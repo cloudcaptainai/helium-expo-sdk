@@ -26,6 +26,9 @@ export const initialize = (config: HeliumConfig) => {
   }
   isInitialized = true;
 
+  HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
+  HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
+
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
     config.onHeliumPaywallEvent(event);
