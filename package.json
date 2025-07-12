@@ -1,5 +1,5 @@
 {
-  "name": "expo-paywall-sdk",
+  "name": "expo-helium",
   "version": "0.7.0",
   "description": "My new module",
   "main": "build/index.js",
@@ -18,16 +18,18 @@
   "keywords": [
     "react-native",
     "expo",
-    "expo-paywall-sdk",
+    "expo-helium",
+    "helium-expo-sdk",
+    "expo-helium-sdk",
     "HeliumPaywallSdk"
   ],
-  "repository": "https://github.com/salami/expo-paywall-sdk",
+  "repository": "https://github.com/cloudcaptainai/helium-expo-sdk/",
   "bugs": {
-    "url": "https://github.com/salami/expo-paywall-sdk/issues"
+    "url": "https://github.com/cloudcaptainai/helium-expo-sdk/issues"
   },
-  "author": "Kyle Gorlick <kyle@kylegorlick.com> (https://github.com/salami)",
+  "author": "Anish Doshi <anish@tryhelium.com> (https://tryhelium.com)",
   "license": "MIT",
-  "homepage": "https://github.com/salami/expo-paywall-sdk#readme",
+  "homepage": "https://github.com/cloudcaptainai/helium-expo-sdk/#readme",
   "dependencies": {},
   "devDependencies": {
     "@types/react": "~19.0.0",

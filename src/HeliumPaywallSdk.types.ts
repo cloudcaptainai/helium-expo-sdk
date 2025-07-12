@@ -22,6 +22,7 @@ export type HeliumPaywallEvent = {
   fontsDownloadTimeTakenMS?: number;
   bundleDownloadTimeMS?: number;
   dismissAll?: boolean;
+  errorDescription?: string;
 };
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
