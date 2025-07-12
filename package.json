@@ -23,7 +23,10 @@
     "expo-helium-sdk",
     "HeliumPaywallSdk"
   ],
-  "repository": "https://github.com/cloudcaptainai/helium-expo-sdk/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cloudcaptainai/helium-expo-sdk.git"
+  },
   "bugs": {
     "url": "https://github.com/cloudcaptainai/helium-expo-sdk/issues"
   },
