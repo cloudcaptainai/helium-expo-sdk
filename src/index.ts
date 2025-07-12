@@ -72,7 +72,13 @@ export const initialize = (config: HeliumConfig) => {
   HeliumPaywallSdkModule.initialize(nativeConfig);
 };
 
-export const presentUpsell = (triggerName: string, onFallback?: () => void) => {
+export const presentUpsell = ({
+                                triggerName,
+                                onFallback
+                              }: {
+  triggerName: string;
+  onFallback?: () => void;
+}) => {
   // todo check HeliumBridge.getFetchedTriggerNames((triggerNames: string[]) ??
   const downloadStatus = getDownloadStatus();
   if (downloadStatus !== 'downloadSuccess') {
@@ -98,10 +104,9 @@ export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
 
-export {createCustomPurchaseConfig} from './HeliumPaywallSdk.types';
+export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
 
 export type {
   HeliumTransactionStatus,
   HeliumConfig,
-  HELIUM_CTA_NAMES
 } from './HeliumPaywallSdk.types';
