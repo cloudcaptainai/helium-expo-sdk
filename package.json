@@ -1,5 +1,5 @@
 {
-  "name": "expo-helium",
+  "name": "@tryhelium/expo-helium",
   "version": "0.7.0",
   "description": "My new module",
   "main": "build/index.js",
