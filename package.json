@@ -1,7 +1,7 @@
 {
   "name": "@tryhelium/expo-helium",
   "version": "0.7.0",
-  "description": "My new module",
+  "description": "Helium paywalls expo sdk",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
