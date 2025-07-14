@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
     :tvos => '15.1'
   }
   s.swift_version  = '5.4'
-  s.source         = { git: 'https://github.com/salami/expo-paywall-sdk' }
+  s.source         = { git: 'https://github.com/cloudcaptainai/helium-expo-sdk' }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'

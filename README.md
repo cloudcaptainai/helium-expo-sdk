@@ -1,5 +1,7 @@
 # helium-expo-sdk
 
+### NOTE: For the most up-to-date documentation visit https://docs.tryhelium.com/welcome
+
 ## **Background**
 
 Get set up with the Helium SDK for iOS in 5 minutes. Reach out over your Helium slack channel, or email [founders@tryhelium.com](mailto:founders@tryhelium.com) for any questions.
@@ -99,8 +101,6 @@ const asyncHeliumInit = async () => {
           break;
       }
     },
-    // RevenueCat ONLY: supply RevenueCat appUserId
-    // (and initialize RevenueCat before Helium initialize)
     revenueCatAppUserId: await Purchases.getAppUserID()
   });
 };
@@ -118,15 +118,15 @@ useEffect(() => {
 import { presentUpsell } from 'expo-helium';
 
 function YourComponent() {
-  const handlePremiumPress = useCallback(async () => {
-    await presentUpsell({
+  const handlePremiumPress = () => {
+    presentUpsell({
       triggerName: 'premium_feature_press',
       onFallback: () => {
-        // Logic to open a default paywall
-        openFallbackPaywall();
+        // Implement logic to open a default paywall
+        console.log('[Helium] onFallback called!');
       }
     });
-  }, [presentUpsell]);
+  };
 
   return (
     <Button title="Try Premium" onPress={handlePremiumPress} />
