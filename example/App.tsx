@@ -33,7 +33,7 @@ export default function App() {
             title="Show paywall!"
             onPress={async () => {
               presentUpsell({
-                triggerName: 'profile_banner',
+                triggerName: 'trigger-name-here',
                 onFallback: () => {
                   console.log('fallback!!!')
                 }

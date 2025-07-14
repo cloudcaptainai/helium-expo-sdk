@@ -1,0 +1,1 @@
+export { createRevenueCatPurchaseConfig } from "./revenuecat";

@@ -9,7 +9,7 @@ Get set up with the Helium SDK for iOS in 5 minutes. Reach out over your Helium 
 Install the package by running:
 
 ```bash
-npx expo install @tryheliumai/expo-helium
+npx expo install expo-helium
 ```
 
 We recommend using Expo 53 and up.
@@ -22,7 +22,7 @@ Initialize Helium by calling `initialize()` early in your app's lifecycle, typic
 `initialize` takes in a configuration object that includes your purchase config, event handlers, and other settings. (If you are using **RevenueCat**, skip to the next section.)
 
 ```tsx
-import { initialize, createCustomPurchaseConfig } from '@tryheliumai/expo-helium';
+import { initialize, createCustomPurchaseConfig, HELIUM_CTA_NAMES } from 'expo-helium';
 
 function App() {
   useEffect(() => {
@@ -81,8 +81,7 @@ function App() {
 - initialize RevenueCat (`Purchases.configure()`) _before_ initializing Helium
 
 ```tsx
-import { HELIUM_CTA_NAMES } from '@tryheliumai/expo-helium';
-import { createRevenueCatPurchaseConfig } from "@tryheliumai/expo-helium/src/revenuecat";
+import { createRevenueCatPurchaseConfig } from "expo-helium/revenuecat";
 
 const asyncHeliumInit = async () => {
   initialize({
@@ -116,7 +115,7 @@ useEffect(() => {
 `presentUpsell` takes in a dictionary specifying the `triggerName` as well as an optional `onFallback` parameter defining custom fallback behavior (in case the user didn't have a network connection)
 
 ```typescript
-import { presentUpsell } from '@tryheliumai/expo-helium';
+import { presentUpsell } from 'expo-helium';
 
 function YourComponent() {
   const handlePremiumPress = useCallback(async () => {
