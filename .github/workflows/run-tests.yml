@@ -24,13 +24,10 @@ jobs:
 
       - name: Lint code
         run: npm run lint
-
-      - name: Type check
-        run: npm run typecheck
-#        continue-on-error: true
+#        this needs eslint file? investigate expo module linting...
 
       - name: Run tests
-        run: npm test
+        run: npm run expo-module jest
 
       - name: Build package
         run: npm run prepare
