@@ -3,9 +3,18 @@ import Helium
 import SwiftUI
 
 // Define purchase error enum
-enum PurchaseError: Error {
+enum PurchaseError: LocalizedError {
     case unknownStatus(status: String)
-    case purchaseFailed
+    case purchaseFailed(errorMsg: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .unknownStatus(status):
+            return "Purchased not successful due to unknown status - \(status)."
+        case let .purchaseFailed(errorMsg):
+            return errorMsg
+        }
+    }
 }
 
 public class HeliumPaywallSdkModule: Module {
@@ -43,7 +52,7 @@ public class HeliumPaywallSdkModule: Module {
           self?.sendEvent("onHeliumPaywallEvent", event.toDictionary())
         },
         purchaseHandler: { [weak self] productId in
-          guard let self else { return .failed(PurchaseError.purchaseFailed) }
+          guard let self else { return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!")) }
           // Check if there's already a purchase in progress and cancel it
           if let existingContinuation = self.purchaseContinuation {
             existingContinuation.resume(returning: .cancelled)
@@ -95,9 +104,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     // Function for JavaScript to provide purchase result
-    Function("handlePurchaseResult") { (statusString: String) -> Bool in
-      guard let continuation = self.purchaseContinuation else {
-        return false
+    Function("handlePurchaseResult") { [weak self] (statusString: String, errorMsg: String?) in
+      guard let continuation = self?.purchaseContinuation else {
+        return
       }
 
       // Parse status string
@@ -109,27 +118,26 @@ public class HeliumPaywallSdkModule: Module {
       case "cancelled": status = .cancelled
       case "restored":  status = .restored
       case "pending":   status = .pending
+      case "failed":    status = .failed(PurchaseError.purchaseFailed(errorMsg: errorMsg ?? "Unexpected error."))
       default:          status = .failed(PurchaseError.unknownStatus(status: lowercasedStatus))
       }
 
       // Clear the references
-      self.purchaseContinuation = nil
-      self.currentProductId = nil
+      self?.purchaseContinuation = nil
+      self?.currentProductId = nil
 
       // Resume the continuation with the status
       continuation.resume(returning: status)
-      return true
     }
 
     // Function for JavaScript to provide restore result
-    Function("handleRestoreResult") { (success: Bool) -> Bool in
-      guard let continuation = self.restoreContinuation else {
-        return false
+    Function("handleRestoreResult") { [weak self] (success: Bool) in
+      guard let continuation = self?.restoreContinuation else {
+        return
       }
 
-      self.restoreContinuation = nil
+      self?.restoreContinuation = nil
       continuation.resume(returning: success)
-      return true
     }
 
     Function("presentUpsell") { (trigger: String) in

@@ -32,7 +32,12 @@ export default function App() {
           <Button
             title="Show paywall!"
             onPress={async () => {
-              presentUpsell('profile_banner');
+              presentUpsell({
+                triggerName: 'profile_banner',
+                onFallback: () => {
+                  console.log('fallback!!!')
+                }
+              });
             }}
           />
         </Group>

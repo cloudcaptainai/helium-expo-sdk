@@ -40,9 +40,9 @@ export const initialize = (config: HeliumConfig) => {
       if (event.type === 'purchase') {
         if (event.productId) {
           const result = await config.purchaseConfig.makePurchase(event.productId);
-          HeliumPaywallSdkModule.handlePurchaseResult(result.status);
+          HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
         } else {
-          HeliumPaywallSdkModule.handlePurchaseResult('failed');
+          HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No product ID for purchase event.');
         }
       }
       else if (event.type === 'restore') {
@@ -52,6 +52,7 @@ export const initialize = (config: HeliumConfig) => {
     } catch (error) {
       // Send failure result based on action type
       if (event.type === 'purchase') {
+        console.log('[Helium] Unexpected error: ', error);
         HeliumPaywallSdkModule.handlePurchaseResult('failed');
       } else if (event.type === 'restore') {
         HeliumPaywallSdkModule.handleRestoreResult(false);
