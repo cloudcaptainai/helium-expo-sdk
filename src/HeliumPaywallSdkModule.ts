@@ -7,6 +7,12 @@ import {
   NativeHeliumConfig,
 } from "./HeliumPaywallSdk.types";
 
+interface PaywallInfoResult {
+  errorMsg?: string;
+  templateName?: string;
+  shouldShow?: boolean;
+}
+
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
   initialize(config: NativeHeliumConfig): void;
 
@@ -30,6 +36,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   ): void;
 
   handleRestoreResult(success: boolean): void;
+
+  getPaywallInfo(trigger: string): PaywallInfoResult;
 }
 
 // This call loads the native module object from the JSI.

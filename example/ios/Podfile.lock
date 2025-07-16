@@ -72,15 +72,15 @@ PODS:
   - FBLazyVector (0.79.5)
   - fmt (11.0.2)
   - glog (0.3.5)
-  - Helium (2.0.11):
+  - Helium (2.0.13):
     - AnalyticsSwiftCocoapod (~> 1.7.3)
     - AnyCodable-FlightSchool (~> 0.6.0)
     - DeviceKit (~> 4.0.0)
     - Kingfisher (~> 7.0)
     - SwiftyJSON (~> 5.0.2)
-  - HeliumPaywallSdk (0.7.0):
+  - HeliumPaywallSdk (0.8.1):
     - ExpoModulesCore
-    - Helium (= 2.0.11)
+    - Helium (= 2.0.13)
   - hermes-engine (0.79.5):
     - hermes-engine/Pre-built (= 0.79.5)
   - hermes-engine/Pre-built (0.79.5)
@@ -2007,8 +2007,8 @@ SPEC CHECKSUMS:
   FBLazyVector: d2a9cd223302b6c9aa4aa34c1a775e9db609eb52
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
-  Helium: 94b491964102f7f7121e119280057e1a8a5ba29d
-  HeliumPaywallSdk: 5781878794fae312689f7dd5051f4796f0ca9361
+  Helium: 7d38317f7c11e0c0c750f299af0aa6ab07a18806
+  HeliumPaywallSdk: 3ff902457e2a0886b80df47fe64597ad9fc762d3
   hermes-engine: f03b0e06d3882d71e67e45b073bb827da1a21aae
   JSONSafeEncoding: 54722ebc4fe1482e3e60a8450e1287481e32dd8b
   Kingfisher: 53a10ea35051a436b5fb626ca2dd8f3144d755e9

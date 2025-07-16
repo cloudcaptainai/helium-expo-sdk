@@ -89,6 +89,11 @@ export interface NativeHeliumConfig {
   revenueCatAppUserId?: string;
 }
 
+export interface PaywallInfo {
+  paywallTemplateName: string;
+  shouldShow: boolean;
+}
+
 export const HELIUM_CTA_NAMES = {
   SCHEDULE_CALL: 'schedule_call',
   SUBSCRIBE_BUTTON: 'subscribe_button',
