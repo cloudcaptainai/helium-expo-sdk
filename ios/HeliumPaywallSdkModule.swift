@@ -17,6 +17,17 @@ enum PurchaseError: LocalizedError {
     }
 }
 
+struct PaywallInfoResult: Record {
+  @Field
+  var errorMsg: String? = nil
+
+  @Field
+  var templateName: String? = nil
+
+  @Field
+  var shouldShow: Bool? = nil
+}
+
 public class HeliumPaywallSdkModule: Module {
   // Single continuations for ongoing operations
   private var currentProductId: String? = nil
@@ -38,9 +49,7 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent")
-
-    Events("onDelegateActionEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -141,23 +150,39 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("presentUpsell") { (trigger: String) in
-      Helium.shared.presentUpsell(trigger: trigger);
+      Helium.shared.presentUpsell(trigger: trigger)
     }
 
     Function("hideUpsell") {
-      let _ = Helium.shared.hideUpsell();
+      let _ = Helium.shared.hideUpsell()
     }
 
     Function("hideAllUpsells") {
-      Helium.shared.hideAllUpsells();
+      Helium.shared.hideAllUpsells()
     }
 
     Function("getDownloadStatus") {
-      return Helium.shared.getDownloadStatus().rawValue;
+      return Helium.shared.getDownloadStatus().rawValue
     }
 
     Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
       HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType)
+    }
+
+    Function("getPaywallInfo") { (trigger: String) in
+      guard let paywallInfo = Helium.shared.getPaywallInfo(trigger: trigger) else {
+        return PaywallInfoResult(
+          errorMsg: "Invalid trigger or paywalls not ready.",
+          templateName: nil,
+          shouldShow: nil
+        )
+      }
+
+      return PaywallInfoResult(
+        errorMsg: nil,
+        templateName: paywallInfo.paywallTemplateName,
+        shouldShow: paywallInfo.shouldShow
+      )
     }
 
     // Defines a JavaScript function that always returns a Promise and whose native code

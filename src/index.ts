@@ -2,7 +2,7 @@ import {
   DelegateActionEvent,
   HeliumConfig,
   HeliumPaywallEvent,
-  NativeHeliumConfig,
+  NativeHeliumConfig, PaywallInfo,
 } from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
@@ -104,6 +104,22 @@ export const presentUpsell = ({
 export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
+
+export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
+  const result = HeliumPaywallSdkModule.getPaywallInfo(trigger);
+  if (!result) {
+    console.log('[Helium] getPaywallInfo unexpected error.');
+    return;
+  }
+  if (result.errorMsg) {
+    console.log(`[Helium] ${result.errorMsg}`);
+    return;
+  }
+  return {
+    paywallTemplateName: result.templateName ?? 'unknown template',
+    shouldShow: result.shouldShow ?? true,
+  };
+};
 
 export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
 
