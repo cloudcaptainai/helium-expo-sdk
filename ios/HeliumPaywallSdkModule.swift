@@ -248,7 +248,7 @@ fileprivate struct FallbackView: View {
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text("Something went wrong loading the paywall")
+            Text("Something went wrong loading the paywall. Make sure you used the right trigger.")
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
