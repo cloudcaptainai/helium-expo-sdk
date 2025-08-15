@@ -230,7 +230,7 @@ public class HeliumPaywallSdkModule: Module {
       } else {
         // No paywall and no fallback bundle
         canPresent = false
-        reason = !paywallsLoaded ? "not_loaded" : "trigger_not_found"
+        reason = !paywallsLoaded ? "download status - \(Helium.shared.getDownloadStatus().rawValue)" : "trigger_not_found"
       }
 
       return CanPresentPaywallResult(
