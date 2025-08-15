@@ -61,6 +61,12 @@ export const initialize = (config: HeliumConfig) => {
     }
   });
 
+  nativeInitializeAsync(config).catch(error => {
+    console.error('[Helium] Initialization failed:', error);
+  });
+};
+
+const nativeInitializeAsync = async (config: HeliumConfig) => {
   let fallbackBundleUrlString;
   let fallbackBundleString;
   if (config.fallbackBundle) {
@@ -70,12 +76,10 @@ export const initialize = (config: HeliumConfig) => {
       // Write to documents directory
       fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
       // This is ASYNC but that's ok because helium initialize in swift code is async anyways.
-      ExpoFileSystem.writeAsStringAsync(
+      await ExpoFileSystem.writeAsStringAsync(
         fallbackBundleUrlString,
         jsonContent
-      ).catch(error => {
-        console.warn('[Helium] Failed to write fallback bundle:', error);
-      });
+      );
     } catch (error) {
       // Fallback to string approach if unexpected error occurs
       console.log(

@@ -24,5 +24,7 @@ cd example
 npx expo run:android
 # Run the example app on iOS
 npx expo run:ios
+# or
+npx expo run:ios --device
 ```
 

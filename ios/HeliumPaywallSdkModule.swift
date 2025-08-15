@@ -61,6 +61,8 @@ public class HeliumPaywallSdkModule: Module {
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
+      let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
+      let fallbackBundleString = config["fallbackBundleString"] as? String
 
       // Create delegate with closures that send events to JavaScript
       let delegate = InternalDelegate(
