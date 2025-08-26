@@ -13,6 +13,11 @@ interface PaywallInfoResult {
   shouldShow?: boolean;
 }
 
+interface CanPresentUpsellResult {
+  canPresent?: boolean;
+  reason?: string;
+}
+
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
   initialize(config: NativeHeliumConfig): void;
 
@@ -23,6 +28,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   hideAllUpsells(): void;
 
   getDownloadStatus(): HeliumDownloadStatus;
+
+  canPresentUpsell(trigger: string): CanPresentUpsellResult;
 
   fallbackOpenOrCloseEvent(
     trigger: string,

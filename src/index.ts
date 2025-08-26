@@ -6,6 +6,7 @@ import {
 } from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
+import * as ExpoFileSystem from 'expo-file-system';
 
 export { default } from './HeliumPaywallSdkModule';
 // export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
@@ -60,13 +61,44 @@ export const initialize = (config: HeliumConfig) => {
     }
   });
 
+  nativeInitializeAsync(config).catch(error => {
+    console.error('[Helium] Initialization failed:', error);
+  });
+};
+
+const nativeInitializeAsync = async (config: HeliumConfig) => {
+  let fallbackBundleUrlString;
+  let fallbackBundleString;
+  if (config.fallbackBundle) {
+    try {
+      const jsonContent = JSON.stringify(config.fallbackBundle);
+
+      // Write to documents directory
+      fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
+      // This is ASYNC but that's ok because helium initialize in swift code is async anyways.
+      await ExpoFileSystem.writeAsStringAsync(
+        fallbackBundleUrlString,
+        jsonContent
+      );
+    } catch (error) {
+      // Fallback to string approach if unexpected error occurs
+      console.log(
+        '[Helium] expo-file-system not available, attempting to pass fallback bundle as string.'
+      );
+      fallbackBundleString = JSON.stringify(config.fallbackBundle);
+    }
+  }
+
+
   // Create native config object
   const nativeConfig: NativeHeliumConfig = {
     apiKey: config.apiKey,
     customUserId: config.customUserId,
     customAPIEndpoint: config.customAPIEndpoint,
     customUserTraits: config.customUserTraits,
-    revenueCatAppUserId: config.revenueCatAppUserId
+    revenueCatAppUserId: config.revenueCatAppUserId,
+    fallbackBundleUrlString: fallbackBundleUrlString,
+    fallbackBundleString: fallbackBundleString,
   };
 
   // Initialize the native module
@@ -80,12 +112,11 @@ export const presentUpsell = ({
   triggerName: string;
   onFallback?: () => void;
 }) => {
-  // todo check HeliumBridge.getFetchedTriggerNames((triggerNames: string[]) ??
-  const downloadStatus = getDownloadStatus();
-  if (downloadStatus !== 'downloadSuccess') {
+  const { canPresent, reason } = HeliumPaywallSdkModule.canPresentUpsell(triggerName);
+
+  if (!canPresent) {
     console.log(
-      `Helium trigger "${triggerName}" not found or download status not successful. Status:`,
-      downloadStatus
+      `[Helium] Cannot present trigger "${triggerName}". Reason: ${reason}`
     );
     onFallback?.();
     HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');

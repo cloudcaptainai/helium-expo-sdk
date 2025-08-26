@@ -74,6 +74,7 @@ export interface HeliumConfig {
   onHeliumPaywallEvent: (event: HeliumPaywallEvent) => void; // Still mandatory
 
   // Optional configurations
+  fallbackBundle?: object;
   triggers?: string[];
   customUserId?: string;
   customAPIEndpoint?: string;
@@ -87,6 +88,8 @@ export interface NativeHeliumConfig {
   customAPIEndpoint?: string;
   customUserTraits?: Record<string, any>;
   revenueCatAppUserId?: string;
+  fallbackBundleUrlString?: string;
+  fallbackBundleString?: string;
 }
 
 export interface PaywallInfo {
