@@ -152,6 +152,15 @@ export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
   };
 };
 
+export const handleDeepLink = (url: string | null) => {
+  if (url) {
+    const handled = HeliumPaywallSdkModule.handleDeepLink(url);
+    console.log('[Helium] Handled deep link:', handled);
+    return handled;
+  }
+  return false;
+};
+
 export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
 
 export type {

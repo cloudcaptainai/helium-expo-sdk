@@ -1,5 +1,5 @@
 PODS:
-  - AnalyticsSwiftCocoapod (1.7.3):
+  - AnalyticsSwiftCocoapod (1.8.0):
     - JSONSafeEncoding (= 2.0.0)
     - Sovran (= 1.1.1)
   - AnyCodable-FlightSchool (0.6.7)
@@ -72,20 +72,18 @@ PODS:
   - FBLazyVector (0.79.5)
   - fmt (11.0.2)
   - glog (0.3.5)
-  - Helium (2.0.13):
-    - AnalyticsSwiftCocoapod (~> 1.7.3)
+  - Helium (2.1.0):
+    - AnalyticsSwiftCocoapod (~> 1.7)
     - AnyCodable-FlightSchool (~> 0.6.0)
     - DeviceKit (~> 4.0.0)
-    - Kingfisher (~> 7.0)
     - SwiftyJSON (~> 5.0.2)
-  - HeliumPaywallSdk (0.8.1):
+  - HeliumPaywallSdk (0.8.3):
     - ExpoModulesCore
-    - Helium (= 2.0.13)
+    - Helium (= 2.1.0)
   - hermes-engine (0.79.5):
     - hermes-engine/Pre-built (= 0.79.5)
   - hermes-engine/Pre-built (0.79.5)
   - JSONSafeEncoding (2.0.0)
-  - Kingfisher (7.12.0)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -1826,7 +1824,6 @@ SPEC REPOS:
     - DeviceKit
     - Helium
     - JSONSafeEncoding
-    - Kingfisher
     - SocketRocket
     - Sovran
     - SwiftyJSON
@@ -1991,7 +1988,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  AnalyticsSwiftCocoapod: da397b55bc7e2d90c59c8b359271ba4b3e1b57c8
+  AnalyticsSwiftCocoapod: cc3e4d4e381a080c89a6f5f56845577c298bc627
   AnyCodable-FlightSchool: 261cbe76757802b17d471b9059b21e6fa5edf57b
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DeviceKit: 8d3a6ce9f98c3a1a591a84b4edf69693c3552083
@@ -2007,11 +2004,10 @@ SPEC CHECKSUMS:
   FBLazyVector: d2a9cd223302b6c9aa4aa34c1a775e9db609eb52
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
-  Helium: 7d38317f7c11e0c0c750f299af0aa6ab07a18806
-  HeliumPaywallSdk: 3ff902457e2a0886b80df47fe64597ad9fc762d3
+  Helium: a9a4c078f2b26b359a0a3ea7c1e073777e8ca5ac
+  HeliumPaywallSdk: 77c32b102db957aabbc0ba1eaa673388149315a6
   hermes-engine: f03b0e06d3882d71e67e45b073bb827da1a21aae
   JSONSafeEncoding: 54722ebc4fe1482e3e60a8450e1287481e32dd8b
-  Kingfisher: 53a10ea35051a436b5fb626ca2dd8f3144d755e9
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 5f638f65935e273753b1f31a365db6a8d6dc53b5
   RCTRequired: 8b46a520ea9071e2bc47d474aa9ca31b4a935bd8

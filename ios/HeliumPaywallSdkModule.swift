@@ -241,6 +241,14 @@ public class HeliumPaywallSdkModule: Module {
       )
     }
 
+    Function("handleDeepLink") { (urlString: String) in
+      guard let url = URL(string: urlString) else {
+        return false
+      }
+
+      return Helium.shared.handleDeepLink(url)
+    }
+
     // Defines a JavaScript function that always returns a Promise and whose native code
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
 //     AsyncFunction("setValueAsync") { (value: String) in
