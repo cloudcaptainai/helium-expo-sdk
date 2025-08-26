@@ -1,8 +1,10 @@
 # helium-expo-sdk
 
+Helium is an upsell experimentation and optimization platform for mobile apps of all sizes.
+
 ## How to Integrate
 
-Follow our [official documentation here](https://docs.tryhelium.com/sdk/quickstart-react-native)!
+Follow our [official documentation here](https://docs.tryhelium.com/sdk/quickstart-react-native) to integrate Helium into your Expo / React Native app!
 
 ## Contributing
 
