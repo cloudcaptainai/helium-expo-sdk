@@ -28,6 +28,13 @@ struct PaywallInfoResult: Record {
   var shouldShow: Bool? = nil
 }
 
+struct CanPresentPaywallResult: Record {
+  @Field
+  var canPresent: Bool = false
+  @Field
+  var reason: String? = nil
+}
+
 public class HeliumPaywallSdkModule: Module {
   // Single continuations for ongoing operations
   private var currentProductId: String? = nil
@@ -54,6 +61,8 @@ public class HeliumPaywallSdkModule: Module {
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
+      let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
+      let fallbackBundleString = config["fallbackBundleString"] as? String
 
       // Create delegate with closures that send events to JavaScript
       let delegate = InternalDelegate(
@@ -101,6 +110,21 @@ public class HeliumPaywallSdkModule: Module {
         }
       )
 
+      // Handle fallback bundle - either as URL string or JSON string
+      var fallbackBundleURL: URL? = nil
+      if let urlString = fallbackBundleURLString {
+        fallbackBundleURL = URL(string: urlString)
+      } else if let jsonString = fallbackBundleString {
+        // write the string to a temp file
+        let tempURL = FileManager.default.temporaryDirectory
+          .appendingPathComponent("helium-fallback.json")
+
+        if let data = jsonString.data(using: .utf8) {
+          try? data.write(to: tempURL)
+          fallbackBundleURL = tempURL
+        }
+      }
+
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
         heliumPaywallDelegate: delegate,
@@ -108,7 +132,8 @@ public class HeliumPaywallSdkModule: Module {
         customUserId: config["customUserId"] as? String,
         customAPIEndpoint: config["customAPIEndpoint"] as? String,
         customUserTraits: userTraitsMap != nil ? HeliumUserTraits(userTraitsMap!) : nil,
-        revenueCatAppUserId: config["revenueCatAppUserId"] as? String
+        revenueCatAppUserId: config["revenueCatAppUserId"] as? String,
+        fallbackBundleURL: fallbackBundleURL
       )
     }
 
@@ -183,6 +208,45 @@ public class HeliumPaywallSdkModule: Module {
         templateName: paywallInfo.paywallTemplateName,
         shouldShow: paywallInfo.shouldShow
       )
+    }
+
+    Function("canPresentUpsell") { (trigger: String) in
+      // Check if paywalls are downloaded successfully
+      let paywallsLoaded = Helium.shared.paywallsLoaded()
+
+      // Check if trigger exists in fetched triggers
+      let triggerNames = HeliumFetchedConfigManager.shared.getFetchedTriggerNames()
+      let hasTrigger = triggerNames.contains(trigger)
+
+      let canPresent: Bool
+      let reason: String
+
+      if paywallsLoaded && hasTrigger {
+        // Normal case - paywall is ready
+        canPresent = true
+        reason = "ready"
+      } else if HeliumFallbackViewManager.shared.getFallbackInfo(trigger: trigger) != nil {
+        // Fallback is available (via downloaded bundle)
+        canPresent = true
+        reason = "fallback_ready"
+      } else {
+        // No paywall and no fallback bundle
+        canPresent = false
+        reason = !paywallsLoaded ? "download status - \(Helium.shared.getDownloadStatus().rawValue)" : "trigger_not_found"
+      }
+
+      return CanPresentPaywallResult(
+        canPresent: canPresent,
+        reason: reason
+      )
+    }
+
+    Function("handleDeepLink") { (urlString: String) in
+      guard let url = URL(string: urlString) else {
+        return false
+      }
+
+      return Helium.shared.handleDeepLink(url)
     }
 
     // Defines a JavaScript function that always returns a Promise and whose native code
