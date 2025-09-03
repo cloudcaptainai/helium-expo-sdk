@@ -19,6 +19,8 @@ export class RevenueCatHeliumHandler {
     private isMappingInitialized: boolean = false;
     private initializationPromise: Promise<void> | null = null;
 
+    private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
+
     constructor(apiKey?: string) {
         if (apiKey) {
             Purchases.configure({ apiKey });
@@ -66,9 +68,16 @@ export class RevenueCatHeliumHandler {
         const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
         let rcProduct: PurchasesStoreProduct | undefined;
         if (!pkg) {
-            // Try to retrieve now
-            const rcProducts = await Purchases.getProducts([productId]);
-            rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
+            // Use cached if available
+            rcProduct = this.rcProductToPackageMapping[productId];
+            if (!rcProduct) {
+              // Try to retrieve now
+              const rcProducts = await Purchases.getProducts([productId]);
+              rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
+              if (rcProduct) {
+                this.rcProductToPackageMapping[productId] = rcProduct;
+              }
+            }
         }
 
         try {
