@@ -1,4 +1,4 @@
-import Purchases, { PURCHASES_ERROR_CODE } from 'react-native-purchases';
+import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import type { PurchasesError, PurchasesPackage, CustomerInfoUpdateListener, CustomerInfo, PurchasesEntitlementInfo } from 'react-native-purchases';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 
@@ -64,12 +64,22 @@ export class RevenueCatHeliumHandler {
         await this.ensureMappingInitialized();
 
         const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
+        let rcProduct: PurchasesStoreProduct | undefined;
         if (!pkg) {
-            return { status: 'failed', error: `RevenueCat Package not found for ID: ${productId}` };
+            // Try to retrieve now
+            const rcProducts = await Purchases.getProducts([productId]);
+            rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
         }
 
         try {
-            const { customerInfo } = await Purchases.purchasePackage(pkg);
+            let customerInfo: CustomerInfo;
+            if (pkg) {
+              customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
+            } else if (rcProduct) {
+              customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+            } else {
+              return { status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}` };
+            }
             const isActive = this.isProductActive(customerInfo, productId);
             if (isActive) {
                 return { status: 'purchased' };
