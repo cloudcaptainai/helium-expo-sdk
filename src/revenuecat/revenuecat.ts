@@ -71,23 +71,27 @@ export class RevenueCatHeliumHandler {
             // Use cached if available
             rcProduct = this.rcProductToPackageMapping[productId];
             if (!rcProduct) {
-              // Try to retrieve now
-              const rcProducts = await Purchases.getProducts([productId]);
-              rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
-              if (rcProduct) {
-                this.rcProductToPackageMapping[productId] = rcProduct;
-              }
+                // Try to retrieve now
+                try {
+                    const rcProducts = await Purchases.getProducts([productId]);
+                    rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
+                } catch {
+                    // 'failed' status will be returned
+                }
+                if (rcProduct) {
+                    this.rcProductToPackageMapping[productId] = rcProduct;
+                }
             }
         }
 
         try {
             let customerInfo: CustomerInfo;
             if (pkg) {
-              customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
+                customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
             } else if (rcProduct) {
-              customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+                customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
             } else {
-              return { status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}` };
+               return { status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}` };
             }
             const isActive = this.isProductActive(customerInfo, productId);
             if (isActive) {
