@@ -63,6 +63,11 @@ public class HeliumPaywallSdkModule: Module {
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
+      
+      // Extract fallback configuration parameters
+      let useLoadingState = config["useLoadingState"] as? Bool ?? true
+      let loadingBudget = config["loadingBudget"] as? Double ?? 2.0
+      let perTriggerLoadingConfigDict = config["perTriggerLoadingConfig"] as? [String: [String: Any]]
 
       // Create delegate with closures that send events to JavaScript
       let delegate = InternalDelegate(
@@ -125,15 +130,53 @@ public class HeliumPaywallSdkModule: Module {
         }
       }
 
+      // Build per-trigger loading configuration
+      var perTriggerLoadingConfig: [String: TriggerLoadingConfig]? = nil
+      if let triggerConfigs = perTriggerLoadingConfigDict {
+        perTriggerLoadingConfig = [:]
+        for (trigger, configDict) in triggerConfigs {
+          let triggerConfig = TriggerLoadingConfig(
+            useLoadingState: configDict["useLoadingState"] as? Bool,
+            loadingBudget: (configDict["loadingBudget"] as? Double).map { TimeInterval($0) },
+            loadingView: nil // Not supported in RN
+          )
+          perTriggerLoadingConfig![trigger] = triggerConfig
+        }
+      }
+      
+      // Use the new fallback configuration approach with all parameters
+      let fallbackConfig: HeliumFallbackConfig?
+      if let bundleURL = fallbackBundleURL {
+        // Use fallback bundle with loading configuration
+        fallbackConfig = HeliumFallbackConfig.withFallbackBundle(
+          bundleURL,
+          useLoadingState: useLoadingState,
+          loadingBudget: TimeInterval(loadingBudget),
+          loadingView: nil,
+          perTriggerLoadingConfig: perTriggerLoadingConfig
+        )
+      } else {
+        // Use onFallback handler with loading configuration
+        fallbackConfig = HeliumFallbackConfig.withFallbackHandler(
+          { trigger in
+            // Return nil to indicate no native fallback - JS will handle it
+            return nil
+          },
+          useLoadingState: useLoadingState,
+          loadingBudget: TimeInterval(loadingBudget),
+          loadingView: nil,
+          perTriggerLoadingConfig: perTriggerLoadingConfig
+        )
+      }
+      
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
         heliumPaywallDelegate: delegate,
-        fallbackPaywall: FallbackView(),
+        fallbackConfig: fallbackConfig!,
         customUserId: config["customUserId"] as? String,
         customAPIEndpoint: config["customAPIEndpoint"] as? String,
         customUserTraits: userTraitsMap != nil ? HeliumUserTraits(userTraitsMap!) : nil,
-        revenueCatAppUserId: config["revenueCatAppUserId"] as? String,
-        fallbackBundleURL: fallbackBundleURL
+        revenueCatAppUserId: config["revenueCatAppUserId"] as? String
       )
     }
 
@@ -176,6 +219,68 @@ public class HeliumPaywallSdkModule: Module {
 
     Function("presentUpsell") { (trigger: String) in
       Helium.shared.presentUpsell(trigger: trigger)
+    }
+    
+    // New function with event handlers and custom traits support
+    Function("presentUpsellWithHandlers") { (trigger: String, eventHandlers: [String: Any]?, customTraits: [String: Any]?) in
+      // Create PaywallEventService from JS event handlers
+      var eventService: PaywallEventService? = nil
+      
+      if let handlers = eventHandlers {
+        eventService = PaywallEventService()
+        
+        // Set up onOpen handler
+        if handlers["onOpen"] != nil {
+          eventService = eventService?.onOpen { event in
+            self.sendEvent("onHeliumPaywallEvent", [
+              "type": "paywall_open",
+              "triggerName": event.triggerName,
+              "paywallTemplateName": event.paywallName
+            ])
+          }
+        }
+        
+        // Set up onClose handler
+        if handlers["onClose"] != nil {
+          eventService = eventService?.onClose { event in
+            self.sendEvent("onHeliumPaywallEvent", [
+              "type": "paywall_close",
+              "triggerName": event.triggerName,
+              "paywallTemplateName": event.paywallName
+            ])
+          }
+        }
+        
+        // Set up onDismissed handler
+        if handlers["onDismissed"] != nil {
+          eventService = eventService?.onDismissed { event in
+            self.sendEvent("onHeliumPaywallEvent", [
+              "type": "paywall_dismissed",
+              "triggerName": event.triggerName,
+              "paywallTemplateName": event.paywallName
+            ])
+          }
+        }
+        
+        // Set up onPurchaseSucceeded handler
+        if handlers["onPurchaseSucceeded"] != nil {
+          eventService = eventService?.onPurchaseSucceeded { event in
+            self.sendEvent("onHeliumPaywallEvent", [
+              "type": "purchase_succeeded",
+              "productKey": event.productId,
+              "triggerName": event.triggerName,
+              "paywallTemplateName": event.paywallName
+            ])
+          }
+        }
+      }
+      
+      // Present with event handlers and custom traits
+      Helium.shared.presentUpsell(
+        trigger: trigger,
+        eventHandlers: eventService,
+        customPaywallTraits: customTraits
+      )
     }
 
     Function("hideUpsell") {
@@ -301,38 +406,4 @@ fileprivate class InternalDelegate: HeliumPaywallDelegate {
     }
 }
 
-fileprivate struct FallbackView: View {
-    @Environment(\.presentationMode) var presentationMode
 
-    var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-
-            Text("Fallback Paywall")
-                .font(.title)
-                .fontWeight(.bold)
-
-            Text("Something went wrong loading the paywall. Make sure you used the right trigger.")
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Button(action: {
-                presentationMode.wrappedValue.dismiss()
-            }) {
-                Text("Close")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 40)
-        }
-        .padding()
-    }
-}

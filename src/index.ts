@@ -2,7 +2,10 @@ import {
   DelegateActionEvent,
   HeliumConfig,
   HeliumPaywallEvent,
-  NativeHeliumConfig, PaywallInfo,
+  NativeHeliumConfig, 
+  PaywallInfo,
+  PaywallEventHandlers,
+  TypedPaywallEvent,
 } from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
@@ -69,9 +72,13 @@ export const initialize = (config: HeliumConfig) => {
 const nativeInitializeAsync = async (config: HeliumConfig) => {
   let fallbackBundleUrlString;
   let fallbackBundleString;
-  if (config.fallbackBundle) {
+  
+  // Handle fallback bundle - either from new fallbackConfig or deprecated fallbackBundle
+  const fallbackBundle = config.fallbackConfig?.fallbackBundle || config.fallbackBundle;
+  
+  if (fallbackBundle) {
     try {
-      const jsonContent = JSON.stringify(config.fallbackBundle);
+      const jsonContent = JSON.stringify(fallbackBundle);
 
       // Write to documents directory
       fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
@@ -85,12 +92,11 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
       console.log(
         '[Helium] expo-file-system not available, attempting to pass fallback bundle as string.'
       );
-      fallbackBundleString = JSON.stringify(config.fallbackBundle);
+      fallbackBundleString = JSON.stringify(fallbackBundle);
     }
   }
 
-
-  // Create native config object
+  // Create native config object with fallback configuration
   const nativeConfig: NativeHeliumConfig = {
     apiKey: config.apiKey,
     customUserId: config.customUserId,
@@ -99,6 +105,10 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     revenueCatAppUserId: config.revenueCatAppUserId,
     fallbackBundleUrlString: fallbackBundleUrlString,
     fallbackBundleString: fallbackBundleString,
+    // Pass fallback config parameters
+    useLoadingState: config.fallbackConfig?.useLoadingState,
+    loadingBudget: config.fallbackConfig?.loadingBudget,
+    perTriggerLoadingConfig: config.fallbackConfig?.perTriggerLoadingConfig,
   };
 
   // Initialize the native module
@@ -107,10 +117,14 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
 
 export const presentUpsell = ({
                                 triggerName,
-                                onFallback
+                                onFallback,
+                                eventHandlers,
+                                customPaywallTraits
                               }: {
   triggerName: string;
   onFallback?: () => void;
+  eventHandlers?: PaywallEventHandlers;
+  customPaywallTraits?: Record<string, any>;
 }) => {
   const { canPresent, reason } = HeliumPaywallSdkModule.canPresentUpsell(triggerName);
 
@@ -124,7 +138,46 @@ export const presentUpsell = ({
   }
 
   try {
-    HeliumPaywallSdkModule.presentUpsell(triggerName);
+    if (eventHandlers || customPaywallTraits) {
+      // Convert event handlers to a format the native module expects
+      const nativeEventHandlers = eventHandlers ? {
+        onOpen: eventHandlers.onOpen ? true : undefined,
+        onClose: eventHandlers.onClose ? true : undefined,
+        onDismissed: eventHandlers.onDismissed ? true : undefined,
+        onPurchaseSucceeded: eventHandlers.onPurchaseSucceeded ? true : undefined,
+      } : undefined;
+      
+      HeliumPaywallSdkModule.presentUpsellWithHandlers(
+        triggerName,
+        nativeEventHandlers,
+        customPaywallTraits
+      );
+      
+      // Set up JS-side event handler routing
+      if (eventHandlers) {
+        const eventListener = addHeliumPaywallEventListener((event) => {
+          // Route typed events to appropriate handlers
+          switch (event.type) {
+            case 'paywall_open':
+              eventHandlers.onOpen?.(event as any);
+              break;
+            case 'paywall_close':
+              eventHandlers.onClose?.(event as any);
+              // Clean up listener after close
+              eventListener.remove();
+              break;
+            case 'paywall_dismissed':
+              eventHandlers.onDismissed?.(event as any);
+              break;
+            case 'purchase_succeeded':
+              eventHandlers.onPurchaseSucceeded?.(event as any);
+              break;
+          }
+        });
+      }
+    } else {
+      HeliumPaywallSdkModule.presentUpsell(triggerName);
+    }
   } catch (error) {
     console.log('Helium present error', error);
     onFallback?.();
