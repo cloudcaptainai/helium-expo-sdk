@@ -128,12 +128,14 @@ public class HeliumPaywallSdkModule: Module {
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
         heliumPaywallDelegate: delegate,
-        fallbackPaywall: FallbackView(),
+        fallbackConfig: HeliumFallbackConfig.withMultipleFallbacks(
+            fallbackView: FallbackView(),
+            fallbackBundle: fallbackBundleURL
+        ),
         customUserId: config["customUserId"] as? String,
         customAPIEndpoint: config["customAPIEndpoint"] as? String,
         customUserTraits: userTraitsMap != nil ? HeliumUserTraits(userTraitsMap!) : nil,
-        revenueCatAppUserId: config["revenueCatAppUserId"] as? String,
-        fallbackBundleURL: fallbackBundleURL
+        revenueCatAppUserId: config["revenueCatAppUserId"] as? String
       )
     }
 
@@ -274,12 +276,12 @@ public class HeliumPaywallSdkModule: Module {
 }
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {
-    private let eventHandler: (HeliumPaywallEvent) -> Void
+    private let eventHandler: (PaywallEvent) -> Void
     private let purchaseHandler: (String) async -> HeliumPaywallTransactionStatus
     private let restoreHandler: () async -> Bool
 
     init(
-        eventHandler: @escaping (HeliumPaywallEvent) -> Void,
+        eventHandler: @escaping (PaywallEvent) -> Void,
         purchaseHandler: @escaping (String) async -> HeliumPaywallTransactionStatus,
         restoreHandler: @escaping () async -> Bool
     ) {
@@ -296,7 +298,7 @@ fileprivate class InternalDelegate: HeliumPaywallDelegate {
         return await restoreHandler()
     }
 
-    public func onHeliumPaywallEvent(event: HeliumPaywallEvent) {
+    func onPaywallEvent(_ event: any PaywallEvent) {
         eventHandler(event)
     }
 }
