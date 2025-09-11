@@ -250,7 +250,7 @@ public class HeliumPaywallSdkModule: Module {
       let canPresent: Bool
       let reason: String
 
-      let useLoading = Helium.shared.presentWithLoadingStateEnabledFor(trigger: trigger)
+      let useLoading = Helium.shared.loadingStateEnabledFor(trigger: trigger)
       let downloadInProgress = Helium.shared.getDownloadStatus() == .inProgress
 
       if paywallsLoaded && hasTrigger {
