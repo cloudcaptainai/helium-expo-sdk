@@ -77,6 +77,35 @@ export function createCustomPurchaseConfig(callbacks: {
   };
 }
 
+export type TriggerLoadingConfig = {
+  /** Whether to show loading state for this trigger. Set to nil to use the global `useLoadingState` setting. */
+  useLoadingState?: boolean;
+  /** Maximum seconds to show loading for this trigger. Set to nil to use the global `loadingBudget` setting. */
+  loadingBudget?: number;
+};
+
+export type HeliumPaywallLoadingConfig = {
+  /**
+   * Whether to show a loading state while fetching paywall configuration.
+   * When true, shows a loading view for up to `loadingBudget` seconds before falling back.
+   * Default: true
+   */
+  useLoadingState?: boolean;
+  /**
+   * Maximum time (in seconds) to show the loading state before displaying fallback.
+   * After this timeout, the fallback view will be shown even if the paywall is still downloading.
+   * Default: 2.0 seconds
+   */
+  loadingBudget?: number;
+  /**
+   * Optional per-trigger loading configuration overrides.
+   * Use this to customize loading behavior for specific triggers.
+   * Keys are trigger names, values are TriggerLoadingConfig instances.
+   * Example: Disable loading for "onboarding" trigger while keeping it for others.
+   */
+  perTriggerLoadingConfig?: Record<string, TriggerLoadingConfig>;
+};
+
 export interface HeliumConfig {
   /** Your Helium API Key */
   apiKey: string;
@@ -88,6 +117,8 @@ export interface HeliumConfig {
   // Optional configurations
   /** Fallback bundle in the rare situation that paywall is not ready to be shown. Highly recommended. See docs at https://docs.tryhelium.com/guides/fallback-bundle#react-native */
   fallbackBundle?: object;
+  /** Configure loading behavior for paywalls that are mid-download. */
+  paywallLoadingConfig?: HeliumPaywallLoadingConfig;
   customUserId?: string;
   customAPIEndpoint?: string;
   customUserTraits?: Record<string, any>;
@@ -102,6 +133,7 @@ export interface NativeHeliumConfig {
   revenueCatAppUserId?: string;
   fallbackBundleUrlString?: string;
   fallbackBundleString?: string;
+  paywallLoadingConfig?: HeliumPaywallLoadingConfig;
 }
 
 export type PresentUpsellParams = {

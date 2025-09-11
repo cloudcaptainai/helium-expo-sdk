@@ -99,6 +99,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     revenueCatAppUserId: config.revenueCatAppUserId,
     fallbackBundleUrlString: fallbackBundleUrlString,
     fallbackBundleString: fallbackBundleString,
+    paywallLoadingConfig: config.paywallLoadingConfig,
   };
 
   // Initialize the native module

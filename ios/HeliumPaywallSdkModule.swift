@@ -63,6 +63,22 @@ public class HeliumPaywallSdkModule: Module {
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
+      
+      let paywallLoadingConfig = config["paywallLoadingConfig"] as? [String: Any]
+      let useLoadingState = paywallLoadingConfig?["useLoadingState"] as? Bool ?? true
+      let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval ?? 2.0
+      
+      var perTriggerLoadingConfig: [String: TriggerLoadingConfig]? = nil
+      if let perTriggerDict = paywallLoadingConfig?["perTriggerLoadingConfig"] as? [String: [String: Any]] {
+        var triggerConfigs: [String: TriggerLoadingConfig] = [:]
+        for (trigger, config) in perTriggerDict {
+          triggerConfigs[trigger] = TriggerLoadingConfig(
+            useLoadingState: config["useLoadingState"] as? Bool,
+            loadingBudget: config["loadingBudget"] as? TimeInterval
+          )
+        }
+        perTriggerLoadingConfig = triggerConfigs
+      }
 
       // Create delegate with closures that send events to JavaScript
       let delegate = InternalDelegate(
@@ -138,7 +154,10 @@ public class HeliumPaywallSdkModule: Module {
         heliumPaywallDelegate: delegate,
         fallbackConfig: HeliumFallbackConfig.withMultipleFallbacks(
             fallbackView: FallbackView(),
-            fallbackBundle: fallbackBundleURL
+            fallbackBundle: fallbackBundleURL,
+            useLoadingState: useLoadingState,
+            loadingBudget: loadingBudget,
+            perTriggerLoadingConfig: perTriggerLoadingConfig
         ),
         customUserId: config["customUserId"] as? String,
         customAPIEndpoint: config["customAPIEndpoint"] as? String,
