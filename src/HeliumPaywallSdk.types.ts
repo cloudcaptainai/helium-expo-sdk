@@ -11,6 +11,10 @@ export type HeliumPaywallSdkModuleEvents = {
 export type HeliumPaywallEvent = {
   type: string;
   triggerName?: string;
+  paywallName?: string;
+  /**
+   * @deprecated Use `paywallName` instead.
+   */
   paywallTemplateName?: string;
   productKey?: string;
   ctaName?: string;
@@ -22,7 +26,15 @@ export type HeliumPaywallEvent = {
   fontsDownloadTimeTakenMS?: number;
   bundleDownloadTimeMS?: number;
   dismissAll?: boolean;
+  error?: string;
+  /**
+   * @deprecated Use `error` instead.
+   */
   errorDescription?: string;
+  /**
+   * Unix timestamp in seconds
+   */
+  timestamp?: number;
 };
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
@@ -74,8 +86,8 @@ export interface HeliumConfig {
   onHeliumPaywallEvent: (event: HeliumPaywallEvent) => void; // Still mandatory
 
   // Optional configurations
+  /** Fallback bundle in the rare situation that paywall is not ready to be shown. Highly recommended. See docs at https://docs.tryhelium.com/guides/fallback-bundle#react-native */
   fallbackBundle?: object;
-  triggers?: string[];
   customUserId?: string;
   customAPIEndpoint?: string;
   customUserTraits?: Record<string, any>;
@@ -91,6 +103,12 @@ export interface NativeHeliumConfig {
   fallbackBundleUrlString?: string;
   fallbackBundleString?: string;
 }
+
+export type PresentUpsellParams = {
+  triggerName: string;
+  /** Optional. This will be called when paywall fails to show due to an unsuccessful paywall download or if an invalid trigger is provided. */
+  onFallback?: () => void;
+};
 
 export interface PaywallInfo {
   paywallTemplateName: string;

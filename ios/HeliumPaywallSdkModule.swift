@@ -67,7 +67,15 @@ public class HeliumPaywallSdkModule: Module {
       // Create delegate with closures that send events to JavaScript
       let delegate = InternalDelegate(
         eventHandler: { [weak self] event in
-          self?.sendEvent("onHeliumPaywallEvent", event.toDictionary())
+          var eventDict = event.toDictionary()
+          // Add deprecated fields for backwards compatibility
+          if let paywallName = eventDict["paywallName"] {
+              eventDict["paywallTemplateName"] = paywallName
+          }
+          if let error = eventDict["error"] {
+              eventDict["errorDescription"] = error
+          }
+          self?.sendEvent("onHeliumPaywallEvent", eventDict)
         },
         purchaseHandler: { [weak self] productId in
           guard let self else { return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!")) }

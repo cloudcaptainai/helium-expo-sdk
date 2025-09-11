@@ -2,7 +2,7 @@ import {
   DelegateActionEvent,
   HeliumConfig,
   HeliumPaywallEvent,
-  NativeHeliumConfig, PaywallInfo,
+  NativeHeliumConfig, PaywallInfo, PresentUpsellParams,
 } from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
@@ -108,10 +108,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
 export const presentUpsell = ({
                                 triggerName,
                                 onFallback
-                              }: {
-  triggerName: string;
-  onFallback?: () => void;
-}) => {
+                              }: PresentUpsellParams) => {
   const { canPresent, reason } = HeliumPaywallSdkModule.canPresentUpsell(triggerName);
 
   if (!canPresent) {
