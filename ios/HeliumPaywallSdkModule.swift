@@ -223,10 +223,17 @@ public class HeliumPaywallSdkModule: Module {
       let canPresent: Bool
       let reason: String
 
+      let useLoading = Helium.shared.presentWithLoadingStateEnabledFor(trigger: trigger)
+      let downloadInProgress = Helium.shared.getDownloadStatus() == .inProgress
+
       if paywallsLoaded && hasTrigger {
         // Normal case - paywall is ready
         canPresent = true
         reason = "ready"
+      } else if downloadInProgress && useLoading {
+        // Loading case - paywall still downloading
+        canPresent = true
+        reason = "loading"
       } else if HeliumFallbackViewManager.shared.getFallbackInfo(trigger: trigger) != nil {
         // Fallback is available (via downloaded bundle)
         canPresent = true
