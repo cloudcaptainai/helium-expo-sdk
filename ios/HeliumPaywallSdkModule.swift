@@ -203,8 +203,8 @@ public class HeliumPaywallSdkModule: Module {
       continuation.resume(returning: success)
     }
 
-    Function("presentUpsell") { (trigger: String) in
-      Helium.shared.presentUpsell(trigger: trigger)
+    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?) in
+      Helium.shared.presentUpsell(trigger: trigger, customPaywallTraits: customPaywallTraits)
     }
 
     Function("hideUpsell") {

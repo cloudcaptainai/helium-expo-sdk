@@ -127,7 +127,7 @@ export const presentUpsell = ({
 
   paywallEventHandlers = eventHandlers;
   try {
-    HeliumPaywallSdkModule.presentUpsell(triggerName);
+    HeliumPaywallSdkModule.presentUpsell(triggerName, customPaywallTraits);
   } catch (error) {
     console.log('Helium present error', error);
     onFallback?.();

@@ -21,7 +21,7 @@ interface CanPresentUpsellResult {
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
   initialize(config: NativeHeliumConfig): void;
 
-  presentUpsell(triggerName: string): void;
+  presentUpsell(triggerName: string, customPaywallTraits?: Record<string, any>): void;
 
   hideUpsell(): void;
 
