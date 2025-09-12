@@ -140,11 +140,48 @@ export type PresentUpsellParams = {
   triggerName: string;
   /** Optional. This will be called when paywall fails to show due to an unsuccessful paywall download or if an invalid trigger is provided. */
   onFallback?: () => void;
+  eventHandlers?: PaywallEventHandlers;
+  customPaywallTraits?: Record<string, any>;
 };
 
 export interface PaywallInfo {
   paywallTemplateName: string;
   shouldShow: boolean;
+}
+
+// Event handler types for per-trigger event handling
+export interface PaywallEventHandlers {
+  onOpen?: (event: PaywallOpenEvent) => void;
+  onClose?: (event: PaywallCloseEvent) => void;
+  onDismissed?: (event: PaywallDismissedEvent) => void;
+  onPurchaseSucceeded?: (event: PurchaseSucceededEvent) => void;
+}
+
+// Typed event interfaces
+export interface PaywallOpenEvent {
+  type: 'paywall_open';
+  triggerName: string;
+  paywallName: string;
+  viewType?: 'presented' | 'embedded' | 'triggered';
+}
+
+export interface PaywallCloseEvent {
+  type: 'paywall_close';
+  triggerName: string;
+  paywallName: string;
+}
+
+export interface PaywallDismissedEvent {
+  type: 'paywall_dismissed';
+  triggerName: string;
+  paywallName: string;
+}
+
+export interface PurchaseSucceededEvent {
+  type: 'purchase_succeeded';
+  productId: string;
+  triggerName: string;
+  paywallName: string;
 }
 
 export const HELIUM_CTA_NAMES = {
