@@ -9,7 +9,12 @@ export type HeliumPaywallSdkModuleEvents = {
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
 };
 export type HeliumPaywallEvent = {
-  type: string;
+  type: 'paywallOpen' | 'paywallClose' | 'paywallDismissed' |
+    'paywallOpenFailed' | 'paywallSkipped' | 'paywallButtonPressed' |
+    'productSelected' | 'purchasePressed' | 'purchaseSucceeded' |
+    'purchaseCancelled' | 'purchaseFailed' | 'purchaseRestored' |
+    'purchaseRestoreFailed' | 'purchasePending' | 'initializeStart' |
+    'paywallsDownloadSuccess' | 'paywallsDownloadError' | 'paywallWebViewRendered';
   triggerName?: string;
   paywallName?: string;
   /**

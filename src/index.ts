@@ -2,7 +2,7 @@ import {
   DelegateActionEvent,
   HeliumConfig,
   HeliumPaywallEvent,
-  NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PaywallOpenEvent, PresentUpsellParams,
+  NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
 } from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
@@ -138,7 +138,7 @@ export const presentUpsell = ({
 function callPaywallEventHandlers(event: HeliumPaywallEvent) {
     if (paywallEventHandlers) {
     switch (event.type) {
-      case 'paywall_open':
+      case 'paywallOpen':
         paywallEventHandlers?.onOpen?.({
           type: 'paywall_open',
           triggerName: event.triggerName ?? 'unknown',
@@ -146,7 +146,7 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           viewType: 'presented',
         });
         break;
-      case 'paywall_close':
+      case 'paywallClose':
         paywallEventHandlers?.onClose?.({
           type: 'paywall_close',
           triggerName: event.triggerName ?? 'unknown',
@@ -154,14 +154,14 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
         });
         paywallEventHandlers = undefined;
         break;
-      case 'paywall_dismissed':
+      case 'paywallDismissed':
         paywallEventHandlers?.onDismissed?.({
           type: 'paywall_dismissed',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
         });
         break;
-      case 'purchase_succeeded':
+      case 'purchaseSucceeded':
         paywallEventHandlers?.onPurchaseSucceeded?.({
           type: 'purchase_succeeded',
           productId: event.productKey ?? "unknown",
