@@ -116,6 +116,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
 };
 
 let paywallEventHandlers: PaywallEventHandlers | undefined;
+let presentOnFallback: (() => void) | undefined;
 export const presentUpsell = ({
                                 triggerName,
                                 onFallback,
@@ -135,10 +136,12 @@ export const presentUpsell = ({
 
   try {
     paywallEventHandlers = eventHandlers;
+    presentOnFallback = onFallback;
     HeliumPaywallSdkModule.presentUpsell(triggerName, customPaywallTraits);
   } catch (error) {
     console.log('Helium present error', error);
     paywallEventHandlers = undefined;
+    presentOnFallback = undefined;
     onFallback?.();
     HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
   }
@@ -162,6 +165,7 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           paywallName: event.paywallName ?? 'unknown',
         });
         paywallEventHandlers = undefined;
+        presentOnFallback = undefined;
         break;
       case 'paywallDismissed':
         paywallEventHandlers?.onDismissed?.({
@@ -180,10 +184,12 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
         break;
       case 'paywallSkipped':
         paywallEventHandlers = undefined;
+        presentOnFallback = undefined;
         break;
       case 'paywallOpenFailed':
         paywallEventHandlers = undefined;
-        //call on fallback here???
+        presentOnFallback?.();
+        presentOnFallback = undefined;
         break;
     }
   }
