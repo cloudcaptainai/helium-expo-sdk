@@ -20,6 +20,10 @@ function addDelegateActionEventListener(listener: (event: DelegateActionEvent) =
   return HeliumPaywallSdkModule.addListener('onDelegateActionEvent', listener);
 }
 
+function addPaywallEventHandlersListener(listener: (event: HeliumPaywallEvent) => void): EventSubscription {
+  return HeliumPaywallSdkModule.addListener('paywallEventHandlers', listener);
+}
+
 let isInitialized = false;
 export const initialize = (config: HeliumConfig) => {
   if (isInitialized) {
@@ -29,11 +33,11 @@ export const initialize = (config: HeliumConfig) => {
 
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
+  HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
 
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
     config.onHeliumPaywallEvent(event);
-    callPaywallEventHandlers(event);
   });
 
   // Set up delegate action listener for purchase and restore operations
@@ -60,6 +64,10 @@ export const initialize = (config: HeliumConfig) => {
         HeliumPaywallSdkModule.handleRestoreResult(false);
       }
     }
+  });
+
+  addPaywallEventHandlersListener((event) => {
+    callPaywallEventHandlers(event);
   });
 
   nativeInitializeAsync(config).catch(error => {
@@ -125,22 +133,23 @@ export const presentUpsell = ({
     return;
   }
 
-  paywallEventHandlers = eventHandlers;
   try {
+    paywallEventHandlers = eventHandlers;
     HeliumPaywallSdkModule.presentUpsell(triggerName, customPaywallTraits);
   } catch (error) {
     console.log('Helium present error', error);
+    paywallEventHandlers = undefined;
     onFallback?.();
     HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
   }
 };
 
 function callPaywallEventHandlers(event: HeliumPaywallEvent) {
-    if (paywallEventHandlers) {
+  if (paywallEventHandlers) {
     switch (event.type) {
       case 'paywallOpen':
         paywallEventHandlers?.onOpen?.({
-          type: 'paywall_open',
+          type: 'paywallOpen',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
           viewType: 'presented',
@@ -148,7 +157,7 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
         break;
       case 'paywallClose':
         paywallEventHandlers?.onClose?.({
-          type: 'paywall_close',
+          type: 'paywallClose',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
         });
@@ -156,18 +165,25 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
         break;
       case 'paywallDismissed':
         paywallEventHandlers?.onDismissed?.({
-          type: 'paywall_dismissed',
+          type: 'paywallDismissed',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
         });
         break;
       case 'purchaseSucceeded':
         paywallEventHandlers?.onPurchaseSucceeded?.({
-          type: 'purchase_succeeded',
+          type: 'purchaseSucceeded',
           productId: event.productKey ?? "unknown",
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
         });
+        break;
+      case 'paywallSkipped':
+        paywallEventHandlers = undefined;
+        break;
+      case 'paywallOpenFailed':
+        paywallEventHandlers = undefined;
+        //call on fallback here???
         break;
     }
   }

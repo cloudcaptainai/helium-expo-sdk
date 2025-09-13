@@ -56,7 +56,7 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -204,7 +204,24 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?) in
-      Helium.shared.presentUpsell(trigger: trigger, customPaywallTraits: customPaywallTraits)
+        Helium.shared.presentUpsell(
+            trigger: trigger,
+            eventHandlers: PaywallEventHandlers.withHandlers(
+                onOpen: { event in
+                    sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onClose: { event in
+                    sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onDismissed: { event in
+                    sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onPurchaseSucceeded: { event in
+                    sendEvent("paywallEventHandlers", event.toDictionary())
+                }
+            ),
+            customPaywallTraits: customPaywallTraits
+        )
     }
 
     Function("hideUpsell") {

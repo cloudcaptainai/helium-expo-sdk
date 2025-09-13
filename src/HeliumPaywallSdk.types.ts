@@ -7,6 +7,7 @@ export type OnLoadEventPayload = {
 export type HeliumPaywallSdkModuleEvents = {
   onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
+  paywallEventHandlers: (params: HeliumPaywallEvent) => void;
 };
 export type HeliumPaywallEvent = {
   type: 'paywallOpen' | 'paywallClose' | 'paywallDismissed' |
@@ -164,26 +165,26 @@ export interface PaywallEventHandlers {
 
 // Typed event interfaces
 export interface PaywallOpenEvent {
-  type: 'paywall_open';
+  type: 'paywallOpen';
   triggerName: string;
   paywallName: string;
   viewType?: 'presented' | 'embedded' | 'triggered';
 }
 
 export interface PaywallCloseEvent {
-  type: 'paywall_close';
+  type: 'paywallClose';
   triggerName: string;
   paywallName: string;
 }
 
 export interface PaywallDismissedEvent {
-  type: 'paywall_dismissed';
+  type: 'paywallDismissed';
   triggerName: string;
   paywallName: string;
 }
 
 export interface PurchaseSucceededEvent {
-  type: 'purchase_succeeded';
+  type: 'purchaseSucceeded';
   productId: string;
   triggerName: string;
   paywallName: string;
