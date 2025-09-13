@@ -207,17 +207,17 @@ public class HeliumPaywallSdkModule: Module {
         Helium.shared.presentUpsell(
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
-                onOpen: { event in
-                    sendEvent("paywallEventHandlers", event.toDictionary())
+                onOpen: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onClose: { event in
-                    sendEvent("paywallEventHandlers", event.toDictionary())
+                onClose: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onDismissed: { event in
-                    sendEvent("paywallEventHandlers", event.toDictionary())
+                onDismissed: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onPurchaseSucceeded: { event in
-                    sendEvent("paywallEventHandlers", event.toDictionary())
+                onPurchaseSucceeded: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
             customPaywallTraits: customPaywallTraits

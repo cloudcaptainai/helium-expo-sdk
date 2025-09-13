@@ -155,6 +155,7 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           type: 'paywallOpen',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
           viewType: 'presented',
         });
         break;
@@ -163,8 +164,11 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           type: 'paywallClose',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
         });
-        paywallEventHandlers = undefined;
+        if (!event.isSecondTry) {
+          paywallEventHandlers = undefined;
+        }
         presentOnFallback = undefined;
         break;
       case 'paywallDismissed':
@@ -172,6 +176,7 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           type: 'paywallDismissed',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
         });
         break;
       case 'purchaseSucceeded':
@@ -180,6 +185,7 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           productId: event.productKey ?? "unknown",
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
         });
         break;
       case 'paywallSkipped':

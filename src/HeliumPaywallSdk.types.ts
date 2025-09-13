@@ -32,6 +32,7 @@ export type HeliumPaywallEvent = {
   fontsDownloadTimeTakenMS?: number;
   bundleDownloadTimeMS?: number;
   dismissAll?: boolean;
+  isSecondTry?: boolean;
   error?: string;
   /**
    * @deprecated Use `error` instead.
@@ -155,7 +156,7 @@ export interface PaywallInfo {
   shouldShow: boolean;
 }
 
-// Event handler types for per-trigger event handling
+// Event handler types for per-presentation event handling
 export interface PaywallEventHandlers {
   onOpen?: (event: PaywallOpenEvent) => void;
   onClose?: (event: PaywallCloseEvent) => void;
@@ -168,6 +169,7 @@ export interface PaywallOpenEvent {
   type: 'paywallOpen';
   triggerName: string;
   paywallName: string;
+  isSecondTry: boolean;
   viewType?: 'presented' | 'embedded' | 'triggered';
 }
 
@@ -175,12 +177,14 @@ export interface PaywallCloseEvent {
   type: 'paywallClose';
   triggerName: string;
   paywallName: string;
+  isSecondTry: boolean;
 }
 
 export interface PaywallDismissedEvent {
   type: 'paywallDismissed';
   triggerName: string;
   paywallName: string;
+  isSecondTry: boolean;
 }
 
 export interface PurchaseSucceededEvent {
@@ -188,6 +192,7 @@ export interface PurchaseSucceededEvent {
   productId: string;
   triggerName: string;
   paywallName: string;
+  isSecondTry: boolean;
 }
 
 export const HELIUM_CTA_NAMES = {
