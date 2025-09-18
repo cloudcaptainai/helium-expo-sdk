@@ -329,12 +329,12 @@ public class HeliumPaywallSdkModule: Module {
 }
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {
-    private let eventHandler: (PaywallEvent) -> Void
+    private let eventHandler: (HeliumEvent) -> Void
     private let purchaseHandler: (String) async -> HeliumPaywallTransactionStatus
     private let restoreHandler: () async -> Bool
 
     init(
-        eventHandler: @escaping (PaywallEvent) -> Void,
+        eventHandler: @escaping (HeliumEvent) -> Void,
         purchaseHandler: @escaping (String) async -> HeliumPaywallTransactionStatus,
         restoreHandler: @escaping () async -> Bool
     ) {
@@ -351,7 +351,7 @@ fileprivate class InternalDelegate: HeliumPaywallDelegate {
         return await restoreHandler()
     }
 
-    func onPaywallEvent(_ event: any PaywallEvent) {
+    func onPaywallEvent(_ event: any HeliumEvent) {
         eventHandler(event)
     }
 }
