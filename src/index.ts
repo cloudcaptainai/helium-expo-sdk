@@ -2,7 +2,7 @@ import {
   DelegateActionEvent,
   HeliumConfig,
   HeliumPaywallEvent,
-  NativeHeliumConfig, PaywallInfo,
+  NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
 } from "./HeliumPaywallSdk.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
@@ -20,6 +20,10 @@ function addDelegateActionEventListener(listener: (event: DelegateActionEvent) =
   return HeliumPaywallSdkModule.addListener('onDelegateActionEvent', listener);
 }
 
+function addPaywallEventHandlersListener(listener: (event: HeliumPaywallEvent) => void): EventSubscription {
+  return HeliumPaywallSdkModule.addListener('paywallEventHandlers', listener);
+}
+
 let isInitialized = false;
 export const initialize = (config: HeliumConfig) => {
   if (isInitialized) {
@@ -29,6 +33,7 @@ export const initialize = (config: HeliumConfig) => {
 
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
+  HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
 
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
@@ -59,6 +64,10 @@ export const initialize = (config: HeliumConfig) => {
         HeliumPaywallSdkModule.handleRestoreResult(false);
       }
     }
+  });
+
+  addPaywallEventHandlersListener((event) => {
+    callPaywallEventHandlers(event);
   });
 
   nativeInitializeAsync(config).catch(error => {
@@ -99,20 +108,22 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     revenueCatAppUserId: config.revenueCatAppUserId,
     fallbackBundleUrlString: fallbackBundleUrlString,
     fallbackBundleString: fallbackBundleString,
+    paywallLoadingConfig: config.paywallLoadingConfig,
   };
 
   // Initialize the native module
   HeliumPaywallSdkModule.initialize(nativeConfig);
 };
 
+let paywallEventHandlers: PaywallEventHandlers | undefined;
+let presentOnFallback: (() => void) | undefined;
 export const presentUpsell = ({
                                 triggerName,
-                                onFallback
-                              }: {
-  triggerName: string;
-  onFallback?: () => void;
-}) => {
-  const { canPresent, reason } = HeliumPaywallSdkModule.canPresentUpsell(triggerName);
+                                onFallback,
+                                eventHandlers,
+                                customPaywallTraits,
+                              }: PresentUpsellParams) => {
+  const {canPresent, reason} = HeliumPaywallSdkModule.canPresentUpsell(triggerName);
 
   if (!canPresent) {
     console.log(
@@ -124,13 +135,71 @@ export const presentUpsell = ({
   }
 
   try {
-    HeliumPaywallSdkModule.presentUpsell(triggerName);
+    paywallEventHandlers = eventHandlers;
+    presentOnFallback = onFallback;
+    HeliumPaywallSdkModule.presentUpsell(triggerName, customPaywallTraits);
   } catch (error) {
     console.log('Helium present error', error);
+    paywallEventHandlers = undefined;
+    presentOnFallback = undefined;
     onFallback?.();
     HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
   }
 };
+
+function callPaywallEventHandlers(event: HeliumPaywallEvent) {
+  if (paywallEventHandlers) {
+    switch (event.type) {
+      case 'paywallOpen':
+        paywallEventHandlers?.onOpen?.({
+          type: 'paywallOpen',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
+          viewType: 'presented',
+        });
+        break;
+      case 'paywallClose':
+        paywallEventHandlers?.onClose?.({
+          type: 'paywallClose',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
+        });
+        if (!event.isSecondTry) {
+          paywallEventHandlers = undefined;
+        }
+        presentOnFallback = undefined;
+        break;
+      case 'paywallDismissed':
+        paywallEventHandlers?.onDismissed?.({
+          type: 'paywallDismissed',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
+        });
+        break;
+      case 'purchaseSucceeded':
+        paywallEventHandlers?.onPurchaseSucceeded?.({
+          type: 'purchaseSucceeded',
+          productId: event.productKey ?? 'unknown',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          isSecondTry: event.isSecondTry ?? false,
+        });
+        break;
+      case 'paywallSkipped':
+        paywallEventHandlers = undefined;
+        presentOnFallback = undefined;
+        break;
+      case 'paywallOpenFailed':
+        paywallEventHandlers = undefined;
+        presentOnFallback?.();
+        presentOnFallback = undefined;
+        break;
+    }
+  }
+}
 
 export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;

@@ -24,7 +24,6 @@ export class RevenueCatHeliumHandler {
     constructor(apiKey?: string) {
         if (apiKey) {
             Purchases.configure({ apiKey });
-        } else {
         }
         this.initializePackageMapping();
     }
