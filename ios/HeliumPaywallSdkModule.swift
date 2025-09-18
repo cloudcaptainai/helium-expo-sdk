@@ -91,6 +91,9 @@ public class HeliumPaywallSdkModule: Module {
           if let error = eventDict["error"] {
               eventDict["errorDescription"] = error
           }
+          if let productId = eventDict["productId"] {
+              eventDict["productKey"] = productId
+          }
           self?.sendEvent("onHeliumPaywallEvent", eventDict)
         },
         purchaseHandler: { [weak self] productId in
