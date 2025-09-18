@@ -56,18 +56,45 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
       let userTraitsMap = config["customUserTraits"] as? [String : Any]
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
+      
+      let paywallLoadingConfig = config["paywallLoadingConfig"] as? [String: Any]
+      let useLoadingState = paywallLoadingConfig?["useLoadingState"] as? Bool ?? true
+      let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval ?? 2.0
+      
+      var perTriggerLoadingConfig: [String: TriggerLoadingConfig]? = nil
+      if let perTriggerDict = paywallLoadingConfig?["perTriggerLoadingConfig"] as? [String: [String: Any]] {
+        var triggerConfigs: [String: TriggerLoadingConfig] = [:]
+        for (trigger, config) in perTriggerDict {
+          triggerConfigs[trigger] = TriggerLoadingConfig(
+            useLoadingState: config["useLoadingState"] as? Bool,
+            loadingBudget: config["loadingBudget"] as? TimeInterval
+          )
+        }
+        perTriggerLoadingConfig = triggerConfigs
+      }
 
       // Create delegate with closures that send events to JavaScript
       let delegate = InternalDelegate(
         eventHandler: { [weak self] event in
-          self?.sendEvent("onHeliumPaywallEvent", event.toDictionary())
+          var eventDict = event.toDictionary()
+          // Add deprecated fields for backwards compatibility
+          if let paywallName = eventDict["paywallName"] {
+              eventDict["paywallTemplateName"] = paywallName
+          }
+          if let error = eventDict["error"] {
+              eventDict["errorDescription"] = error
+          }
+          if let productId = eventDict["productId"] {
+              eventDict["productKey"] = productId
+          }
+          self?.sendEvent("onHeliumPaywallEvent", eventDict)
         },
         purchaseHandler: { [weak self] productId in
           guard let self else { return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!")) }
@@ -128,12 +155,16 @@ public class HeliumPaywallSdkModule: Module {
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
         heliumPaywallDelegate: delegate,
-        fallbackPaywall: FallbackView(),
+        fallbackConfig: HeliumFallbackConfig.withMultipleFallbacks(
+            fallbackBundle: fallbackBundleURL,
+            useLoadingState: useLoadingState,
+            loadingBudget: loadingBudget,
+            perTriggerLoadingConfig: perTriggerLoadingConfig
+        ),
         customUserId: config["customUserId"] as? String,
         customAPIEndpoint: config["customAPIEndpoint"] as? String,
         customUserTraits: userTraitsMap != nil ? HeliumUserTraits(userTraitsMap!) : nil,
-        revenueCatAppUserId: config["revenueCatAppUserId"] as? String,
-        fallbackBundleURL: fallbackBundleURL
+        revenueCatAppUserId: config["revenueCatAppUserId"] as? String
       )
     }
 
@@ -174,8 +205,25 @@ public class HeliumPaywallSdkModule: Module {
       continuation.resume(returning: success)
     }
 
-    Function("presentUpsell") { (trigger: String) in
-      Helium.shared.presentUpsell(trigger: trigger)
+    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?) in
+        Helium.shared.presentUpsell(
+            trigger: trigger,
+            eventHandlers: PaywallEventHandlers.withHandlers(
+                onOpen: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onClose: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onDismissed: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onPurchaseSucceeded: { [weak self] event in
+                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                }
+            ),
+            customPaywallTraits: customPaywallTraits
+        )
     }
 
     Function("hideUpsell") {
@@ -221,10 +269,17 @@ public class HeliumPaywallSdkModule: Module {
       let canPresent: Bool
       let reason: String
 
+      let useLoading = Helium.shared.loadingStateEnabledFor(trigger: trigger)
+      let downloadInProgress = Helium.shared.getDownloadStatus() == .inProgress
+
       if paywallsLoaded && hasTrigger {
         // Normal case - paywall is ready
         canPresent = true
         reason = "ready"
+      } else if downloadInProgress && useLoading {
+        // Loading case - paywall still downloading
+        canPresent = true
+        reason = "loading"
       } else if HeliumFallbackViewManager.shared.getFallbackInfo(trigger: trigger) != nil {
         // Fallback is available (via downloaded bundle)
         canPresent = true
@@ -274,12 +329,12 @@ public class HeliumPaywallSdkModule: Module {
 }
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {
-    private let eventHandler: (HeliumPaywallEvent) -> Void
+    private let eventHandler: (PaywallEvent) -> Void
     private let purchaseHandler: (String) async -> HeliumPaywallTransactionStatus
     private let restoreHandler: () async -> Bool
 
     init(
-        eventHandler: @escaping (HeliumPaywallEvent) -> Void,
+        eventHandler: @escaping (PaywallEvent) -> Void,
         purchaseHandler: @escaping (String) async -> HeliumPaywallTransactionStatus,
         restoreHandler: @escaping () async -> Bool
     ) {
@@ -296,43 +351,7 @@ fileprivate class InternalDelegate: HeliumPaywallDelegate {
         return await restoreHandler()
     }
 
-    public func onHeliumPaywallEvent(event: HeliumPaywallEvent) {
+    func onPaywallEvent(_ event: any PaywallEvent) {
         eventHandler(event)
-    }
-}
-
-fileprivate struct FallbackView: View {
-    @Environment(\.presentationMode) var presentationMode
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-
-            Text("Fallback Paywall")
-                .font(.title)
-                .fontWeight(.bold)
-
-            Text("Something went wrong loading the paywall. Make sure you used the right trigger.")
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Button(action: {
-                presentationMode.wrappedValue.dismiss()
-            }) {
-                Text("Close")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 40)
-        }
-        .padding()
     }
 }
