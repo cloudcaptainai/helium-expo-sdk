@@ -94,8 +94,8 @@ public class HeliumPaywallSdkModule: Module {
           if let productId = eventDict["productId"] {
               eventDict["productKey"] = productId
           }
-          if let productId = eventDict["buttonName"] {
-              eventDict["ctaName"] = productId
+          if let buttonName = eventDict["buttonName"] {
+              eventDict["ctaName"] = buttonName
           }
           self?.sendEvent("onHeliumPaywallEvent", eventDict)
         },
