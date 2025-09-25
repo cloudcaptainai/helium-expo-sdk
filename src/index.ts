@@ -42,30 +42,32 @@ export const initialize = (config: HeliumConfig) => {
   });
 
   // Set up delegate action listener for purchase and restore operations
-  addDelegateActionEventListener(async (event) => {
-    try {
-      if (event.type === 'purchase') {
-        if (event.productId) {
-          const result = await config.purchaseConfig.makePurchase(event.productId);
-          HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
-        } else {
-          HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No product ID for purchase event.');
+  const purchaseConfig = config.purchaseConfig;
+  if (purchaseConfig) {
+    addDelegateActionEventListener(async (event) => {
+      try {
+        if (event.type === 'purchase') {
+          if (event.productId) {
+            const result = await purchaseConfig.makePurchase(event.productId);
+            HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
+          } else {
+            HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No product ID for purchase event.');
+          }
+        } else if (event.type === 'restore') {
+          const success = await purchaseConfig.restorePurchases();
+          HeliumPaywallSdkModule.handleRestoreResult(success);
+        }
+      } catch (error) {
+        // Send failure result based on action type
+        if (event.type === 'purchase') {
+          console.log('[Helium] Unexpected error: ', error);
+          HeliumPaywallSdkModule.handlePurchaseResult('failed');
+        } else if (event.type === 'restore') {
+          HeliumPaywallSdkModule.handleRestoreResult(false);
         }
       }
-      else if (event.type === 'restore') {
-        const success = await config.purchaseConfig.restorePurchases();
-        HeliumPaywallSdkModule.handleRestoreResult(success);
-      }
-    } catch (error) {
-      // Send failure result based on action type
-      if (event.type === 'purchase') {
-        console.log('[Helium] Unexpected error: ', error);
-        HeliumPaywallSdkModule.handlePurchaseResult('failed');
-      } else if (event.type === 'restore') {
-        HeliumPaywallSdkModule.handleRestoreResult(false);
-      }
-    }
-  });
+    });
+  }
 
   addPaywallEventHandlersListener((event) => {
     callPaywallEventHandlers(event);
@@ -110,6 +112,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     fallbackBundleUrlString: fallbackBundleUrlString,
     fallbackBundleString: fallbackBundleString,
     paywallLoadingConfig: config.paywallLoadingConfig,
+    useDefaultDelegate: !config.purchaseConfig,
   };
 
   // Initialize the native module

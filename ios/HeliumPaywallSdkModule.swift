@@ -80,9 +80,9 @@ public class HeliumPaywallSdkModule: Module {
         perTriggerLoadingConfig = triggerConfigs
       }
 
-      // Create delegate with closures that send events to JavaScript
-      let delegate = InternalDelegate(
-        eventHandler: { [weak self] event in
+      let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
+
+      let delegateEventHandler: (HeliumEvent) -> Void = { [weak self] event in
           var eventDict = event.toDictionary()
           // Add deprecated fields for backwards compatibility
           if let paywallName = eventDict["paywallName"] {
@@ -98,7 +98,11 @@ public class HeliumPaywallSdkModule: Module {
               eventDict["ctaName"] = buttonName
           }
           self?.sendEvent("onHeliumPaywallEvent", eventDict)
-        },
+      }
+
+      // Create delegate with closures that send events to JavaScript
+      let internalDelegate = InternalDelegate(
+        eventHandler: delegateEventHandler,
         purchaseHandler: { [weak self] productId in
           guard let self else { return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!")) }
           // Check if there's already a purchase in progress and cancel it
@@ -140,6 +144,8 @@ public class HeliumPaywallSdkModule: Module {
         }
       )
 
+      let defaultDelegate = DefaultPurchaseDelegate(eventHandler: delegateEventHandler)
+
       // Handle fallback bundle - either as URL string or JSON string
       var fallbackBundleURL: URL? = nil
       if let urlString = fallbackBundleURLString {
@@ -157,7 +163,7 @@ public class HeliumPaywallSdkModule: Module {
 
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
-        heliumPaywallDelegate: delegate,
+        heliumPaywallDelegate: useDefaultDelegate ? defaultDelegate : internalDelegate,
         fallbackConfig: HeliumFallbackConfig.withMultipleFallbacks(
             fallbackBundle: fallbackBundleURL,
             useLoadingState: useLoadingState,
@@ -356,6 +362,19 @@ fileprivate class InternalDelegate: HeliumPaywallDelegate {
 
     public func restorePurchases() async -> Bool {
         return await restoreHandler()
+    }
+
+    func onPaywallEvent(_ event: any HeliumEvent) {
+        eventHandler(event)
+    }
+}
+
+fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
+    private let eventHandler: (HeliumEvent) -> Void
+    init(
+        eventHandler: @escaping (HeliumEvent) -> Void,
+    ) {
+        self.eventHandler = eventHandler
     }
 
     func onPaywallEvent(_ event: any HeliumEvent) {
