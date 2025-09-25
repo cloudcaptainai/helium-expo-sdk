@@ -37,6 +37,7 @@ export const initialize = (config: HeliumConfig) => {
 
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
+    handlePaywallEvent(event);
     config.onHeliumPaywallEvent(event);
   });
 
@@ -188,16 +189,21 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           isSecondTry: event.isSecondTry ?? false,
         });
         break;
-      case 'paywallSkipped':
-        paywallEventHandlers = undefined;
-        presentOnFallback = undefined;
-        break;
-      case 'paywallOpenFailed':
-        paywallEventHandlers = undefined;
-        presentOnFallback?.();
-        presentOnFallback = undefined;
-        break;
     }
+  }
+}
+
+function handlePaywallEvent(event: HeliumPaywallEvent) {
+  switch (event.type) {
+    case 'paywallSkipped':
+      paywallEventHandlers = undefined;
+      presentOnFallback = undefined;
+      break;
+    case 'paywallOpenFailed':
+      paywallEventHandlers = undefined;
+      presentOnFallback?.();
+      presentOnFallback = undefined;
+      break;
   }
 }
 
