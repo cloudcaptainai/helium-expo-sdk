@@ -9,7 +9,6 @@ export function createRevenueCatPurchaseConfig(config?: {
 }): HeliumPurchaseConfig {
     const rcHandler = new RevenueCatHeliumHandler(config?.apiKey);
     return {
-      apiKey: config?.apiKey,
       makePurchase: rcHandler.makePurchase.bind(rcHandler),
       restorePurchases: rcHandler.restorePurchases.bind(rcHandler),
     };

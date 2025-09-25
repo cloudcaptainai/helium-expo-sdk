@@ -377,7 +377,7 @@ fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
         self.eventHandler = eventHandler
     }
 
-    func onPaywallEvent(_ event: any HeliumEvent) {
+    override func onPaywallEvent(_ event: any HeliumEvent) {
         eventHandler(event)
     }
 }
