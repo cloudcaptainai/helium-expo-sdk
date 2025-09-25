@@ -210,6 +210,7 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
 export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
+export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUserId;
 
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
   const result = HeliumPaywallSdkModule.getPaywallInfo(trigger);
@@ -237,8 +238,3 @@ export const handleDeepLink = (url: string | null) => {
 };
 
 export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
-
-export type {
-  HeliumTransactionStatus,
-  HeliumConfig,
-} from './HeliumPaywallSdk.types';

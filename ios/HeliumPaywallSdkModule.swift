@@ -296,6 +296,10 @@ public class HeliumPaywallSdkModule: Module {
       )
     }
 
+    Function("setRevenueCatAppUserId") { (rcAppUserId: String) in
+        Helium.shared.setRevenueCatAppUserId(rcAppUserId)
+    }
+
     Function("handleDeepLink") { (urlString: String) in
       guard let url = URL(string: urlString) else {
         return false

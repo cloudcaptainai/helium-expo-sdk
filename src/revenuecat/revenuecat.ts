@@ -1,6 +1,7 @@
 import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import type { PurchasesError, PurchasesPackage, CustomerInfoUpdateListener, CustomerInfo, PurchasesEntitlementInfo } from 'react-native-purchases';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
+import {setRevenueCatAppUserId} from "../index";
 
 // Rename the factory function
 export function createRevenueCatPurchaseConfig(config?: {
@@ -25,7 +26,7 @@ export class RevenueCatHeliumHandler {
         if (apiKey) {
             Purchases.configure({ apiKey });
         }
-        this.initializePackageMapping();
+        void this.initializePackageMapping();
     }
 
     private async initializePackageMapping(): Promise<void> {
@@ -34,6 +35,9 @@ export class RevenueCatHeliumHandler {
         }
         this.initializationPromise = (async () => {
             try {
+                // Keep this value as up-to-date as possible
+                setRevenueCatAppUserId(await Purchases.getAppUserID());
+
                 const offerings = await Purchases.getOfferings();
                 const allOfferings = offerings.all;
                 for (const offering of Object.values(allOfferings)) {
@@ -63,6 +67,8 @@ export class RevenueCatHeliumHandler {
 
     async makePurchase(productId: string): Promise<HeliumPurchaseResult> {
         await this.ensureMappingInitialized();
+        // Keep this value as up-to-date as possible
+        setRevenueCatAppUserId(await Purchases.getAppUserID());
 
         const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
         let rcProduct: PurchasesStoreProduct | undefined;
