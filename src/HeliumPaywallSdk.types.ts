@@ -27,6 +27,10 @@ export type HeliumPaywallEvent = {
    * @deprecated Use `productId` instead.
    */
   productKey?: string;
+  buttonName?: string;
+  /**
+   * @deprecated Use `buttonName` instead.
+   */
   ctaName?: string;
   configId?: string;
   numAttempts?: number;
