@@ -60,11 +60,11 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
-      let userTraitsMap = config["customUserTraits"] as? [String : Any]
+      let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
       
-      let paywallLoadingConfig = config["paywallLoadingConfig"] as? [String: Any]
+      let paywallLoadingConfig = convertMarkersToBooleans(config["paywallLoadingConfig"] as? [String: Any])
       let useLoadingState = paywallLoadingConfig?["useLoadingState"] as? Bool ?? true
       let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval ?? 2.0
       
@@ -231,7 +231,7 @@ public class HeliumPaywallSdkModule: Module {
                     self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
-            customPaywallTraits: customPaywallTraits
+            customPaywallTraits: convertMarkersToBooleans(customPaywallTraits)
         )
     }
 
@@ -317,15 +317,6 @@ public class HeliumPaywallSdkModule: Module {
       return Helium.shared.handleDeepLink(url)
     }
 
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-//     AsyncFunction("setValueAsync") { (value: String) in
-//       // Send an event to JavaScript.
-//       self.sendEvent("onHeliumPaywallEvent", [
-//         "value": value
-//       ])
-//     }
-
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
     // view definition: Prop, Events.
     View(HeliumPaywallSdkView.self) {
@@ -339,6 +330,42 @@ public class HeliumPaywallSdkModule: Module {
       Events("onLoad")
     }
   }
+
+    /// Recursively converts special marker strings back to boolean values to restore
+    /// type information that was preserved when passing through platform channels.
+    ///
+    /// Flutter's platform channels convert booleans to NSNumber (0/1), so we use
+    /// special marker strings to preserve the original intent. This helper converts:
+    /// - "__helium_flutter_bool_true__" -> true
+    /// - "__helium_flutter_bool_false__" -> false
+    /// - All other values remain unchanged
+    private func convertMarkersToBooleans(_ input: [String: Any]?) -> [String: Any]? {
+        guard let input = input else { return nil }
+
+        var result: [String: Any] = [:]
+        for (key, value) in input {
+            result[key] = convertValueMarkersToBooleans(value)
+        }
+        return result
+    }
+    /// Helper to recursively convert marker strings in any value type
+    private func convertValueMarkersToBooleans(_ value: Any) -> Any {
+        if let stringValue = value as? String {
+            switch stringValue {
+            case "__helium_flutter_bool_true__":
+                return true
+            case "__helium_flutter_bool_false__":
+                return false
+            default:
+                return stringValue
+            }
+        } else if let dictValue = value as? [String: Any] {
+            return convertMarkersToBooleans(dictValue) ?? [:]
+        } else if let arrayValue = value as? [Any] {
+            return arrayValue.map { convertValueMarkersToBooleans($0) }
+        }
+        return value
+    }
 }
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {

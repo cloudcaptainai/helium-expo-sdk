@@ -107,11 +107,11 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     apiKey: config.apiKey,
     customUserId: config.customUserId,
     customAPIEndpoint: config.customAPIEndpoint,
-    customUserTraits: config.customUserTraits,
+    customUserTraits: convertBooleansToMarkers(config.customUserTraits),
     revenueCatAppUserId: config.revenueCatAppUserId,
     fallbackBundleUrlString: fallbackBundleUrlString,
     fallbackBundleString: fallbackBundleString,
-    paywallLoadingConfig: config.paywallLoadingConfig,
+    paywallLoadingConfig: convertBooleansToMarkers(config.paywallLoadingConfig),
     useDefaultDelegate: !config.purchaseConfig,
   };
 
@@ -141,7 +141,7 @@ export const presentUpsell = ({
   try {
     paywallEventHandlers = eventHandlers;
     presentOnFallback = onFallback;
-    HeliumPaywallSdkModule.presentUpsell(triggerName, customPaywallTraits);
+    HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits));
   } catch (error) {
     console.log('Helium present error', error);
     paywallEventHandlers = undefined;
@@ -239,5 +239,38 @@ export const handleDeepLink = (url: string | null) => {
   }
   return false;
 };
+
+/**
+ * Recursively converts boolean values to special marker strings to preserve
+ * type information when passing through platform channels.
+ *
+ * Flutter's platform channels convert booleans to NSNumber (0/1), making them
+ * indistinguishable from actual numeric values. This helper converts:
+ * - true -> "__helium_flutter_bool_true__"
+ * - false -> "__helium_flutter_bool_false__"
+ * - All other values remain unchanged
+ */
+function convertBooleansToMarkers(input: Record<string, any> | undefined): Record<string, any> | undefined {
+  if (!input) return undefined;
+
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(input)) {
+    result[key] = convertValueBooleansToMarkers(value);
+  }
+  return result;
+}
+/**
+ * Helper to recursively convert booleans in any value type
+ */
+function convertValueBooleansToMarkers(value: any): any {
+  if (typeof value === 'boolean') {
+    return value ? "__helium_flutter_bool_true__" : "__helium_flutter_bool_false__";
+  } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return convertBooleansToMarkers(value);
+  } else if (value && Array.isArray(value)) {
+    return value.map(convertValueBooleansToMarkers);
+  }
+  return value;
+}
 
 export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
