@@ -332,12 +332,12 @@ public class HeliumPaywallSdkModule: Module {
   }
 
     /// Recursively converts special marker strings back to boolean values to restore
-    /// type information that was preserved when passing through platform channels.
+    /// type information that was preserved when passing through native bridge
     ///
-    /// Flutter's platform channels convert booleans to NSNumber (0/1), so we use
+    /// Native bridge converts booleans to NSNumber (0/1), so we use
     /// special marker strings to preserve the original intent. This helper converts:
-    /// - "__helium_flutter_bool_true__" -> true
-    /// - "__helium_flutter_bool_false__" -> false
+    /// - "__helium_rn_bool_true__" -> true
+    /// - "__helium_rn_bool_false__" -> false
     /// - All other values remain unchanged
     private func convertMarkersToBooleans(_ input: [String: Any]?) -> [String: Any]? {
         guard let input = input else { return nil }
@@ -352,9 +352,9 @@ public class HeliumPaywallSdkModule: Module {
     private func convertValueMarkersToBooleans(_ value: Any) -> Any {
         if let stringValue = value as? String {
             switch stringValue {
-            case "__helium_flutter_bool_true__":
+            case "__helium_rn_bool_true__":
                 return true
-            case "__helium_flutter_bool_false__":
+            case "__helium_rn_bool_false__":
                 return false
             default:
                 return stringValue

@@ -242,12 +242,12 @@ export const handleDeepLink = (url: string | null) => {
 
 /**
  * Recursively converts boolean values to special marker strings to preserve
- * type information when passing through platform channels.
+ * type information when passing through native bridge.
  *
- * Flutter's platform channels convert booleans to NSNumber (0/1), making them
+ * Native bridge converts booleans to NSNumber (0/1), making them
  * indistinguishable from actual numeric values. This helper converts:
- * - true -> "__helium_flutter_bool_true__"
- * - false -> "__helium_flutter_bool_false__"
+ * - true -> "__helium_rn_bool_true__"
+ * - false -> "__helium_rn_bool_false__"
  * - All other values remain unchanged
  */
 function convertBooleansToMarkers(input: Record<string, any> | undefined): Record<string, any> | undefined {
@@ -264,7 +264,7 @@ function convertBooleansToMarkers(input: Record<string, any> | undefined): Recor
  */
 function convertValueBooleansToMarkers(value: any): any {
   if (typeof value === 'boolean') {
-    return value ? "__helium_flutter_bool_true__" : "__helium_flutter_bool_false__";
+    return value ? "__helium_rn_bool_true__" : "__helium_rn_bool_false__";
   } else if (value && typeof value === 'object' && !Array.isArray(value)) {
     return convertBooleansToMarkers(value);
   } else if (value && Array.isArray(value)) {
