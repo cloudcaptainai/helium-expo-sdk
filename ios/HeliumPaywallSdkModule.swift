@@ -60,11 +60,11 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
-      let userTraitsMap = config["customUserTraits"] as? [String : Any]
+      let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
       
-      let paywallLoadingConfig = config["paywallLoadingConfig"] as? [String: Any]
+      let paywallLoadingConfig = convertMarkersToBooleans(config["paywallLoadingConfig"] as? [String: Any])
       let useLoadingState = paywallLoadingConfig?["useLoadingState"] as? Bool ?? true
       let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval ?? 2.0
       
@@ -80,9 +80,9 @@ public class HeliumPaywallSdkModule: Module {
         perTriggerLoadingConfig = triggerConfigs
       }
 
-      // Create delegate with closures that send events to JavaScript
-      let delegate = InternalDelegate(
-        eventHandler: { [weak self] event in
+      let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
+
+      let delegateEventHandler: (HeliumEvent) -> Void = { [weak self] event in
           var eventDict = event.toDictionary()
           // Add deprecated fields for backwards compatibility
           if let paywallName = eventDict["paywallName"] {
@@ -98,7 +98,11 @@ public class HeliumPaywallSdkModule: Module {
               eventDict["ctaName"] = buttonName
           }
           self?.sendEvent("onHeliumPaywallEvent", eventDict)
-        },
+      }
+
+      // Create delegate with closures that send events to JavaScript
+      let internalDelegate = InternalDelegate(
+        eventHandler: delegateEventHandler,
         purchaseHandler: { [weak self] productId in
           guard let self else { return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!")) }
           // Check if there's already a purchase in progress and cancel it
@@ -140,6 +144,8 @@ public class HeliumPaywallSdkModule: Module {
         }
       )
 
+      let defaultDelegate = DefaultPurchaseDelegate(eventHandler: delegateEventHandler)
+
       // Handle fallback bundle - either as URL string or JSON string
       var fallbackBundleURL: URL? = nil
       if let urlString = fallbackBundleURLString {
@@ -157,7 +163,7 @@ public class HeliumPaywallSdkModule: Module {
 
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
-        heliumPaywallDelegate: delegate,
+        heliumPaywallDelegate: useDefaultDelegate ? defaultDelegate : internalDelegate,
         fallbackConfig: HeliumFallbackConfig.withMultipleFallbacks(
             fallbackBundle: fallbackBundleURL,
             useLoadingState: useLoadingState,
@@ -225,7 +231,7 @@ public class HeliumPaywallSdkModule: Module {
                     self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
-            customPaywallTraits: customPaywallTraits
+            customPaywallTraits: convertMarkersToBooleans(customPaywallTraits)
         )
     }
 
@@ -299,6 +305,10 @@ public class HeliumPaywallSdkModule: Module {
       )
     }
 
+    Function("setRevenueCatAppUserId") { (rcAppUserId: String) in
+        Helium.shared.setRevenueCatAppUserId(rcAppUserId)
+    }
+
     Function("handleDeepLink") { (urlString: String) in
       guard let url = URL(string: urlString) else {
         return false
@@ -306,15 +316,6 @@ public class HeliumPaywallSdkModule: Module {
 
       return Helium.shared.handleDeepLink(url)
     }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-//     AsyncFunction("setValueAsync") { (value: String) in
-//       // Send an event to JavaScript.
-//       self.sendEvent("onHeliumPaywallEvent", [
-//         "value": value
-//       ])
-//     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
     // view definition: Prop, Events.
@@ -329,6 +330,42 @@ public class HeliumPaywallSdkModule: Module {
       Events("onLoad")
     }
   }
+
+    /// Recursively converts special marker strings back to boolean values to restore
+    /// type information that was preserved when passing through native bridge
+    ///
+    /// Native bridge converts booleans to NSNumber (0/1), so we use
+    /// special marker strings to preserve the original intent. This helper converts:
+    /// - "__helium_rn_bool_true__" -> true
+    /// - "__helium_rn_bool_false__" -> false
+    /// - All other values remain unchanged
+    private func convertMarkersToBooleans(_ input: [String: Any]?) -> [String: Any]? {
+        guard let input = input else { return nil }
+
+        var result: [String: Any] = [:]
+        for (key, value) in input {
+            result[key] = convertValueMarkersToBooleans(value)
+        }
+        return result
+    }
+    /// Helper to recursively convert marker strings in any value type
+    private func convertValueMarkersToBooleans(_ value: Any) -> Any {
+        if let stringValue = value as? String {
+            switch stringValue {
+            case "__helium_rn_bool_true__":
+                return true
+            case "__helium_rn_bool_false__":
+                return false
+            default:
+                return stringValue
+            }
+        } else if let dictValue = value as? [String: Any] {
+            return convertMarkersToBooleans(dictValue) ?? [:]
+        } else if let arrayValue = value as? [Any] {
+            return arrayValue.map { convertValueMarkersToBooleans($0) }
+        }
+        return value
+    }
 }
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {
@@ -355,6 +392,19 @@ fileprivate class InternalDelegate: HeliumPaywallDelegate {
     }
 
     func onPaywallEvent(_ event: any HeliumEvent) {
+        eventHandler(event)
+    }
+}
+
+fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
+    private let eventHandler: (HeliumEvent) -> Void
+    init(
+        eventHandler: @escaping (HeliumEvent) -> Void,
+    ) {
+        self.eventHandler = eventHandler
+    }
+
+    override func onPaywallEvent(_ event: any HeliumEvent) {
         eventHandler(event)
     }
 }
