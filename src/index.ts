@@ -170,10 +170,6 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           paywallName: event.paywallName ?? 'unknown',
           isSecondTry: event.isSecondTry ?? false,
         });
-        if (!event.isSecondTry) {
-          paywallEventHandlers = undefined;
-        }
-        presentOnFallback = undefined;
         break;
       case 'paywallDismissed':
         paywallEventHandlers?.onDismissed?.({
@@ -198,6 +194,12 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
 
 function handlePaywallEvent(event: HeliumPaywallEvent) {
   switch (event.type) {
+    case 'paywallClose':
+      if (!event.isSecondTry) {
+        paywallEventHandlers = undefined;
+      }
+      presentOnFallback = undefined;
+      break;
     case 'paywallSkipped':
       paywallEventHandlers = undefined;
       presentOnFallback = undefined;
