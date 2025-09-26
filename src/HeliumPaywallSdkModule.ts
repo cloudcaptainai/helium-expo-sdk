@@ -50,6 +50,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   getPaywallInfo(trigger: string): PaywallInfoResult;
 
   handleDeepLink(urlString: string): boolean;
+
+  setRevenueCatAppUserId(rcAppUserId: string): void;
 }
 
 // This call loads the native module object from the JSI.

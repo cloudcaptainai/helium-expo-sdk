@@ -37,34 +37,37 @@ export const initialize = (config: HeliumConfig) => {
 
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
+    handlePaywallEvent(event);
     config.onHeliumPaywallEvent(event);
   });
 
   // Set up delegate action listener for purchase and restore operations
-  addDelegateActionEventListener(async (event) => {
-    try {
-      if (event.type === 'purchase') {
-        if (event.productId) {
-          const result = await config.purchaseConfig.makePurchase(event.productId);
-          HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
-        } else {
-          HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No product ID for purchase event.');
+  const purchaseConfig = config.purchaseConfig;
+  if (purchaseConfig) {
+    addDelegateActionEventListener(async (event) => {
+      try {
+        if (event.type === 'purchase') {
+          if (event.productId) {
+            const result = await purchaseConfig.makePurchase(event.productId);
+            HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
+          } else {
+            HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No product ID for purchase event.');
+          }
+        } else if (event.type === 'restore') {
+          const success = await purchaseConfig.restorePurchases();
+          HeliumPaywallSdkModule.handleRestoreResult(success);
+        }
+      } catch (error) {
+        // Send failure result based on action type
+        if (event.type === 'purchase') {
+          console.log('[Helium] Unexpected error: ', error);
+          HeliumPaywallSdkModule.handlePurchaseResult('failed');
+        } else if (event.type === 'restore') {
+          HeliumPaywallSdkModule.handleRestoreResult(false);
         }
       }
-      else if (event.type === 'restore') {
-        const success = await config.purchaseConfig.restorePurchases();
-        HeliumPaywallSdkModule.handleRestoreResult(success);
-      }
-    } catch (error) {
-      // Send failure result based on action type
-      if (event.type === 'purchase') {
-        console.log('[Helium] Unexpected error: ', error);
-        HeliumPaywallSdkModule.handlePurchaseResult('failed');
-      } else if (event.type === 'restore') {
-        HeliumPaywallSdkModule.handleRestoreResult(false);
-      }
-    }
-  });
+    });
+  }
 
   addPaywallEventHandlersListener((event) => {
     callPaywallEventHandlers(event);
@@ -104,11 +107,12 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     apiKey: config.apiKey,
     customUserId: config.customUserId,
     customAPIEndpoint: config.customAPIEndpoint,
-    customUserTraits: config.customUserTraits,
+    customUserTraits: convertBooleansToMarkers(config.customUserTraits),
     revenueCatAppUserId: config.revenueCatAppUserId,
     fallbackBundleUrlString: fallbackBundleUrlString,
     fallbackBundleString: fallbackBundleString,
-    paywallLoadingConfig: config.paywallLoadingConfig,
+    paywallLoadingConfig: convertBooleansToMarkers(config.paywallLoadingConfig),
+    useDefaultDelegate: !config.purchaseConfig,
   };
 
   // Initialize the native module
@@ -137,7 +141,7 @@ export const presentUpsell = ({
   try {
     paywallEventHandlers = eventHandlers;
     presentOnFallback = onFallback;
-    HeliumPaywallSdkModule.presentUpsell(triggerName, customPaywallTraits);
+    HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits));
   } catch (error) {
     console.log('Helium present error', error);
     paywallEventHandlers = undefined;
@@ -166,10 +170,6 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           paywallName: event.paywallName ?? 'unknown',
           isSecondTry: event.isSecondTry ?? false,
         });
-        if (!event.isSecondTry) {
-          paywallEventHandlers = undefined;
-        }
-        presentOnFallback = undefined;
         break;
       case 'paywallDismissed':
         paywallEventHandlers?.onDismissed?.({
@@ -188,22 +188,34 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           isSecondTry: event.isSecondTry ?? false,
         });
         break;
-      case 'paywallSkipped':
-        paywallEventHandlers = undefined;
-        presentOnFallback = undefined;
-        break;
-      case 'paywallOpenFailed':
-        paywallEventHandlers = undefined;
-        presentOnFallback?.();
-        presentOnFallback = undefined;
-        break;
     }
+  }
+}
+
+function handlePaywallEvent(event: HeliumPaywallEvent) {
+  switch (event.type) {
+    case 'paywallClose':
+      if (!event.isSecondTry) {
+        paywallEventHandlers = undefined;
+      }
+      presentOnFallback = undefined;
+      break;
+    case 'paywallSkipped':
+      paywallEventHandlers = undefined;
+      presentOnFallback = undefined;
+      break;
+    case 'paywallOpenFailed':
+      paywallEventHandlers = undefined;
+      presentOnFallback?.();
+      presentOnFallback = undefined;
+      break;
   }
 }
 
 export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
+export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUserId;
 
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
   const result = HeliumPaywallSdkModule.getPaywallInfo(trigger);
@@ -230,9 +242,37 @@ export const handleDeepLink = (url: string | null) => {
   return false;
 };
 
-export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
+/**
+ * Recursively converts boolean values to special marker strings to preserve
+ * type information when passing through native bridge.
+ *
+ * Native bridge converts booleans to NSNumber (0/1), making them
+ * indistinguishable from actual numeric values. This helper converts:
+ * - true -> "__helium_rn_bool_true__"
+ * - false -> "__helium_rn_bool_false__"
+ * - All other values remain unchanged
+ */
+function convertBooleansToMarkers(input: Record<string, any> | undefined): Record<string, any> | undefined {
+  if (!input) return undefined;
 
-export type {
-  HeliumTransactionStatus,
-  HeliumConfig,
-} from './HeliumPaywallSdk.types';
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(input)) {
+    result[key] = convertValueBooleansToMarkers(value);
+  }
+  return result;
+}
+/**
+ * Helper to recursively convert booleans in any value type
+ */
+function convertValueBooleansToMarkers(value: any): any {
+  if (typeof value === 'boolean') {
+    return value ? "__helium_rn_bool_true__" : "__helium_rn_bool_false__";
+  } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return convertBooleansToMarkers(value);
+  } else if (value && Array.isArray(value)) {
+    return value.map(convertValueBooleansToMarkers);
+  }
+  return value;
+}
+
+export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
