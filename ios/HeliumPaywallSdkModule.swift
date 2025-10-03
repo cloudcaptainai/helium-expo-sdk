@@ -165,6 +165,9 @@ public class HeliumPaywallSdkModule: Module {
         apiKey: config["apiKey"] as? String ?? "",
         heliumPaywallDelegate: useDefaultDelegate ? defaultDelegate : internalDelegate,
         fallbackConfig: HeliumFallbackConfig.withMultipleFallbacks(
+            // As a workaround for required fallback check in iOS, supply empty fallbackPerTrigger
+            // since currently iOS requires some type of fallback but RN does not.
+            fallbackPerTrigger: [:],
             fallbackBundle: fallbackBundleURL,
             useLoadingState: useLoadingState,
             loadingBudget: loadingBudget,
