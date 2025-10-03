@@ -217,6 +217,16 @@ export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
 export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUserId;
 
+/**
+ * Checks if the user has any active subscription (including non-renewable)
+ */
+export const hasAnyActiveSubscription = HeliumPaywallSdkModule.hasAnyActiveSubscription;
+
+/**
+ * Checks if the user has any entitlement
+ */
+export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
+
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
   const result = HeliumPaywallSdkModule.getPaywallInfo(trigger);
   if (!result) {

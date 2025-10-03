@@ -309,6 +309,14 @@ public class HeliumPaywallSdkModule: Module {
         Helium.shared.setRevenueCatAppUserId(rcAppUserId)
     }
 
+    AsyncFunction("hasAnyActiveSubscription") {
+      return await Helium.shared.hasAnyActiveSubscription()
+    }
+
+    AsyncFunction("hasAnyEntitlement") {
+      return await Helium.shared.hasAnyEntitlement()
+    }
+
     Function("handleDeepLink") { (urlString: String) in
       guard let url = URL(string: urlString) else {
         return false

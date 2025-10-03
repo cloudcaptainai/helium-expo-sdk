@@ -67,12 +67,12 @@ PODS:
   - FBLazyVector (0.79.5)
   - fmt (11.0.2)
   - glog (0.3.5)
-  - Helium (2.3.0):
-    - Helium/Core (= 2.3.0)
-  - Helium/Core (2.3.0)
-  - HeliumPaywallSdk (0.8.5):
+  - Helium (3.0.6):
+    - Helium/Core (= 3.0.6)
+  - Helium/Core (3.0.6)
+  - HeliumPaywallSdk (3.0.6):
     - ExpoModulesCore
-    - Helium (= 2.3.0)
+    - Helium (= 3.0.6)
   - hermes-engine (0.79.5):
     - hermes-engine/Pre-built (= 0.79.5)
   - hermes-engine/Pre-built (0.79.5)
