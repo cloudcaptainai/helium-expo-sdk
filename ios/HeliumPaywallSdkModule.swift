@@ -250,7 +250,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
-      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, paywallUnavailableReason: .bridgingError)
+      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, fallbackReason: .bridgingError)
     }
 
     Function("getPaywallInfo") { (trigger: String) in
@@ -291,17 +291,17 @@ public class HeliumPaywallSdkModule: Module {
 
     Function("getExperimentInfoForTrigger") { (trigger: String) in
       guard let experimentInfo = Helium.shared.getExperimentInfoForTrigger(trigger) else {
-        return nil
+        return ["errorMsg": "No experiment info found for trigger: \(trigger)"]
       }
 
       // Convert ExperimentInfo to dictionary using JSONEncoder
       let encoder = JSONEncoder()
       guard let jsonData = try? encoder.encode(experimentInfo),
           let dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
-        return nil
+        return ["errorMsg": "Failed to serialize experiment info"]
       }
 
-      return dictionary
+      return ["experimentInfo": dictionary]
     }
 
     Function("disableRestoreFailedDialog") {

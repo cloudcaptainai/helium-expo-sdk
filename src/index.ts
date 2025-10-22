@@ -269,7 +269,14 @@ export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreF
  */
 export const getExperimentInfoForTrigger = (trigger: string): ExperimentInfo | undefined => {
   const result = HeliumPaywallSdkModule.getExperimentInfoForTrigger(trigger);
-  return result ?? undefined;
+  if (!result) {
+    console.log('[Helium] getExperimentInfoForTrigger unexpected error.');
+    return;
+  }
+  if (result.errorMsg) {
+    return;
+  }
+  return result.experimentInfo;
 };
 
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {

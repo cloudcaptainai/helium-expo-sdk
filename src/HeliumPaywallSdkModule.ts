@@ -14,6 +14,11 @@ interface PaywallInfoResult {
   shouldShow?: boolean;
 }
 
+interface ExperimentInfoResult {
+  errorMsg?: string;
+  experimentInfo?: ExperimentInfo;
+}
+
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
   initialize(config: NativeHeliumConfig): void;
 
@@ -61,7 +66,7 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   disableRestoreFailedDialog(): void;
 
-  getExperimentInfoForTrigger(trigger: string): ExperimentInfo | null;
+  getExperimentInfoForTrigger(trigger: string): ExperimentInfoResult;
 }
 
 // This call loads the native module object from the JSI.
