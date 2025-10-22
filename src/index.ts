@@ -190,6 +190,26 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           isSecondTry: event.isSecondTry ?? false,
         });
         break;
+      case 'paywallOpenFailed':
+        paywallEventHandlers?.onOpenFailed?.({
+          type: 'paywallOpenFailed',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          error: event.error ?? 'Unknown error',
+          paywallUnavailableReason: event.paywallUnavailableReason,
+          isSecondTry: event.isSecondTry ?? false,
+        });
+        break;
+      case 'customPaywallAction':
+        paywallEventHandlers?.onCustomPaywallAction?.({
+          type: 'customPaywallAction',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          actionName: event.customPaywallActionName ?? 'unknown',
+          params: event.customPaywallActionParams ?? {},
+          isSecondTry: event.isSecondTry ?? false,
+        });
+        break;
     }
   }
 }
