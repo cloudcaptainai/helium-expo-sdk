@@ -28,13 +28,6 @@ struct PaywallInfoResult: Record {
   var shouldShow: Bool? = nil
 }
 
-struct CanPresentPaywallResult: Record {
-  @Field
-  var canPresent: Bool = false
-  @Field
-  var reason: String? = nil
-}
-
 public class HeliumPaywallSdkModule: Module {
   // Single continuations for ongoing operations
   private var currentProductId: String? = nil
@@ -273,14 +266,6 @@ public class HeliumPaywallSdkModule: Module {
         errorMsg: nil,
         templateName: paywallInfo.paywallTemplateName,
         shouldShow: paywallInfo.shouldShow
-      )
-    }
-
-    Function("canPresentUpsell") { (trigger: String) in
-      let result = Helium.shared.canShowPaywallFor(trigger: trigger)
-      return CanPresentPaywallResult(
-        canPresent: result.canShow,
-        reason: result.paywallUnavailableReason?.rawValue
       )
     }
 

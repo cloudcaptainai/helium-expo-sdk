@@ -14,11 +14,6 @@ interface PaywallInfoResult {
   shouldShow?: boolean;
 }
 
-interface CanPresentUpsellResult {
-  canPresent?: boolean;
-  reason?: string;
-}
-
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
   initialize(config: NativeHeliumConfig): void;
 
