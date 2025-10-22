@@ -232,6 +232,12 @@ public class HeliumPaywallSdkModule: Module {
                 },
                 onPurchaseSucceeded: { [weak self] event in
                     self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onOpenFailed: { [weak self] event in
+                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onCustomPaywallAction: { [weak self] event in
+                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
             customPaywallTraits: convertMarkersToBooleans(customPaywallTraits)
@@ -248,10 +254,6 @@ public class HeliumPaywallSdkModule: Module {
 
     Function("getDownloadStatus") {
       return Helium.shared.getDownloadStatus().rawValue
-    }
-
-    Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
-      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType)
     }
 
     Function("getPaywallInfo") { (trigger: String) in
@@ -271,40 +273,10 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("canPresentUpsell") { (trigger: String) in
-      // Check if paywalls are downloaded successfully
-      let paywallsLoaded = Helium.shared.paywallsLoaded()
-
-      // Check if trigger exists in fetched triggers
-      let triggerNames = HeliumFetchedConfigManager.shared.getFetchedTriggerNames()
-      let hasTrigger = triggerNames.contains(trigger)
-
-      let canPresent: Bool
-      let reason: String
-
-      let useLoading = Helium.shared.loadingStateEnabledFor(trigger: trigger)
-      let downloadInProgress = Helium.shared.getDownloadStatus() == .inProgress
-
-      if paywallsLoaded && hasTrigger {
-        // Normal case - paywall is ready
-        canPresent = true
-        reason = "ready"
-      } else if downloadInProgress && useLoading {
-        // Loading case - paywall still downloading
-        canPresent = true
-        reason = "loading"
-      } else if HeliumFallbackViewManager.shared.getFallbackInfo(trigger: trigger) != nil {
-        // Fallback is available (via downloaded bundle)
-        canPresent = true
-        reason = "fallback_ready"
-      } else {
-        // No paywall and no fallback bundle
-        canPresent = false
-        reason = !paywallsLoaded ? "download status - \(Helium.shared.getDownloadStatus().rawValue)" : "trigger_not_found"
-      }
-
+      let result = Helium.shared.canShowPaywallFor(trigger: trigger)
       return CanPresentPaywallResult(
-        canPresent: canPresent,
-        reason: reason
+        canPresent: result.canShow,
+        reason: result.paywallUnavailableReason?.rawValue
       )
     }
 
@@ -326,6 +298,37 @@ public class HeliumPaywallSdkModule: Module {
       }
 
       return Helium.shared.handleDeepLink(url)
+    }
+
+    Function("getExperimentInfoForTrigger") { (trigger: String) in
+      guard let experimentInfo = Helium.shared.getExperimentInfoForTrigger(trigger) else {
+        return nil
+      }
+
+      // Convert ExperimentInfo to dictionary using JSONEncoder
+      let encoder = JSONEncoder()
+      guard let jsonData = try? encoder.encode(experimentInfo),
+          let dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
+        return nil
+      }
+
+      return dictionary
+    }
+
+    Function("disableRestoreFailedDialog") {
+        Helium.restorePurchaseConfig.disableRestoreFailedDialog()
+    }
+
+    Function("setCustomRestoreFailedStrings") { (customTitle: String?, customMessage: String?, customCloseButtonText: String?) in
+      Helium.restorePurchaseConfig.setCustomRestoreFailedStrings(
+        customTitle: customTitle,
+        customMessage: customMessage,
+        customCloseButtonText: customCloseButtonText
+      )
+    }
+
+    Function("resetHelium") {
+      Helium.resetHelium()
     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
