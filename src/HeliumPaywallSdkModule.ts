@@ -33,8 +33,6 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   getDownloadStatus(): HeliumDownloadStatus;
 
-  canPresentUpsell(trigger: string): CanPresentUpsellResult;
-
   fallbackOpenOrCloseEvent(
     trigger: string,
     isOpen: boolean,

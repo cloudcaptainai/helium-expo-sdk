@@ -129,23 +129,12 @@ export const presentUpsell = ({
                                 eventHandlers,
                                 customPaywallTraits,
                               }: PresentUpsellParams) => {
-  const {canPresent, reason} = HeliumPaywallSdkModule.canPresentUpsell(triggerName);
-
-  if (!canPresent) {
-    console.log(
-      `[Helium] Cannot present trigger "${triggerName}". Reason: ${reason}`
-    );
-    onFallback?.();
-    HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
-    return;
-  }
-
   try {
     paywallEventHandlers = eventHandlers;
     presentOnFallback = onFallback;
     HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits));
   } catch (error) {
-    console.log('Helium present error', error);
+    console.log('[Helium] presentUpsell error', error);
     paywallEventHandlers = undefined;
     presentOnFallback = undefined;
     onFallback?.();
@@ -228,7 +217,13 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
       break;
     case 'paywallOpenFailed':
       paywallEventHandlers = undefined;
-      presentOnFallback?.();
+      const unavailableReason = event.paywallUnavailableReason;
+      if (event.triggerName
+        && unavailableReason != "alreadyPresented"
+        && unavailableReason != "secondTryNoMatch") {
+        console.log('[Helium] paywall open failed', unavailableReason);
+        presentOnFallback?.();
+      }
       presentOnFallback = undefined;
       break;
   }

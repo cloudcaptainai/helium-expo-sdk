@@ -256,6 +256,10 @@ public class HeliumPaywallSdkModule: Module {
       return Helium.shared.getDownloadStatus().rawValue
     }
 
+    Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
+      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, paywallUnavailableReason: .bridgingError)
+    }
+
     Function("getPaywallInfo") { (trigger: String) in
       guard let paywallInfo = Helium.shared.getPaywallInfo(trigger: trigger) else {
         return PaywallInfoResult(
