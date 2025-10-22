@@ -273,10 +273,15 @@ export const getExperimentInfoForTrigger = (trigger: string): ExperimentInfo | u
     console.log('[Helium] getExperimentInfoForTrigger unexpected error.');
     return;
   }
-  if (result.errorMsg) {
+  if (result.getExperimentInfoErrorMsg) {
     return;
   }
-  return result.experimentInfo;
+  // Validate required field exists before casting
+  if (!result.trigger) {
+    console.log('[Helium] getExperimentInfoForTrigger returned data without required trigger field.');
+    return;
+  }
+  return result as ExperimentInfo;
 };
 
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {

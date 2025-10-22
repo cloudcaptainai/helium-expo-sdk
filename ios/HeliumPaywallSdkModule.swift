@@ -289,19 +289,20 @@ public class HeliumPaywallSdkModule: Module {
       return Helium.shared.handleDeepLink(url)
     }
 
-    Function("getExperimentInfoForTrigger") { (trigger: String) in
+    Function("getExperimentInfoForTrigger") { (trigger: String) -> [String: Any] in
       guard let experimentInfo = Helium.shared.getExperimentInfoForTrigger(trigger) else {
-        return ["errorMsg": "No experiment info found for trigger: \(trigger)"]
+        return ["getExperimentInfoErrorMsg": "No experiment info found for trigger: \(trigger)"]
       }
 
       // Convert ExperimentInfo to dictionary using JSONEncoder
       let encoder = JSONEncoder()
       guard let jsonData = try? encoder.encode(experimentInfo),
-          let dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
-        return ["errorMsg": "Failed to serialize experiment info"]
+          var dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
+        return ["getExperimentInfoErrorMsg": "Failed to serialize experiment info"]
       }
 
-      return ["experimentInfo": dictionary]
+      // Return the dictionary directly - it contains all ExperimentInfo fields
+      return dictionary
     }
 
     Function("disableRestoreFailedDialog") {

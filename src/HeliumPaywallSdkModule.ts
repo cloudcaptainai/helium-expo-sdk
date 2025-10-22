@@ -14,9 +14,8 @@ interface PaywallInfoResult {
   shouldShow?: boolean;
 }
 
-interface ExperimentInfoResult {
-  errorMsg?: string;
-  experimentInfo?: ExperimentInfo;
+interface ExperimentInfoResult extends Partial<ExperimentInfo> {
+  getExperimentInfoErrorMsg?: string;
 }
 
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
