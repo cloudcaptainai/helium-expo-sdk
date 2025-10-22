@@ -56,6 +56,16 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   hasAnyActiveSubscription(): Promise<boolean>;
 
   hasAnyEntitlement(): Promise<boolean>;
+
+  resetHelium(): void;
+
+  setCustomRestoreFailedStrings(
+    customTitle?: string,
+    customMessage?: string,
+    customCloseButtonText?: string
+  ): void;
+
+  disableRestoreFailedDialog(): void;
 }
 
 // This call loads the native module object from the JSI.

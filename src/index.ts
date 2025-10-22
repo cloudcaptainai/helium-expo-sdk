@@ -227,6 +227,23 @@ export const hasAnyActiveSubscription = HeliumPaywallSdkModule.hasAnyActiveSubsc
  */
 export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
 
+/**
+ * Reset Helium entirely so you can call initialize again. Only for advanced use cases.
+ */
+export const resetHelium = HeliumPaywallSdkModule.resetHelium;
+
+/**
+ * Set custom strings to show in the dialog that Helium will display if a "Restore Purchases" action is not successful.
+ * Note that these strings will not be localized by Helium for you.
+ */
+export const setCustomRestoreFailedStrings = HeliumPaywallSdkModule.setCustomRestoreFailedStrings;
+
+/**
+ * Disable the default dialog that Helium will display if a "Restore Purchases" action is not successful.
+ * You can handle this yourself if desired by listening for the PurchaseRestoreFailedEvent.
+ */
+export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreFailedDialog;
+
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
   const result = HeliumPaywallSdkModule.getPaywallInfo(trigger);
   if (!result) {
