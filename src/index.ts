@@ -4,6 +4,7 @@ import {
   HeliumPaywallEvent,
   NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
 } from "./HeliumPaywallSdk.types";
+import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
 import * as ExpoFileSystem from 'expo-file-system';
@@ -11,6 +12,7 @@ import * as ExpoFileSystem from 'expo-file-system';
 export { default } from './HeliumPaywallSdkModule';
 // export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
 export * from  './HeliumPaywallSdk.types';
+export * from './HeliumExperimentInfo.types';
 
 function addHeliumPaywallEventListener(listener: (event: HeliumPaywallEvent) => void): EventSubscription {
   return HeliumPaywallSdkModule.addListener('onHeliumPaywallEvent', listener);
@@ -243,6 +245,17 @@ export const setCustomRestoreFailedStrings = HeliumPaywallSdkModule.setCustomRes
  * You can handle this yourself if desired by listening for the PurchaseRestoreFailedEvent.
  */
 export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreFailedDialog;
+
+/**
+ * Get experiment allocation info for a specific trigger
+ *
+ * @param trigger The trigger name to get experiment info for
+ * @returns ExperimentInfo if the trigger has experiment data, undefined otherwise
+ */
+export const getExperimentInfoForTrigger = (trigger: string): ExperimentInfo | undefined => {
+  const result = HeliumPaywallSdkModule.getExperimentInfoForTrigger(trigger);
+  return result ?? undefined;
+};
 
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
   const result = HeliumPaywallSdkModule.getPaywallInfo(trigger);

@@ -1,5 +1,6 @@
 import { NativeModule, requireNativeModule } from "expo";
 
+import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import {
   HeliumDownloadStatus,
   HeliumPaywallSdkModuleEvents,
@@ -62,10 +63,12 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   setCustomRestoreFailedStrings(
     customTitle?: string,
     customMessage?: string,
-    customCloseButtonText?: string
+    customCloseButtonText?: string,
   ): void;
 
   disableRestoreFailedDialog(): void;
+
+  getExperimentInfoForTrigger(trigger: string): ExperimentInfo | null;
 }
 
 // This call loads the native module object from the JSI.
