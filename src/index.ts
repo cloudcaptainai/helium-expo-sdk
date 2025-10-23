@@ -4,6 +4,7 @@ import {
   HeliumPaywallEvent,
   NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
 } from "./HeliumPaywallSdk.types";
+import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
 import * as ExpoFileSystem from 'expo-file-system';
@@ -11,6 +12,7 @@ import * as ExpoFileSystem from 'expo-file-system';
 export { default } from './HeliumPaywallSdkModule';
 // export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
 export * from  './HeliumPaywallSdk.types';
+export * from './HeliumExperimentInfo.types';
 
 function addHeliumPaywallEventListener(listener: (event: HeliumPaywallEvent) => void): EventSubscription {
   return HeliumPaywallSdkModule.addListener('onHeliumPaywallEvent', listener);
@@ -127,23 +129,12 @@ export const presentUpsell = ({
                                 eventHandlers,
                                 customPaywallTraits,
                               }: PresentUpsellParams) => {
-  const {canPresent, reason} = HeliumPaywallSdkModule.canPresentUpsell(triggerName);
-
-  if (!canPresent) {
-    console.log(
-      `[Helium] Cannot present trigger "${triggerName}". Reason: ${reason}`
-    );
-    onFallback?.();
-    HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
-    return;
-  }
-
   try {
     paywallEventHandlers = eventHandlers;
     presentOnFallback = onFallback;
     HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits));
   } catch (error) {
-    console.log('Helium present error', error);
+    console.log('[Helium] presentUpsell error', error);
     paywallEventHandlers = undefined;
     presentOnFallback = undefined;
     onFallback?.();
@@ -188,6 +179,26 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           isSecondTry: event.isSecondTry ?? false,
         });
         break;
+      case 'paywallOpenFailed':
+        paywallEventHandlers?.onOpenFailed?.({
+          type: 'paywallOpenFailed',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          error: event.error ?? 'Unknown error',
+          paywallUnavailableReason: event.paywallUnavailableReason,
+          isSecondTry: event.isSecondTry ?? false,
+        });
+        break;
+      case 'customPaywallAction':
+        paywallEventHandlers?.onCustomPaywallAction?.({
+          type: 'customPaywallAction',
+          triggerName: event.triggerName ?? 'unknown',
+          paywallName: event.paywallName ?? 'unknown',
+          actionName: event.customPaywallActionName ?? 'unknown',
+          params: event.customPaywallActionParams ?? {},
+          isSecondTry: event.isSecondTry ?? false,
+        });
+        break;
     }
   }
 }
@@ -206,7 +217,13 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
       break;
     case 'paywallOpenFailed':
       paywallEventHandlers = undefined;
-      presentOnFallback?.();
+      const unavailableReason = event.paywallUnavailableReason;
+      if (event.triggerName
+        && unavailableReason != "alreadyPresented"
+        && unavailableReason != "secondTryNoMatch") {
+        console.log('[Helium] paywall open failed', unavailableReason);
+        presentOnFallback?.();
+      }
       presentOnFallback = undefined;
       break;
   }
@@ -226,6 +243,46 @@ export const hasAnyActiveSubscription = HeliumPaywallSdkModule.hasAnyActiveSubsc
  * Checks if the user has any entitlement
  */
 export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
+
+/**
+ * Reset Helium entirely so you can call initialize again. Only for advanced use cases.
+ */
+export const resetHelium = HeliumPaywallSdkModule.resetHelium;
+
+/**
+ * Set custom strings to show in the dialog that Helium will display if a "Restore Purchases" action is not successful.
+ * Note that these strings will not be localized by Helium for you.
+ */
+export const setCustomRestoreFailedStrings = HeliumPaywallSdkModule.setCustomRestoreFailedStrings;
+
+/**
+ * Disable the default dialog that Helium will display if a "Restore Purchases" action is not successful.
+ * You can handle this yourself if desired by listening for the PurchaseRestoreFailedEvent.
+ */
+export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreFailedDialog;
+
+/**
+ * Get experiment allocation info for a specific trigger
+ *
+ * @param trigger The trigger name to get experiment info for
+ * @returns ExperimentInfo if the trigger has experiment data, undefined otherwise
+ */
+export const getExperimentInfoForTrigger = (trigger: string): ExperimentInfo | undefined => {
+  const result = HeliumPaywallSdkModule.getExperimentInfoForTrigger(trigger);
+  if (!result) {
+    console.log('[Helium] getExperimentInfoForTrigger unexpected error.');
+    return;
+  }
+  if (result.getExperimentInfoErrorMsg) {
+    return;
+  }
+  // Validate required field exists before casting
+  if (!result.trigger) {
+    console.log('[Helium] getExperimentInfoForTrigger returned data without required trigger field.');
+    return;
+  }
+  return result as ExperimentInfo;
+};
 
 export const getPaywallInfo = (trigger: string): PaywallInfo | undefined => {
   const result = HeliumPaywallSdkModule.getPaywallInfo(trigger);
