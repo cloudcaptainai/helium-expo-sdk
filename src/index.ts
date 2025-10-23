@@ -219,8 +219,8 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
       paywallEventHandlers = undefined;
       const unavailableReason = event.paywallUnavailableReason;
       if (event.triggerName
-        && unavailableReason != "alreadyPresented"
-        && unavailableReason != "secondTryNoMatch") {
+        && unavailableReason !== "alreadyPresented"
+        && unavailableReason !== "secondTryNoMatch") {
         console.log('[Helium] paywall open failed', unavailableReason);
         presentOnFallback?.();
       }
