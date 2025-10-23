@@ -28,13 +28,6 @@ struct PaywallInfoResult: Record {
   var shouldShow: Bool? = nil
 }
 
-struct CanPresentPaywallResult: Record {
-  @Field
-  var canPresent: Bool = false
-  @Field
-  var reason: String? = nil
-}
-
 public class HeliumPaywallSdkModule: Module {
   // Single continuations for ongoing operations
   private var currentProductId: String? = nil
@@ -232,6 +225,12 @@ public class HeliumPaywallSdkModule: Module {
                 },
                 onPurchaseSucceeded: { [weak self] event in
                     self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onOpenFailed: { [weak self] event in
+                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onCustomPaywallAction: { [weak self] event in
+                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
             customPaywallTraits: convertMarkersToBooleans(customPaywallTraits)
@@ -251,7 +250,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
-      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType)
+      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, fallbackReason: .bridgingError)
     }
 
     Function("getPaywallInfo") { (trigger: String) in
@@ -267,44 +266,6 @@ public class HeliumPaywallSdkModule: Module {
         errorMsg: nil,
         templateName: paywallInfo.paywallTemplateName,
         shouldShow: paywallInfo.shouldShow
-      )
-    }
-
-    Function("canPresentUpsell") { (trigger: String) in
-      // Check if paywalls are downloaded successfully
-      let paywallsLoaded = Helium.shared.paywallsLoaded()
-
-      // Check if trigger exists in fetched triggers
-      let triggerNames = HeliumFetchedConfigManager.shared.getFetchedTriggerNames()
-      let hasTrigger = triggerNames.contains(trigger)
-
-      let canPresent: Bool
-      let reason: String
-
-      let useLoading = Helium.shared.loadingStateEnabledFor(trigger: trigger)
-      let downloadInProgress = Helium.shared.getDownloadStatus() == .inProgress
-
-      if paywallsLoaded && hasTrigger {
-        // Normal case - paywall is ready
-        canPresent = true
-        reason = "ready"
-      } else if downloadInProgress && useLoading {
-        // Loading case - paywall still downloading
-        canPresent = true
-        reason = "loading"
-      } else if HeliumFallbackViewManager.shared.getFallbackInfo(trigger: trigger) != nil {
-        // Fallback is available (via downloaded bundle)
-        canPresent = true
-        reason = "fallback_ready"
-      } else {
-        // No paywall and no fallback bundle
-        canPresent = false
-        reason = !paywallsLoaded ? "download status - \(Helium.shared.getDownloadStatus().rawValue)" : "trigger_not_found"
-      }
-
-      return CanPresentPaywallResult(
-        canPresent: canPresent,
-        reason: reason
       )
     }
 
@@ -326,6 +287,38 @@ public class HeliumPaywallSdkModule: Module {
       }
 
       return Helium.shared.handleDeepLink(url)
+    }
+
+    Function("getExperimentInfoForTrigger") { (trigger: String) -> [String: Any] in
+      guard let experimentInfo = Helium.shared.getExperimentInfoForTrigger(trigger) else {
+        return ["getExperimentInfoErrorMsg": "No experiment info found for trigger: \(trigger)"]
+      }
+
+      // Convert ExperimentInfo to dictionary using JSONEncoder
+      let encoder = JSONEncoder()
+      guard let jsonData = try? encoder.encode(experimentInfo),
+          var dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
+        return ["getExperimentInfoErrorMsg": "Failed to serialize experiment info"]
+      }
+
+      // Return the dictionary directly - it contains all ExperimentInfo fields
+      return dictionary
+    }
+
+    Function("disableRestoreFailedDialog") {
+        Helium.restorePurchaseConfig.disableRestoreFailedDialog()
+    }
+
+    Function("setCustomRestoreFailedStrings") { (customTitle: String?, customMessage: String?, customCloseButtonText: String?) in
+      Helium.restorePurchaseConfig.setCustomRestoreFailedStrings(
+        customTitle: customTitle,
+        customMessage: customMessage,
+        customCloseButtonText: customCloseButtonText
+      )
+    }
+
+    Function("resetHelium") {
+      Helium.resetHelium()
     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of the

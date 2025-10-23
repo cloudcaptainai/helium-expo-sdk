@@ -1,5 +1,6 @@
 import { NativeModule, requireNativeModule } from "expo";
 
+import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import {
   HeliumDownloadStatus,
   HeliumPaywallSdkModuleEvents,
@@ -13,9 +14,8 @@ interface PaywallInfoResult {
   shouldShow?: boolean;
 }
 
-interface CanPresentUpsellResult {
-  canPresent?: boolean;
-  reason?: string;
+interface ExperimentInfoResult extends Partial<ExperimentInfo> {
+  getExperimentInfoErrorMsg?: string;
 }
 
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
@@ -31,8 +31,6 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   hideAllUpsells(): void;
 
   getDownloadStatus(): HeliumDownloadStatus;
-
-  canPresentUpsell(trigger: string): CanPresentUpsellResult;
 
   fallbackOpenOrCloseEvent(
     trigger: string,
@@ -56,6 +54,18 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   hasAnyActiveSubscription(): Promise<boolean>;
 
   hasAnyEntitlement(): Promise<boolean>;
+
+  resetHelium(): void;
+
+  setCustomRestoreFailedStrings(
+    customTitle?: string,
+    customMessage?: string,
+    customCloseButtonText?: string,
+  ): void;
+
+  disableRestoreFailedDialog(): void;
+
+  getExperimentInfoForTrigger(trigger: string): ExperimentInfoResult;
 }
 
 // This call loads the native module object from the JSI.
