@@ -215,7 +215,7 @@ public class HeliumPaywallSdkModule: Module {
       continuation.resume(returning: success)
     }
 
-    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?) in
+    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?) in
         Helium.shared.presentUpsell(
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
@@ -238,7 +238,8 @@ public class HeliumPaywallSdkModule: Module {
                   self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
-            customPaywallTraits: convertMarkersToBooleans(customPaywallTraits)
+            customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
+            dontShowIfAlreadyEntitled: dontShowIfAlreadyEntitled ?? false
         )
     }
 

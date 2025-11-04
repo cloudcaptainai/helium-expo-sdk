@@ -29,6 +29,7 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   presentUpsell(
     triggerName: string,
     customPaywallTraits?: Record<string, any>,
+    dontShowIfAlreadyEntitled?: boolean,
   ): void;
 
   hideUpsell(): void;

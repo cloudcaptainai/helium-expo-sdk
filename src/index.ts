@@ -128,11 +128,12 @@ export const presentUpsell = ({
                                 onFallback,
                                 eventHandlers,
                                 customPaywallTraits,
+                                dontShowIfAlreadyEntitled,
                               }: PresentUpsellParams) => {
   try {
     paywallEventHandlers = eventHandlers;
     presentOnFallback = onFallback;
-    HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits));
+    HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits), dontShowIfAlreadyEntitled);
   } catch (error) {
     console.log('[Helium] presentUpsell error', error);
     paywallEventHandlers = undefined;
