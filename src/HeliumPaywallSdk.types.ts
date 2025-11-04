@@ -72,6 +72,7 @@ export type HeliumPurchaseResult = {
   error?: string; // Optional error message
 };
 export type HeliumDownloadStatus = 'downloadSuccess' | 'downloadFailure' | 'inProgress' | 'notDownloadedYet';
+export type HeliumLightDarkMode = 'light' | 'dark' | 'system';
 
 // --- Purchase Configuration Types ---
 

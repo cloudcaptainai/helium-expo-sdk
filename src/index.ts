@@ -235,6 +235,21 @@ export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
 export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUserId;
 
 /**
+ * Set a custom user ID for the current user
+ */
+export const setCustomUserId = HeliumPaywallSdkModule.setCustomUserId;
+
+/**
+ * Checks if the user has an active entitlement for any product attached to the paywall that will show for provided trigger.
+ * @param trigger The trigger name to check entitlement for
+ * @returns Promise resolving to true if entitled, false if not, or undefined if not known (i.e. the paywall is not downloaded yet)
+ */
+export const hasEntitlementForPaywall = async (trigger: string): Promise<boolean | undefined> => {
+  const result = await HeliumPaywallSdkModule.hasEntitlementForPaywall(trigger);
+  return result?.hasEntitlement;
+};
+
+/**
  * Checks if the user has any active subscription (including non-renewable)
  */
 export const hasAnyActiveSubscription = HeliumPaywallSdkModule.hasAnyActiveSubscription;
@@ -260,6 +275,12 @@ export const setCustomRestoreFailedStrings = HeliumPaywallSdkModule.setCustomRes
  * You can handle this yourself if desired by listening for the PurchaseRestoreFailedEvent.
  */
 export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreFailedDialog;
+
+/**
+ * Override the light/dark mode for Helium paywalls
+ * @param mode The mode to set: 'light', 'dark', or 'system' (follows device setting)
+ */
+export const setLightDarkModeOverride = HeliumPaywallSdkModule.setLightDarkModeOverride;
 
 /**
  * Get experiment allocation info for a specific trigger
