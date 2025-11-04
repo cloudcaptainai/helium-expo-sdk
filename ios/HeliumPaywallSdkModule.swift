@@ -311,7 +311,7 @@ public class HeliumPaywallSdkModule: Module {
       // Convert ExperimentInfo to dictionary using JSONEncoder
       let encoder = JSONEncoder()
       guard let jsonData = try? encoder.encode(experimentInfo),
-          var dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
+          let dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
         return ["getExperimentInfoErrorMsg": "Failed to serialize experiment info"]
       }
 
