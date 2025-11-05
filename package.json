@@ -1,6 +1,6 @@
 {
   "name": "expo-helium",
-  "version": "3.0.14",
+  "version": "3.0.15",
   "description": "Helium paywalls expo sdk",
   "main": "build/index.js",
   "types": "build/index.d.ts",
