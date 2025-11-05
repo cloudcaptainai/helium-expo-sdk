@@ -28,6 +28,11 @@ struct PaywallInfoResult: Record {
   var shouldShow: Bool? = nil
 }
 
+struct HasEntitlementResult: Record {
+  @Field
+  var hasEntitlement: Bool? = nil
+}
+
 public class HeliumPaywallSdkModule: Module {
   // Single continuations for ongoing operations
   private var currentProductId: String? = nil
@@ -210,7 +215,7 @@ public class HeliumPaywallSdkModule: Module {
       continuation.resume(returning: success)
     }
 
-    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?) in
+    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?) in
         Helium.shared.presentUpsell(
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
@@ -233,7 +238,8 @@ public class HeliumPaywallSdkModule: Module {
                   self?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
-            customPaywallTraits: convertMarkersToBooleans(customPaywallTraits)
+            customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
+            dontShowIfAlreadyEntitled: dontShowIfAlreadyEntitled ?? false
         )
     }
 
@@ -273,6 +279,15 @@ public class HeliumPaywallSdkModule: Module {
         Helium.shared.setRevenueCatAppUserId(rcAppUserId)
     }
 
+    Function("setCustomUserId") { (newUserId: String) in
+        Helium.shared.overrideUserId(newUserId: newUserId)
+    }
+
+    AsyncFunction("hasEntitlementForPaywall") { (trigger: String) in
+      let hasEntitlement = await Helium.shared.hasEntitlementForPaywall(trigger: trigger)
+      return HasEntitlementResult(hasEntitlement: hasEntitlement)
+    }
+
     AsyncFunction("hasAnyActiveSubscription") {
       return await Helium.shared.hasAnyActiveSubscription()
     }
@@ -297,7 +312,7 @@ public class HeliumPaywallSdkModule: Module {
       // Convert ExperimentInfo to dictionary using JSONEncoder
       let encoder = JSONEncoder()
       guard let jsonData = try? encoder.encode(experimentInfo),
-          var dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
+          let dictionary = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
         return ["getExperimentInfoErrorMsg": "Failed to serialize experiment info"]
       }
 
@@ -319,6 +334,22 @@ public class HeliumPaywallSdkModule: Module {
 
     Function("resetHelium") {
       Helium.resetHelium()
+    }
+
+    Function("setLightDarkModeOverride") { (mode: String) in
+      let heliumMode: HeliumLightDarkMode
+      switch mode.lowercased() {
+      case "light":
+        heliumMode = .light
+      case "dark":
+        heliumMode = .dark
+      case "system":
+        heliumMode = .system
+      default:
+        print("[Helium] Invalid mode: \(mode), defaulting to system")
+        heliumMode = .system
+      }
+      Helium.shared.setLightDarkModeOverride(heliumMode)
     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of the

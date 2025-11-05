@@ -3,6 +3,7 @@ import { NativeModule, requireNativeModule } from "expo";
 import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import {
   HeliumDownloadStatus,
+  HeliumLightDarkMode,
   HeliumPaywallSdkModuleEvents,
   HeliumTransactionStatus,
   NativeHeliumConfig,
@@ -12,6 +13,10 @@ interface PaywallInfoResult {
   errorMsg?: string;
   templateName?: string;
   shouldShow?: boolean;
+}
+
+interface HasEntitlementResult {
+  hasEntitlement?: boolean;
 }
 
 interface ExperimentInfoResult extends Partial<ExperimentInfo> {
@@ -24,6 +29,7 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   presentUpsell(
     triggerName: string,
     customPaywallTraits?: Record<string, any>,
+    dontShowIfAlreadyEntitled?: boolean,
   ): void;
 
   hideUpsell(): void;
@@ -51,6 +57,10 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   setRevenueCatAppUserId(rcAppUserId: string): void;
 
+  setCustomUserId(newUserId: string): void;
+
+  hasEntitlementForPaywall(trigger: string): Promise<HasEntitlementResult>;
+
   hasAnyActiveSubscription(): Promise<boolean>;
 
   hasAnyEntitlement(): Promise<boolean>;
@@ -66,6 +76,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   disableRestoreFailedDialog(): void;
 
   getExperimentInfoForTrigger(trigger: string): ExperimentInfoResult;
+
+  setLightDarkModeOverride(mode: HeliumLightDarkMode): void;
 }
 
 // This call loads the native module object from the JSI.

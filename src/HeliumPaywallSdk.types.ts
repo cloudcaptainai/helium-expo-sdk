@@ -72,6 +72,7 @@ export type HeliumPurchaseResult = {
   error?: string; // Optional error message
 };
 export type HeliumDownloadStatus = 'downloadSuccess' | 'downloadFailure' | 'inProgress' | 'notDownloadedYet';
+export type HeliumLightDarkMode = 'light' | 'dark' | 'system';
 
 // --- Purchase Configuration Types ---
 
@@ -162,6 +163,8 @@ export type PresentUpsellParams = {
   onFallback?: () => void;
   eventHandlers?: PaywallEventHandlers;
   customPaywallTraits?: Record<string, any>;
+  /** Optional. If true, the paywall will not be shown if the user already has an entitlement for a product in the paywall. */
+  dontShowIfAlreadyEntitled?: boolean;
 };
 
 export interface PaywallInfo {
