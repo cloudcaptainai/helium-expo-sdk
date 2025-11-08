@@ -211,9 +211,15 @@ class HeliumPaywallSdkModule : Module() {
 
     // Get download status of paywall assets
     Function("getDownloadStatus") {
-      // TODO: Call Helium SDK getDownloadStatus()
-      // TODO: Return status as string (e.g., "ready", "downloading", "notStarted")
-      return@Function "notStarted"
+      val status = (Helium.shared.downloadStatus as? kotlinx.coroutines.flow.StateFlow<*>)?.value
+      val statusString = when (status?.javaClass?.simpleName) {
+        "NotYetDownloaded" -> "NotYetDownloaded"
+        "Downloading" -> "Downloading"
+        "DownloadFailure" -> "DownloadFailure"
+        "DownloadSuccess" -> "DownloadSuccess"
+        else -> "NotYetDownloaded"
+      }
+      return@Function statusString
     }
 
     // Handle fallback open/close events
@@ -224,24 +230,31 @@ class HeliumPaywallSdkModule : Module() {
 
     // Get paywall info for a specific trigger
     Function("getPaywallInfo") { trigger: String ->
-      // TODO: Call Helium SDK getPaywallInfo(trigger)
-      // TODO: If paywallInfo is null, return error result
-      // TODO: Otherwise, return PaywallInfoResult with templateName and shouldShow
-      return@Function PaywallInfoResult().apply {
-        errorMsg = "Not implemented"
-        templateName = null
-        shouldShow = null
+      val paywallInfo = Helium.shared.getPaywallInfo(trigger)
+
+      return@Function if (paywallInfo == null) {
+        PaywallInfoResult().apply {
+          errorMsg = "Invalid trigger or paywalls not ready."
+          templateName = null
+          shouldShow = null
+        }
+      } else {
+        PaywallInfoResult().apply {
+          errorMsg = null
+          templateName = paywallInfo.paywallTemplateName
+          shouldShow = paywallInfo.shouldShow
+        }
       }
     }
 
     // Set RevenueCat app user ID
     Function("setRevenueCatAppUserId") { rcAppUserId: String ->
-      // TODO: Call Helium SDK setRevenueCatAppUserId(rcAppUserId)
+      HeliumIdentityManager.shared.setRevenueCatAppUserId(rcAppUserId)
     }
 
     // Set custom user ID
     Function("setCustomUserId") { newUserId: String ->
-      // TODO: Call Helium SDK overrideUserId(newUserId)
+      HeliumIdentityManager.shared.setCustomUserId(newUserId)
     }
 
     // Check if user has entitlement for a specific paywall
@@ -269,21 +282,30 @@ class HeliumPaywallSdkModule : Module() {
 
     // Handle deep link
     Function("handleDeepLink") { urlString: String ->
-      // TODO: Parse urlString to URL
-      // TODO: Call Helium SDK handleDeepLink(url)
-      // TODO: Return boolean indicating if deep link was handled
-      return@Function false
+      val handled = Helium.shared.handleDeepLink(uri = urlString)
+      return@Function handled
     }
 
     // Get experiment info for a trigger
     Function("getExperimentInfoForTrigger") { trigger: String ->
-      // TODO: Call Helium SDK getExperimentInfoForTrigger(trigger)
-      // TODO: If experimentInfo is null, return error map
-      // TODO: Convert experimentInfo to Map<String, Any?> using Gson
-      // TODO: Return the map
-      return@Function mapOf<String, Any?>(
-        "getExperimentInfoErrorMsg" to "Not implemented"
-      )
+      val experimentInfo = Helium.shared.getExperimentInfoForTrigger(trigger)
+
+      return@Function if (experimentInfo == null) {
+        mapOf<String, Any?>(
+          "getExperimentInfoErrorMsg" to "No experiment info found for trigger: $trigger"
+        )
+      } else {
+        try {
+          val json = gson.toJson(experimentInfo)
+          val type = object : TypeToken<Map<String, Any?>>() {}.type
+          val map: Map<String, Any?> = gson.fromJson(json, type)
+          map
+        } catch (e: Exception) {
+          mapOf<String, Any?>(
+            "getExperimentInfoErrorMsg" to "Failed to serialize experiment info"
+          )
+        }
+      }
     }
 
     // Disable restore failed dialog
@@ -299,7 +321,7 @@ class HeliumPaywallSdkModule : Module() {
 
     // Reset Helium SDK
     Function("resetHelium") {
-      // TODO: Call Helium SDK resetHelium()
+      Helium.resetHelium()
     }
 
     // Set light/dark mode override
