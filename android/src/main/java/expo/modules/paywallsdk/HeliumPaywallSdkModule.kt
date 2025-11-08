@@ -157,12 +157,46 @@ class HeliumPaywallSdkModule : Module() {
 
     // Present a paywall with the given trigger
     Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any?>?, dontShowIfAlreadyEntitled: Boolean? ->
-      // TODO: Call Helium SDK presentUpsell with:
-      // - trigger: String
-      // - customPaywallTraits: converted from map
-      // - dontShowIfAlreadyEntitled: Boolean (default false)
-      // TODO: Set up event handlers that send to paywallEventHandlers:
-      // - onOpen, onClose, onDismissed, onPurchaseSucceeded, onOpenFailed, onCustomPaywallAction
+      // Convert custom paywall traits
+      val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
+
+      // Helper function to convert event to map
+      val convertEventToMap: (Any) -> Map<String, Any?> = { event ->
+        try {
+          val json = gson.toJson(event)
+          val type = object : TypeToken<Map<String, Any?>>() {}.type
+          gson.fromJson(json, type) ?: emptyMap()
+        } catch (e: Exception) {
+          emptyMap()
+        }
+      }
+
+      Helium.presentUpsell(
+        trigger = trigger,
+        // TODO add support for these
+//        eventHandlers = PaywallEventHandlers.withHandlers(
+//          onOpen = { event ->
+//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//          },
+//          onClose = { event ->
+//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//          },
+//          onDismissed = { event ->
+//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//          },
+//          onPurchaseSucceeded = { event ->
+//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//          },
+//          onOpenFailed = { event ->
+//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//          },
+//          onCustomPaywallAction = { event ->
+//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//          }
+//        ),
+//        customPaywallTraits = convertedTraits,
+//        dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false
+      )
     }
 
     // Hide the current upsell
