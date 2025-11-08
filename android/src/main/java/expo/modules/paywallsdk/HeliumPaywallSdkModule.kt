@@ -47,9 +47,9 @@ class HeliumPaywallSdkModule : Module() {
   private val gson = Gson()
 
   // Single continuations for ongoing operations
-  private var currentProductId: String? = null
-  private var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
-  private var restoreContinuation: ((Boolean) -> Unit)? = null
+  internal var currentProductId: String? = null
+  internal var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
+  internal var restoreContinuation: ((Boolean) -> Unit)? = null
 
   override fun definition() = ModuleDefinition {
     Name("HeliumPaywallSdk")
@@ -59,7 +59,7 @@ class HeliumPaywallSdkModule : Module() {
 
     // Lifecycle events to capture Activity reference
     OnActivityEntersForeground {
-      activity = it
+      activity = appContext.currentActivity
     }
 
     OnActivityEntersBackground {
@@ -129,7 +129,7 @@ class HeliumPaywallSdkModule : Module() {
       val status: HeliumPaywallTransactionStatus = when (lowercasedStatus) {
         "purchased" -> HeliumPaywallTransactionStatus.Purchased
         "cancelled" -> HeliumPaywallTransactionStatus.Cancelled
-        "restored" -> HeliumPaywallTransactionStatus.Restored
+        "restored" -> HeliumPaywallTransactionStatus.Purchased  // Android SDK has no Restored, map to Purchased
         "pending" -> HeliumPaywallTransactionStatus.Pending
         "failed" -> HeliumPaywallTransactionStatus.Failed(
           Exception(errorMsg ?: "Unexpected error.")
