@@ -1,10 +1,28 @@
 package expo.modules.paywallsdk
 
+import android.app.Activity
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.tryhelium.paywall.core.Helium
+import com.tryhelium.paywall.core.HeliumEnvironment
+import com.tryhelium.paywall.core.HeliumFallbackConfig
+import com.tryhelium.paywall.core.HeliumIdentityManager
+import com.tryhelium.paywall.core.HeliumUserTraits
+import com.tryhelium.paywall.core.HeliumUserTraitsArgument
+import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
+import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
+import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
+import com.android.billingclient.api.ProductDetails
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.URL
+import kotlin.coroutines.resume
 
 // Record data classes for type-safe return values
 class PaywallInfoResult : Record {
@@ -24,9 +42,14 @@ class HasEntitlementResult : Record {
 }
 
 class HeliumPaywallSdkModule : Module() {
+  // References to Activity and Context
+  private var activity: Activity? = null
+  private val gson = Gson()
+
   // Single continuations for ongoing operations
-  // TODO: Implement continuation handling similar to iOS for purchase/restore flows
   private var currentProductId: String? = null
+  private var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
+  private var restoreContinuation: ((Boolean) -> Unit)? = null
 
   override fun definition() = ModuleDefinition {
     Name("HeliumPaywallSdk")
@@ -34,34 +57,102 @@ class HeliumPaywallSdkModule : Module() {
     // Defines event names that the module can send to JavaScript
     Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
 
+    // Lifecycle events to capture Activity reference
+    OnActivityEntersForeground {
+      activity = it
+    }
+
+    OnActivityEntersBackground {
+      // Keep activity reference for now
+    }
+
+    OnActivityDestroys {
+      activity = null
+    }
+
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
-      // TODO: Extract configuration parameters:
-      // - apiKey: String
-      // - customUserTraits: Map<String, Any?>?
-      // - fallbackBundleUrlString: String?
-      // - fallbackBundleString: String?
-      // - paywallLoadingConfig: Map<String, Any?>?
-      // - useDefaultDelegate: Boolean
-      // - customUserId: String?
-      // - customAPIEndpoint: String?
-      // - revenueCatAppUserId: String?
-      // TODO: Initialize Helium SDK with delegate handlers
-      // TODO: Set up event handlers for onHeliumPaywallEvent
-      // TODO: Set up purchase/restore handlers that send onDelegateActionEvent
+      val apiKey = config["apiKey"] as? String ?: ""
+      val customUserId = config["customUserId"] as? String
+      val customAPIEndpoint = config["customAPIEndpoint"] as? String
+      val useDefaultDelegate = config["useDefaultDelegate"] as? Boolean ?: false
+
+      @Suppress("UNCHECKED_CAST")
+      val customUserTraitsMap = config["customUserTraits"] as? Map<String, Any?>
+      val customUserTraits = convertToHeliumUserTraits(customUserTraitsMap)
+
+      @Suppress("UNCHECKED_CAST")
+      val paywallLoadingConfigMap = config["paywallLoadingConfig"] as? Map<String, Any?>
+      val fallbackConfig = convertToHeliumFallbackConfig(paywallLoadingConfigMap)
+
+      // Use SANDBOX environment by default
+      val environment = HeliumEnvironment.SANDBOX
+
+      // Initialize on a coroutine scope
+      CoroutineScope(Dispatchers.Main).launch {
+        try {
+          val context = appContext.reactContext
+            ?: throw Exception("Context not available")
+
+          // Create delegate
+          val delegate = if (useDefaultDelegate) {
+            val currentActivity = activity
+              ?: throw Exception("Activity not available for PlayStorePaywallDelegate")
+            PlayStorePaywallDelegate(currentActivity)
+          } else {
+            CustomPaywallDelegate(this@HeliumPaywallSdkModule)
+          }
+
+          Helium.initialize(
+            context = context,
+            apiKey = apiKey,
+            heliumPaywallDelegate = delegate,
+            customUserId = customUserId,
+            customApiEndpoint = customAPIEndpoint,
+            customUserTraits = customUserTraits,
+            fallbackConfig = fallbackConfig,
+            environment = environment
+          )
+        } catch (e: Exception) {
+          // Log error but don't throw - initialization errors will be handled by SDK
+          android.util.Log.e("HeliumPaywallSdk", "Failed to initialize: ${e.message}", e)
+        }
+      }
     }
 
     // Function for JavaScript to provide purchase result
     Function("handlePurchaseResult") { statusString: String, errorMsg: String? ->
-      // TODO: Parse statusString (purchased, cancelled, restored, pending, failed)
-      // TODO: Resume purchase continuation with appropriate status
-      // TODO: Clear purchase state (currentProductId, continuation)
+      val continuation = purchaseContinuation ?: return@Function
+
+      // Parse status string
+      val lowercasedStatus = statusString.lowercase()
+      val status: HeliumPaywallTransactionStatus = when (lowercasedStatus) {
+        "purchased" -> HeliumPaywallTransactionStatus.Purchased
+        "cancelled" -> HeliumPaywallTransactionStatus.Cancelled
+        "restored" -> HeliumPaywallTransactionStatus.Restored
+        "pending" -> HeliumPaywallTransactionStatus.Pending
+        "failed" -> HeliumPaywallTransactionStatus.Failed(
+          Exception(errorMsg ?: "Unexpected error.")
+        )
+        else -> HeliumPaywallTransactionStatus.Failed(
+          Exception("Unknown status: $lowercasedStatus")
+        )
+      }
+
+      // Clear the references
+      purchaseContinuation = null
+      currentProductId = null
+
+      // Resume the continuation with the status
+      continuation(status)
     }
 
     // Function for JavaScript to provide restore result
     Function("handleRestoreResult") { success: Boolean ->
-      // TODO: Resume restore continuation with success boolean
-      // TODO: Clear restore continuation
+      val continuation = restoreContinuation ?: return@Function
+
+      restoreContinuation = null
+      continuation(success)
     }
 
     // Present a paywall with the given trigger
@@ -194,17 +285,164 @@ class HeliumPaywallSdkModule : Module() {
     }
   }
 
-  // TODO: Helper function to convert marker strings back to booleans
-  // Similar to iOS convertMarkersToBooleans function
-  // Converts "__helium_rn_bool_true__" -> true
-  // Converts "__helium_rn_bool_false__" -> false
+  /**
+   * Recursively converts special marker strings back to boolean values to restore
+   * type information that was preserved when passing through native bridge.
+   *
+   * Native bridge converts booleans to numbers, so we use special marker strings
+   * to preserve the original intent. This helper converts:
+   * - "__helium_rn_bool_true__" -> true
+   * - "__helium_rn_bool_false__" -> false
+   * - All other values remain unchanged
+   */
   private fun convertMarkersToBooleans(input: Map<String, Any?>?): Map<String, Any?>? {
-    // TODO: Implement recursive conversion
-    return input
+    if (input == null) return null
+    return input.mapValues { (_, value) ->
+      convertValueMarkersToBooleans(value)
+    }
   }
 
   private fun convertValueMarkersToBooleans(value: Any?): Any? {
-    // TODO: Implement value conversion for strings, maps, and arrays
-    return value
+    return when (value) {
+      "__helium_rn_bool_true__" -> true
+      "__helium_rn_bool_false__" -> false
+      is String -> value
+      is Map<*, *> -> {
+        @Suppress("UNCHECKED_CAST")
+        convertMarkersToBooleans(value as? Map<String, Any?>)
+      }
+      is List<*> -> value.map { convertValueMarkersToBooleans(it) }
+      else -> value
+    }
+  }
+
+  private fun convertToHeliumUserTraits(input: Map<String, Any?>?): HeliumUserTraits? {
+    if (input == null) return null
+    val convertedInput = convertMarkersToBooleans(input) ?: return null
+    val traits = convertedInput.mapValues { (_, value) ->
+      convertToHeliumUserTraitsArgument(value)
+    }.filterValues { it != null }.mapValues { it.value!! }
+    return HeliumUserTraits(traits)
+  }
+
+  private fun convertToHeliumUserTraitsArgument(value: Any?): HeliumUserTraitsArgument? {
+    return when (value) {
+      is String -> HeliumUserTraitsArgument.StringParam(value)
+      is Int -> HeliumUserTraitsArgument.IntParam(value)
+      is Long -> HeliumUserTraitsArgument.LongParam(value)
+      is Double -> HeliumUserTraitsArgument.DoubleParam(value.toString())
+      is Boolean -> HeliumUserTraitsArgument.BooleanParam(value)
+      is List<*> -> {
+        val items = value.mapNotNull { convertToHeliumUserTraitsArgument(it) }
+        HeliumUserTraitsArgument.Array(items)
+      }
+      is Map<*, *> -> {
+        @Suppress("UNCHECKED_CAST")
+        val properties = (value as? Map<String, Any?>)?.mapValues { (_, v) ->
+          convertToHeliumUserTraitsArgument(v)
+        }?.filterValues { it != null }?.mapValues { it.value!! } ?: emptyMap()
+        HeliumUserTraitsArgument.Complex(properties)
+      }
+      else -> null
+    }
+  }
+
+  private fun convertToHeliumFallbackConfig(input: Map<String, Any?>?): HeliumFallbackConfig? {
+    if (input == null) return null
+
+    val useLoadingState = input["useLoadingState"] as? Boolean ?: true
+    val loadingBudget = (input["loadingBudget"] as? Number)?.toLong() ?: 2000L
+    val fallbackBundleName = input["fallbackBundleName"] as? String
+
+    // Parse perTriggerLoadingConfig if present
+    var perTriggerLoadingConfig: Map<String, HeliumFallbackConfig>? = null
+    val perTriggerDict = input["perTriggerLoadingConfig"] as? Map<*, *>
+    if (perTriggerDict != null) {
+      perTriggerLoadingConfig = perTriggerDict.mapNotNull { (key, value) ->
+        if (key is String && value is Map<*, *>) {
+          @Suppress("UNCHECKED_CAST")
+          val config = value as? Map<String, Any?>
+          val triggerUseLoadingState = config?.get("useLoadingState") as? Boolean
+          val triggerLoadingBudget = (config?.get("loadingBudget") as? Number)?.toLong()
+          key to HeliumFallbackConfig(
+            useLoadingState = triggerUseLoadingState ?: true,
+            loadingBudgetInMs = triggerLoadingBudget ?: 2000L
+          )
+        } else {
+          null
+        }
+      }.toMap()
+    }
+
+    return HeliumFallbackConfig(
+      useLoadingState = useLoadingState,
+      loadingBudgetInMs = loadingBudget,
+      perTriggerLoadingConfig = perTriggerLoadingConfig,
+      fallbackBundleName = fallbackBundleName
+    )
+  }
+}
+
+/**
+ * Custom Helium Paywall Delegate that bridges purchase calls to React Native.
+ * Similar to the InternalDelegate in iOS implementation.
+ */
+class CustomPaywallDelegate(
+  private val module: HeliumPaywallSdkModule
+) : HeliumPaywallDelegate {
+
+  override suspend fun makePurchase(
+    productDetails: ProductDetails,
+    basePlanId: String?,
+    offerId: String?
+  ): HeliumPaywallTransactionStatus {
+    return suspendCancellableCoroutine { continuation ->
+      // Build chained product identifier: productId:basePlanId:offerId
+      val chainedProductId = buildString {
+        append(productDetails.productId)
+        if (basePlanId != null) {
+          append(":").append(basePlanId)
+        }
+        if (offerId != null) {
+          append(":").append(offerId)
+        }
+      }
+
+      // Check if there's already a purchase in progress and cancel it
+      module.purchaseContinuation?.let { existingContinuation ->
+        existingContinuation(HeliumPaywallTransactionStatus.Cancelled)
+      }
+
+      // Store the continuation and product ID
+      module.currentProductId = chainedProductId
+      module.purchaseContinuation = { status ->
+        continuation.resume(status)
+      }
+
+      // Send event to JavaScript
+      module.sendEvent("onDelegateActionEvent", mapOf(
+        "type" to "purchase",
+        "productId" to chainedProductId
+      ))
+    }
+  }
+
+  override suspend fun restorePurchases(): Boolean {
+    return suspendCancellableCoroutine { continuation ->
+      // Check if there's already a restore in progress and cancel it
+      module.restoreContinuation?.let { existingContinuation ->
+        existingContinuation(false)
+      }
+
+      // Store the continuation
+      module.restoreContinuation = { success ->
+        continuation.resume(success)
+      }
+
+      // Send event to JavaScript
+      module.sendEvent("onDelegateActionEvent", mapOf(
+        "type" to "restore"
+      ))
+    }
   }
 }
