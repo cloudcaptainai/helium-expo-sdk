@@ -33,16 +33,45 @@ struct HasEntitlementResult: Record {
   var hasEntitlement: Bool? = nil
 }
 
+// Singleton to manage purchase state that survives module deallocation
+private class PurchaseStateManager {
+    static let shared = PurchaseStateManager()
+
+    // Always keep reference to the current module
+    var currentModule: HeliumPaywallSdkModule?
+
+    // Store active operations
+    var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
+    var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
+    var currentProductId: String?
+
+    private init() {}
+
+    func clearPurchase() {
+        activePurchaseContinuation = nil
+        currentProductId = nil
+    }
+
+    func clearRestore() {
+        activeRestoreContinuation = nil
+    }
+}
+
 public class HeliumPaywallSdkModule: Module {
-  // Single continuations for ongoing operations
-  private var currentProductId: String? = nil
-  private var purchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>? = nil
-  private var restoreContinuation: CheckedContinuation<Bool, Never>? = nil
+  // Clean up singleton reference when module is deallocated
+  deinit {
+    if PurchaseStateManager.shared.currentModule === self {
+      PurchaseStateManager.shared.currentModule = nil
+    }
+  }
 
   // Each module class must implement the definition function. The definition consists of components
   // that describes the module's functionality and behavior.
   // See https://docs.expo.dev/modules/module-api for more details about available components.
   public func definition() -> ModuleDefinition {
+    // Register this as the current module immediately
+    PurchaseStateManager.shared.currentModule = self
+
     // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
     // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
     // The module will be accessible from `requireNativeModule('HeliumPaywallSdk')` in JavaScript.
@@ -80,7 +109,7 @@ public class HeliumPaywallSdkModule: Module {
 
       let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
 
-      let delegateEventHandler: (HeliumEvent) -> Void = { [weak self] event in
+      let delegateEventHandler: (HeliumEvent) -> Void = { event in
           var eventDict = event.toDictionary()
           // Add deprecated fields for backwards compatibility
           if let paywallName = eventDict["paywallName"] {
@@ -95,47 +124,52 @@ public class HeliumPaywallSdkModule: Module {
           if let buttonName = eventDict["buttonName"] {
               eventDict["ctaName"] = buttonName
           }
-          self?.sendEvent("onHeliumPaywallEvent", eventDict)
+          PurchaseStateManager.shared.currentModule?.sendEvent("onHeliumPaywallEvent", eventDict)
       }
 
       // Create delegate with closures that send events to JavaScript
       let internalDelegate = InternalDelegate(
         eventHandler: delegateEventHandler,
-        purchaseHandler: { [weak self] productId in
-          guard let self else { return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!")) }
-          // Check if there's already a purchase in progress and cancel it
-          if let existingContinuation = self.purchaseContinuation {
+        purchaseHandler: { productId in
+          // First check singleton for orphaned continuation and clean it up
+          if let existingContinuation = PurchaseStateManager.shared.activePurchaseContinuation {
             existingContinuation.resume(returning: .cancelled)
-            self.purchaseContinuation = nil
-            self.currentProductId = nil
+            PurchaseStateManager.shared.clearPurchase()
+          }
+
+          // Get current module from singleton
+          guard let module = PurchaseStateManager.shared.currentModule else {
+            return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!"))
           }
 
           return await withCheckedContinuation { continuation in
-            // Store the continuation and product ID
-            self.currentProductId = productId
-            self.purchaseContinuation = continuation
+            PurchaseStateManager.shared.activePurchaseContinuation = continuation
+            PurchaseStateManager.shared.currentProductId = productId
 
             // Send event to JavaScript
-            self.sendEvent("onDelegateActionEvent", [
+            module.sendEvent("onDelegateActionEvent", [
               "type": "purchase",
               "productId": productId
             ])
           }
         },
-        restoreHandler: { [weak self] in
-          guard let self else { return false }
-          // Check if there's already a restore in progress and cancel it
-          if let existingContinuation = self.restoreContinuation {
+        restoreHandler: {
+          // Check for orphaned continuation in singleton
+          if let existingContinuation = PurchaseStateManager.shared.activeRestoreContinuation {
             existingContinuation.resume(returning: false)
-            self.restoreContinuation = nil
+            PurchaseStateManager.shared.clearRestore()
+          }
+
+          // Get current module from singleton
+          guard let module = PurchaseStateManager.shared.currentModule else {
+            return false
           }
 
           return await withCheckedContinuation { continuation in
-            // Store the continuation
-            self.restoreContinuation = continuation
+            PurchaseStateManager.shared.activeRestoreContinuation = continuation
 
             // Send event to JavaScript
-            self.sendEvent("onDelegateActionEvent", [
+            module.sendEvent("onDelegateActionEvent", [
               "type": "restore"
             ])
           }
@@ -179,8 +213,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     // Function for JavaScript to provide purchase result
-    Function("handlePurchaseResult") { [weak self] (statusString: String, errorMsg: String?) in
-      guard let continuation = self?.purchaseContinuation else {
+    Function("handlePurchaseResult") { (statusString: String, errorMsg: String?) in
+      guard let continuation = PurchaseStateManager.shared.activePurchaseContinuation else {
+        print("WARNING: handlePurchaseResult called with no active continuation")
         return
       }
 
@@ -197,21 +232,23 @@ public class HeliumPaywallSdkModule: Module {
       default:          status = .failed(PurchaseError.unknownStatus(status: lowercasedStatus))
       }
 
-      // Clear the references
-      self?.purchaseContinuation = nil
-      self?.currentProductId = nil
+      // Clear singleton state
+      PurchaseStateManager.shared.clearPurchase()
 
       // Resume the continuation with the status
       continuation.resume(returning: status)
     }
 
     // Function for JavaScript to provide restore result
-    Function("handleRestoreResult") { [weak self] (success: Bool) in
-      guard let continuation = self?.restoreContinuation else {
+    Function("handleRestoreResult") { (success: Bool) in
+      guard let continuation = PurchaseStateManager.shared.activeRestoreContinuation else {
+        print("WARNING: handleRestoreResult called with no active continuation")
         return
       }
 
-      self?.restoreContinuation = nil
+      // Clear singleton state
+      PurchaseStateManager.shared.clearRestore()
+
       continuation.resume(returning: success)
     }
 
@@ -219,23 +256,23 @@ public class HeliumPaywallSdkModule: Module {
         Helium.shared.presentUpsell(
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
-                onOpen: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                onOpen: { event in
+                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onClose: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                onClose: { event in
+                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onDismissed: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                onDismissed: { event in
+                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onPurchaseSucceeded: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                onPurchaseSucceeded: { event in
+                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onOpenFailed: { [weak self] event in
-                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                onOpenFailed: { event in
+                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 },
-                onCustomPaywallAction: { [weak self] event in
-                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                onCustomPaywallAction: { event in
+                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
             customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
