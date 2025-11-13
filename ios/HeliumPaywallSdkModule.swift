@@ -34,8 +34,8 @@ struct HasEntitlementResult: Record {
 }
 
 // Singleton to manage purchase state that survives module deallocation
-private class PurchaseStateManager {
-    static let shared = PurchaseStateManager()
+private class NativeModuleManager {
+    static let shared = NativeModuleManager()
 
     // Always keep reference to the current module
     var currentModule: HeliumPaywallSdkModule?
@@ -77,7 +77,7 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
-      PurchaseStateManager.shared.currentModule = self
+      NativeModuleManager.shared.currentModule = self
 
       let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
@@ -116,7 +116,7 @@ public class HeliumPaywallSdkModule: Module {
           if let buttonName = eventDict["buttonName"] {
               eventDict["ctaName"] = buttonName
           }
-          PurchaseStateManager.shared.currentModule?.sendEvent("onHeliumPaywallEvent", eventDict)
+          NativeModuleManager.shared.currentModule?.sendEvent("onHeliumPaywallEvent", eventDict)
       }
 
       // Create delegate with closures that send events to JavaScript
@@ -124,19 +124,19 @@ public class HeliumPaywallSdkModule: Module {
         eventHandler: delegateEventHandler,
         purchaseHandler: { productId in
           // First check singleton for orphaned continuation and clean it up
-          if let existingContinuation = PurchaseStateManager.shared.activePurchaseContinuation {
+          if let existingContinuation = NativeModuleManager.shared.activePurchaseContinuation {
             existingContinuation.resume(returning: .cancelled)
-            PurchaseStateManager.shared.clearPurchase()
+            NativeModuleManager.shared.clearPurchase()
           }
 
           // Get current module from singleton
-          guard let module = PurchaseStateManager.shared.currentModule else {
+          guard let module = NativeModuleManager.shared.currentModule else {
             return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!"))
           }
 
           return await withCheckedContinuation { continuation in
-            PurchaseStateManager.shared.activePurchaseContinuation = continuation
-            PurchaseStateManager.shared.currentProductId = productId
+            NativeModuleManager.shared.activePurchaseContinuation = continuation
+            NativeModuleManager.shared.currentProductId = productId
 
             // Send event to JavaScript
             module.sendEvent("onDelegateActionEvent", [
@@ -147,18 +147,18 @@ public class HeliumPaywallSdkModule: Module {
         },
         restoreHandler: {
           // Check for orphaned continuation in singleton
-          if let existingContinuation = PurchaseStateManager.shared.activeRestoreContinuation {
+          if let existingContinuation = NativeModuleManager.shared.activeRestoreContinuation {
             existingContinuation.resume(returning: false)
-            PurchaseStateManager.shared.clearRestore()
+            NativeModuleManager.shared.clearRestore()
           }
 
           // Get current module from singleton
-          guard let module = PurchaseStateManager.shared.currentModule else {
+          guard let module = NativeModuleManager.shared.currentModule else {
             return false
           }
 
           return await withCheckedContinuation { continuation in
-            PurchaseStateManager.shared.activeRestoreContinuation = continuation
+            NativeModuleManager.shared.activeRestoreContinuation = continuation
 
             // Send event to JavaScript
             module.sendEvent("onDelegateActionEvent", [
@@ -206,7 +206,7 @@ public class HeliumPaywallSdkModule: Module {
 
     // Function for JavaScript to provide purchase result
     Function("handlePurchaseResult") { (statusString: String, errorMsg: String?) in
-      guard let continuation = PurchaseStateManager.shared.activePurchaseContinuation else {
+      guard let continuation = NativeModuleManager.shared.activePurchaseContinuation else {
         print("WARNING: handlePurchaseResult called with no active continuation")
         return
       }
@@ -225,7 +225,7 @@ public class HeliumPaywallSdkModule: Module {
       }
 
       // Clear singleton state
-      PurchaseStateManager.shared.clearPurchase()
+      NativeModuleManager.shared.clearPurchase()
 
       // Resume the continuation with the status
       continuation.resume(returning: status)
@@ -233,13 +233,13 @@ public class HeliumPaywallSdkModule: Module {
 
     // Function for JavaScript to provide restore result
     Function("handleRestoreResult") { (success: Bool) in
-      guard let continuation = PurchaseStateManager.shared.activeRestoreContinuation else {
+      guard let continuation = NativeModuleManager.shared.activeRestoreContinuation else {
         print("WARNING: handleRestoreResult called with no active continuation")
         return
       }
 
       // Clear singleton state
-      PurchaseStateManager.shared.clearRestore()
+      NativeModuleManager.shared.clearRestore()
 
       continuation.resume(returning: success)
     }
@@ -249,7 +249,7 @@ public class HeliumPaywallSdkModule: Module {
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
                 onAnyEvent: { event in
-                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
+                    NativeModuleManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
             customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
@@ -347,7 +347,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("resetHelium") {
-      PurchaseStateManager.shared.currentModule = nil
+      NativeModuleManager.shared.currentModule = nil
       Helium.resetHelium()
     }
 
