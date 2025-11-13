@@ -81,7 +81,7 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
-      NativeModuleManager.shared.currentModule = self
+      NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
 
       let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
@@ -249,6 +249,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?) in
+        NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
         Helium.shared.presentUpsell(
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
