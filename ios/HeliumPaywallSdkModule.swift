@@ -67,10 +67,6 @@ public class HeliumPaywallSdkModule: Module {
     // The module will be accessible from `requireNativeModule('HeliumPaywallSdk')` in JavaScript.
     Name("HeliumPaywallSdk")
 
-    OnCreate {
-      PurchaseStateManager.shared.currentModule = self
-    }
-
     // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
 //     Constants([
 //       "PI": Double.pi
@@ -81,6 +77,8 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
+      PurchaseStateManager.shared.currentModule = self
+
       let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
@@ -250,24 +248,6 @@ public class HeliumPaywallSdkModule: Module {
         Helium.shared.presentUpsell(
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
-                onOpen: { event in
-                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onClose: { event in
-                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onDismissed: { event in
-                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onPurchaseSucceeded: { event in
-                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onOpenFailed: { event in
-                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onCustomPaywallAction: { event in
-                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
                 onAnyEvent: { event in
                     PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
@@ -367,6 +347,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("resetHelium") {
+      PurchaseStateManager.shared.currentModule = nil
       Helium.resetHelium()
     }
 
