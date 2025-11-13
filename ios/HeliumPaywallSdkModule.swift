@@ -67,6 +67,10 @@ public class HeliumPaywallSdkModule: Module {
     // The module will be accessible from `requireNativeModule('HeliumPaywallSdk')` in JavaScript.
     Name("HeliumPaywallSdk")
 
+    OnCreate {
+        NativeModuleManager.shared.currentModule = self
+    }
+
     // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
 //     Constants([
 //       "PI": Double.pi
@@ -347,7 +351,6 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("resetHelium") {
-      NativeModuleManager.shared.currentModule = nil
       Helium.resetHelium()
     }
 
