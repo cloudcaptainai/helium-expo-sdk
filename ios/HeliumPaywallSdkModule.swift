@@ -267,6 +267,9 @@ public class HeliumPaywallSdkModule: Module {
                 },
                 onCustomPaywallAction: { event in
                     PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
+                },
+                onAnyEvent: { event in
+                    PurchaseStateManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
             customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
