@@ -33,12 +33,31 @@ struct HasEntitlementResult: Record {
   var hasEntitlement: Bool? = nil
 }
 
-public class HeliumPaywallSdkModule: Module {
-  // Single continuations for ongoing operations
-  private var currentProductId: String? = nil
-  private var purchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>? = nil
-  private var restoreContinuation: CheckedContinuation<Bool, Never>? = nil
+// Singleton to manage purchase state that survives module deallocation
+private class NativeModuleManager {
+    static let shared = NativeModuleManager()
 
+    // Always keep reference to the current module
+    var currentModule: HeliumPaywallSdkModule?
+
+    // Store active operations
+    var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
+    var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
+    var currentProductId: String?
+
+    private init() {}
+
+    func clearPurchase() {
+        activePurchaseContinuation = nil
+        currentProductId = nil
+    }
+
+    func clearRestore() {
+        activeRestoreContinuation = nil
+    }
+}
+
+public class HeliumPaywallSdkModule: Module {
   // Each module class must implement the definition function. The definition consists of components
   // that describes the module's functionality and behavior.
   // See https://docs.expo.dev/modules/module-api for more details about available components.
@@ -47,6 +66,10 @@ public class HeliumPaywallSdkModule: Module {
     // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
     // The module will be accessible from `requireNativeModule('HeliumPaywallSdk')` in JavaScript.
     Name("HeliumPaywallSdk")
+
+    OnCreate {
+        NativeModuleManager.shared.currentModule = self
+    }
 
     // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
 //     Constants([
@@ -58,6 +81,8 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
+      NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
+
       let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
@@ -80,7 +105,7 @@ public class HeliumPaywallSdkModule: Module {
 
       let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
 
-      let delegateEventHandler: (HeliumEvent) -> Void = { [weak self] event in
+      let delegateEventHandler: (HeliumEvent) -> Void = { event in
           var eventDict = event.toDictionary()
           // Add deprecated fields for backwards compatibility
           if let paywallName = eventDict["paywallName"] {
@@ -95,47 +120,52 @@ public class HeliumPaywallSdkModule: Module {
           if let buttonName = eventDict["buttonName"] {
               eventDict["ctaName"] = buttonName
           }
-          self?.sendEvent("onHeliumPaywallEvent", eventDict)
+          NativeModuleManager.shared.currentModule?.sendEvent("onHeliumPaywallEvent", eventDict)
       }
 
       // Create delegate with closures that send events to JavaScript
       let internalDelegate = InternalDelegate(
         eventHandler: delegateEventHandler,
-        purchaseHandler: { [weak self] productId in
-          guard let self else { return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!")) }
-          // Check if there's already a purchase in progress and cancel it
-          if let existingContinuation = self.purchaseContinuation {
+        purchaseHandler: { productId in
+          // First check singleton for orphaned continuation and clean it up
+          if let existingContinuation = NativeModuleManager.shared.activePurchaseContinuation {
             existingContinuation.resume(returning: .cancelled)
-            self.purchaseContinuation = nil
-            self.currentProductId = nil
+            NativeModuleManager.shared.clearPurchase()
+          }
+
+          // Get current module from singleton
+          guard let module = NativeModuleManager.shared.currentModule else {
+            return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!"))
           }
 
           return await withCheckedContinuation { continuation in
-            // Store the continuation and product ID
-            self.currentProductId = productId
-            self.purchaseContinuation = continuation
+            NativeModuleManager.shared.activePurchaseContinuation = continuation
+            NativeModuleManager.shared.currentProductId = productId
 
             // Send event to JavaScript
-            self.sendEvent("onDelegateActionEvent", [
+            module.sendEvent("onDelegateActionEvent", [
               "type": "purchase",
               "productId": productId
             ])
           }
         },
-        restoreHandler: { [weak self] in
-          guard let self else { return false }
-          // Check if there's already a restore in progress and cancel it
-          if let existingContinuation = self.restoreContinuation {
+        restoreHandler: {
+          // Check for orphaned continuation in singleton
+          if let existingContinuation = NativeModuleManager.shared.activeRestoreContinuation {
             existingContinuation.resume(returning: false)
-            self.restoreContinuation = nil
+            NativeModuleManager.shared.clearRestore()
+          }
+
+          // Get current module from singleton
+          guard let module = NativeModuleManager.shared.currentModule else {
+            return false
           }
 
           return await withCheckedContinuation { continuation in
-            // Store the continuation
-            self.restoreContinuation = continuation
+            NativeModuleManager.shared.activeRestoreContinuation = continuation
 
             // Send event to JavaScript
-            self.sendEvent("onDelegateActionEvent", [
+            module.sendEvent("onDelegateActionEvent", [
               "type": "restore"
             ])
           }
@@ -179,8 +209,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     // Function for JavaScript to provide purchase result
-    Function("handlePurchaseResult") { [weak self] (statusString: String, errorMsg: String?) in
-      guard let continuation = self?.purchaseContinuation else {
+    Function("handlePurchaseResult") { (statusString: String, errorMsg: String?) in
+      guard let continuation = NativeModuleManager.shared.activePurchaseContinuation else {
+        print("WARNING: handlePurchaseResult called with no active continuation")
         return
       }
 
@@ -197,45 +228,33 @@ public class HeliumPaywallSdkModule: Module {
       default:          status = .failed(PurchaseError.unknownStatus(status: lowercasedStatus))
       }
 
-      // Clear the references
-      self?.purchaseContinuation = nil
-      self?.currentProductId = nil
+      // Clear singleton state
+      NativeModuleManager.shared.clearPurchase()
 
       // Resume the continuation with the status
       continuation.resume(returning: status)
     }
 
     // Function for JavaScript to provide restore result
-    Function("handleRestoreResult") { [weak self] (success: Bool) in
-      guard let continuation = self?.restoreContinuation else {
+    Function("handleRestoreResult") { (success: Bool) in
+      guard let continuation = NativeModuleManager.shared.activeRestoreContinuation else {
+        print("WARNING: handleRestoreResult called with no active continuation")
         return
       }
 
-      self?.restoreContinuation = nil
+      // Clear singleton state
+      NativeModuleManager.shared.clearRestore()
+
       continuation.resume(returning: success)
     }
 
     Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?) in
+        NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
         Helium.shared.presentUpsell(
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
-                onOpen: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onClose: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onDismissed: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onPurchaseSucceeded: { [weak self] event in
-                    self?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onOpenFailed: { [weak self] event in
-                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
-                },
-                onCustomPaywallAction: { [weak self] event in
-                  self?.sendEvent("paywallEventHandlers", event.toDictionary())
+                onAnyEvent: { event in
+                    NativeModuleManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
                 }
             ),
             customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
