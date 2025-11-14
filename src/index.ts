@@ -28,11 +28,6 @@ function addPaywallEventHandlersListener(listener: (event: HeliumPaywallEvent) =
 
 let isInitialized = false;
 export const initialize = (config: HeliumConfig) => {
-  if (isInitialized) {
-    return;
-  }
-  isInitialized = true;
-
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
   HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
@@ -74,6 +69,11 @@ export const initialize = (config: HeliumConfig) => {
   addPaywallEventHandlersListener((event) => {
     callPaywallEventHandlers(event);
   });
+
+  if (isInitialized) {
+    return;
+  }
+  isInitialized = true;
 
   nativeInitializeAsync(config).catch(error => {
     console.error('[Helium] Initialization failed:', error);
