@@ -41,18 +41,37 @@ class HasEntitlementResult : Record {
   var hasEntitlement: Boolean? = null
 }
 
+// Singleton to manage purchase state that survives module recreation in dev mode
+private object NativeModuleManager {
+  // Always keep reference to the current module
+  var currentModule: HeliumPaywallSdkModule? = null
+
+  // Store active operations
+  var currentProductId: String? = null
+  var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
+  var restoreContinuation: ((Boolean) -> Unit)? = null
+
+  fun clearPurchase() {
+    purchaseContinuation = null
+    currentProductId = null
+  }
+
+  fun clearRestore() {
+    restoreContinuation = null
+  }
+}
+
 class HeliumPaywallSdkModule : Module() {
   // References to Activity and Context
   private var activity: Activity? = null
   private val gson = Gson()
 
-  // Single continuations for ongoing operations
-  internal var currentProductId: String? = null
-  internal var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
-  internal var restoreContinuation: ((Boolean) -> Unit)? = null
-
   override fun definition() = ModuleDefinition {
     Name("HeliumPaywallSdk")
+
+    OnCreate {
+      NativeModuleManager.currentModule = this@HeliumPaywallSdkModule
+    }
 
     // Defines event names that the module can send to JavaScript
     Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
@@ -72,6 +91,8 @@ class HeliumPaywallSdkModule : Module() {
 
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
+      NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
+
       val apiKey = config["apiKey"] as? String ?: ""
       val customUserId = config["customUserId"] as? String
       val customAPIEndpoint = config["customAPIEndpoint"] as? String
@@ -123,7 +144,7 @@ class HeliumPaywallSdkModule : Module() {
 
     // Function for JavaScript to provide purchase result
     Function("handlePurchaseResult") { statusString: String, errorMsg: String? ->
-      val continuation = purchaseContinuation ?: return@Function
+      val continuation = NativeModuleManager.purchaseContinuation ?: return@Function
 
       // Parse status string
       val lowercasedStatus = statusString.lowercase()
@@ -140,9 +161,8 @@ class HeliumPaywallSdkModule : Module() {
         )
       }
 
-      // Clear the references
-      purchaseContinuation = null
-      currentProductId = null
+      // Clear the singleton state
+      NativeModuleManager.clearPurchase()
 
       // Resume the continuation with the status
       continuation(status)
@@ -150,14 +170,17 @@ class HeliumPaywallSdkModule : Module() {
 
     // Function for JavaScript to provide restore result
     Function("handleRestoreResult") { success: Boolean ->
-      val continuation = restoreContinuation ?: return@Function
+      val continuation = NativeModuleManager.restoreContinuation ?: return@Function
 
-      restoreContinuation = null
+      // Clear the singleton state
+      NativeModuleManager.clearRestore()
       continuation(success)
     }
 
     // Present a paywall with the given trigger
     Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any?>?, dontShowIfAlreadyEntitled: Boolean? ->
+      NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
+
       // Convert custom paywall traits
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
 
@@ -465,27 +488,26 @@ class CustomPaywallDelegate(
         }
       }
 
-      // Check if there's already a purchase in progress and cancel it
-      module.purchaseContinuation?.let { existingContinuation ->
+      // First check singleton for orphaned continuation and clean it up
+      NativeModuleManager.purchaseContinuation?.let { existingContinuation ->
         existingContinuation(HeliumPaywallTransactionStatus.Cancelled)
+        NativeModuleManager.clearPurchase()
       }
 
-      // Store the continuation and product ID
-      module.currentProductId = chainedProductId
-      module.purchaseContinuation = { status ->
+      val currentModule = NativeModuleManager.currentModule ?: module
+
+      NativeModuleManager.currentProductId = chainedProductId
+      NativeModuleManager.purchaseContinuation = { status ->
         continuation.resume(status)
       }
 
       // Clean up on cancellation to prevent memory leaks and crashes
       continuation.invokeOnCancellation {
-        if (module.currentProductId == chainedProductId) {
-          module.currentProductId = null
-          module.purchaseContinuation = null
-        }
+        NativeModuleManager.clearPurchase()
       }
 
       // Send event to JavaScript
-      module.sendEvent("onDelegateActionEvent", mapOf(
+      currentModule.sendEvent("onDelegateActionEvent", mapOf(
         "type" to "purchase",
         "productId" to chainedProductId
       ))
@@ -494,23 +516,25 @@ class CustomPaywallDelegate(
 
   override suspend fun restorePurchases(): Boolean {
     return suspendCancellableCoroutine { continuation ->
-      // Check if there's already a restore in progress and cancel it
-      module.restoreContinuation?.let { existingContinuation ->
+      // Check singleton for orphaned continuation and clean it up
+      NativeModuleManager.restoreContinuation?.let { existingContinuation ->
         existingContinuation(false)
+        NativeModuleManager.clearRestore()
       }
 
-      // Store the continuation
-      module.restoreContinuation = { success ->
+      val currentModule = NativeModuleManager.currentModule ?: module
+
+      NativeModuleManager.restoreContinuation = { success ->
         continuation.resume(success)
       }
 
       // Clean up on cancellation to prevent memory leaks and crashes
       continuation.invokeOnCancellation {
-        module.restoreContinuation = null
+        NativeModuleManager.clearRestore()
       }
 
       // Send event to JavaScript
-      module.sendEvent("onDelegateActionEvent", mapOf(
+      currentModule.sendEvent("onDelegateActionEvent", mapOf(
         "type" to "restore"
       ))
     }
