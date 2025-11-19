@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'Helium', '3.0.16'
+  s.dependency 'Helium', '3.1.1'
 
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {
