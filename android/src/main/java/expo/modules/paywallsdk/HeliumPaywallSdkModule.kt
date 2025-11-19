@@ -5,7 +5,8 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
-import expo.modules.paywallsdk.objectToMap
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.tryhelium.paywall.core.Helium
 import com.tryhelium.paywall.core.HeliumEnvironment
 import com.tryhelium.paywall.core.HeliumFallbackConfig
@@ -63,6 +64,7 @@ private object NativeModuleManager {
 class HeliumPaywallSdkModule : Module() {
   // References to Activity and Context
   private var activity: Activity? = null
+  private val gson = Gson()
 
   override fun definition() = ModuleDefinition {
     Name("HeliumPaywallSdk")
@@ -185,7 +187,9 @@ class HeliumPaywallSdkModule : Module() {
       // Helper function to convert event to map
       val convertEventToMap: (Any) -> Map<String, Any?> = { event ->
         try {
-          objectToMap(event)
+          val json = gson.toJson(event)
+          val type = object : TypeToken<Map<String, Any?>>() {}.type
+          gson.fromJson(json, type) ?: emptyMap()
         } catch (e: Exception) {
           emptyMap()
         }
@@ -316,10 +320,13 @@ class HeliumPaywallSdkModule : Module() {
         )
       } else {
         try {
-          objectToMap(experimentInfo)
+          val json = gson.toJson(experimentInfo)
+          val type = object : TypeToken<Map<String, Any?>>() {}.type
+          val map: Map<String, Any?> = gson.fromJson(json, type)
+          map
         } catch (e: Exception) {
           mapOf<String, Any?>(
-            "getExperimentInfoErrorMsg" to "Failed to serialize experiment info: ${e.message}"
+            "getExperimentInfoErrorMsg" to "Failed to serialize experiment info"
           )
         }
       }
