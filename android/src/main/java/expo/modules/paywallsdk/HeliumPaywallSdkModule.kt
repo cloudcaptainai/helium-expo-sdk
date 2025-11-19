@@ -86,6 +86,7 @@ class HeliumPaywallSdkModule : Module() {
       val fallbackConfig = convertToHeliumFallbackConfig(paywallLoadingConfigMap)
 
       // Use SANDBOX environment by default
+      // todo allow specification
       val environment = HeliumEnvironment.SANDBOX
 
       // Initialize on a coroutine scope
@@ -213,11 +214,11 @@ class HeliumPaywallSdkModule : Module() {
     Function("getDownloadStatus") {
       val status = (Helium.shared.downloadStatus as? kotlinx.coroutines.flow.StateFlow<*>)?.value
       val statusString = when (status?.javaClass?.simpleName) {
-        "NotYetDownloaded" -> "NotYetDownloaded"
-        "Downloading" -> "Downloading"
-        "DownloadFailure" -> "DownloadFailure"
-        "DownloadSuccess" -> "DownloadSuccess"
-        else -> "NotYetDownloaded"
+        "NotYetDownloaded" -> "notDownloadedYet"
+        "Downloading" -> "inProgress"
+        "DownloadFailure" -> "downloadFailure"
+        "DownloadSuccess" -> "downloadSuccess"
+        else -> "notDownloadedYet"
       }
       return@Function statusString
     }
@@ -475,6 +476,14 @@ class CustomPaywallDelegate(
         continuation.resume(status)
       }
 
+      // Clean up on cancellation to prevent memory leaks and crashes
+      continuation.invokeOnCancellation {
+        if (module.currentProductId == chainedProductId) {
+          module.currentProductId = null
+          module.purchaseContinuation = null
+        }
+      }
+
       // Send event to JavaScript
       module.sendEvent("onDelegateActionEvent", mapOf(
         "type" to "purchase",
@@ -493,6 +502,11 @@ class CustomPaywallDelegate(
       // Store the continuation
       module.restoreContinuation = { success ->
         continuation.resume(success)
+      }
+
+      // Clean up on cancellation to prevent memory leaks and crashes
+      continuation.invokeOnCancellation {
+        module.restoreContinuation = null
       }
 
       // Send event to JavaScript
