@@ -211,80 +211,76 @@ export class RevenueCatHeliumHandler {
         offerId
       );
 
-      if (!subscriptionOption) {
+      if (subscriptionOption) {
+        try {
+          const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
+
+          const isActive = this.isProductActive(customerInfo, baseProductId);
+          if (isActive) {
+            return {status: 'purchased'};
+          } else {
+            return {
+              status: 'failed',
+              error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+            };
+          }
+        } catch (error) {
+          const purchasesError = error as PurchasesError;
+
+          if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+            return {status: 'pending'};
+          }
+
+          if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+            return {status: 'cancelled'};
+          }
+
+          return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+        }
+      }
+    }
+
+    const parentProductId = productId.includes(':') ? productId.split(':')[0] : productId;
+    let rcProduct: PurchasesStoreProduct | undefined = this.androidInAppCache[parentProductId];
+
+    if (!rcProduct) {
+      try {
+        const products = await Purchases.getProducts([parentProductId]);
+        if (products.length === 0) {
+          return {status: 'failed', error: `Android product not found: ${parentProductId}`};
+        }
+        rcProduct = products[0];
+      } catch {
+        return {status: 'failed', error: `Failed to retrieve Android product: ${parentProductId}`};
+      }
+
+      this.androidInAppCache[parentProductId] = rcProduct;
+    }
+
+    try {
+      const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+
+      const isActive = this.isProductActive(customerInfo, parentProductId);
+      if (isActive) {
+        return {status: 'purchased'};
+      } else {
         return {
           status: 'failed',
-          error: `Android subscription option not found for: ${productId}`
+          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
         };
       }
+    } catch (error) {
+      const purchasesError = error as PurchasesError;
 
-      try {
-        const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
-
-        const isActive = this.isProductActive(customerInfo, baseProductId);
-        if (isActive) {
-          return {status: 'purchased'};
-        } else {
-          return {
-            status: 'failed',
-            error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-          };
-        }
-      } catch (error) {
-        const purchasesError = error as PurchasesError;
-
-        if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-          return {status: 'pending'};
-        }
-
-        if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-          return {status: 'cancelled'};
-        }
-
-        return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
-      }
-    } else {
-      let rcProduct: PurchasesStoreProduct | undefined = this.androidInAppCache[productId];
-
-      if (!rcProduct) {
-        try {
-          const products = await Purchases.getProducts([productId]);
-          if (products.length === 0) {
-            return {status: 'failed', error: `Android product not found: ${productId}`};
-          }
-          rcProduct = products[0];
-        } catch {
-          return {status: 'failed', error: `Failed to retrieve Android product: ${productId}`};
-        }
-
-        this.androidInAppCache[productId] = rcProduct;
+      if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+        return {status: 'pending'};
       }
 
-      try {
-        const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
-
-        const isActive = this.isProductActive(customerInfo, productId);
-        if (isActive) {
-          return {status: 'purchased'};
-        } else {
-          return {
-            status: 'failed',
-            error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-          };
-        }
-      } catch (error) {
-        const purchasesError = error as PurchasesError;
-
-        if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-          return {status: 'pending'};
-        }
-
-        if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-          return {status: 'cancelled'};
-        }
-
-        return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+      if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        return {status: 'cancelled'};
       }
+
+      return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
     }
   }
 
