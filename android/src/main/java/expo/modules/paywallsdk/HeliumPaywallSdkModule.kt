@@ -1,6 +1,7 @@
 package expo.modules.paywallsdk
 
 import android.app.Activity
+import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
@@ -22,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.lang.ref.WeakReference
 import java.net.URL
 import kotlin.coroutines.resume
 import kotlin.reflect.full.memberProperties
@@ -90,6 +92,10 @@ private object NativeModuleManager {
 
 class HeliumPaywallSdkModule : Module() {
   private val gson = Gson()
+  private var activityRef: WeakReference<Activity>? = null
+
+  private val activity: Activity?
+    get() = appContext.currentActivity ?: activityRef?.get()
 
   override fun definition() = ModuleDefinition {
     Name("HeliumPaywallSdk")
@@ -100,6 +106,11 @@ class HeliumPaywallSdkModule : Module() {
 
     // Defines event names that the module can send to JavaScript
     Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
+
+    // Lifecycle event to cache Activity reference for hot reload resilience
+    OnActivityEntersForeground {
+      activityRef = WeakReference(appContext.currentActivity)
+    }
 
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
@@ -137,12 +148,12 @@ class HeliumPaywallSdkModule : Module() {
       CoroutineScope(Dispatchers.Main).launch {
         try {
           val context = appContext.reactContext
-            ?: throw Exception("Context not available")
+            ?: throw Exceptions.ReactContextLost()
 
           // Create delegate
           val delegate = if (useDefaultDelegate) {
-            val currentActivity = appContext.currentActivity
-              ?: throw Exception("Activity not available for PlayStorePaywallDelegate")
+            val currentActivity = activity
+              ?: throw Exceptions.MissingActivity()
             DefaultPaywallDelegate(currentActivity, delegateEventHandler)
           } else {
             CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
