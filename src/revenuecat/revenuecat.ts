@@ -74,65 +74,6 @@ export class RevenueCatHeliumHandler {
     }
   }
 
-  // Android helper: Parse chained product ID format
-  private parseAndroidProductId(productId: string): {
-    baseProductId: string;
-    basePlanId?: string;
-    offerId?: string;
-  } {
-    const parts = productId.split(':');
-    return {
-      baseProductId: parts[0],
-      basePlanId: parts[1],
-      offerId: parts[2]
-    };
-  }
-
-  // Android helper: Find and cache subscription option
-  private async findAndroidSubscriptionOption(
-    chainedProductId: string,
-    baseProductId: string,
-    basePlanId?: string,
-    offerId?: string
-  ): Promise<SubscriptionOption | undefined> {
-    if (this.androidSubscriptionOptionCache[chainedProductId]) {
-      return this.androidSubscriptionOptionCache[chainedProductId];
-    }
-
-    try {
-      const products = await Purchases.getProducts([baseProductId]);
-      if (products.length === 0) {
-        return undefined;
-      }
-
-      const product = products[0];
-
-      if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
-        return undefined;
-      }
-
-      let subscriptionOption: SubscriptionOption | undefined;
-
-      if (offerId && basePlanId) {
-        // Look for specific offer: "basePlanId:offerId"
-        const targetId = `${basePlanId}:${offerId}`;
-        subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
-      } else if (basePlanId) {
-        subscriptionOption = product.subscriptionOptions.find(
-          opt => opt.id === basePlanId && opt.isBasePlan
-        );
-      }
-
-      if (subscriptionOption) {
-        this.androidSubscriptionOptionCache[chainedProductId] = subscriptionOption;
-      }
-
-      return subscriptionOption;
-    } catch (error) {
-      return undefined;
-    }
-  }
-
   async makePurchase(productId: string): Promise<HeliumPurchaseResult> {
     // Keep this value as up-to-date as possible
     setRevenueCatAppUserId(await Purchases.getAppUserID());
@@ -280,6 +221,65 @@ export class RevenueCatHeliumHandler {
       }
 
       return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+    }
+  }
+
+  // Android helper: Parse chained product ID format
+  private parseAndroidProductId(productId: string): {
+    baseProductId: string;
+    basePlanId?: string;
+    offerId?: string;
+  } {
+    const parts = productId.split(':');
+    return {
+      baseProductId: parts[0],
+      basePlanId: parts[1],
+      offerId: parts[2]
+    };
+  }
+
+  // Android helper: Find and cache subscription option
+  private async findAndroidSubscriptionOption(
+    chainedProductId: string,
+    baseProductId: string,
+    basePlanId?: string,
+    offerId?: string
+  ): Promise<SubscriptionOption | undefined> {
+    if (this.androidSubscriptionOptionCache[chainedProductId]) {
+      return this.androidSubscriptionOptionCache[chainedProductId];
+    }
+
+    try {
+      const products = await Purchases.getProducts([baseProductId]);
+      if (products.length === 0) {
+        return undefined;
+      }
+
+      const product = products[0];
+
+      if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
+        return undefined;
+      }
+
+      let subscriptionOption: SubscriptionOption | undefined;
+
+      if (offerId && basePlanId) {
+        // Look for specific offer: "basePlanId:offerId"
+        const targetId = `${basePlanId}:${offerId}`;
+        subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
+      } else if (basePlanId) {
+        subscriptionOption = product.subscriptionOptions.find(
+          opt => opt.id === basePlanId && opt.isBasePlan
+        );
+      }
+
+      if (subscriptionOption) {
+        this.androidSubscriptionOptionCache[chainedProductId] = subscriptionOption;
+      }
+
+      return subscriptionOption;
+    } catch (error) {
+      return undefined;
     }
   }
 
