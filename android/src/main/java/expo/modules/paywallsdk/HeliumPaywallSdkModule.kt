@@ -89,8 +89,6 @@ private object NativeModuleManager {
 }
 
 class HeliumPaywallSdkModule : Module() {
-  // References to Activity and Context
-  private var activity: Activity? = null
   private val gson = Gson()
 
   override fun definition() = ModuleDefinition {
@@ -102,19 +100,6 @@ class HeliumPaywallSdkModule : Module() {
 
     // Defines event names that the module can send to JavaScript
     Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
-
-    // Lifecycle events to capture Activity reference
-    OnActivityEntersForeground {
-      activity = appContext.currentActivity
-    }
-
-    OnActivityEntersBackground {
-      // Keep activity reference for now
-    }
-
-    OnActivityDestroys {
-      activity = null
-    }
 
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
@@ -156,7 +141,7 @@ class HeliumPaywallSdkModule : Module() {
 
           // Create delegate
           val delegate = if (useDefaultDelegate) {
-            val currentActivity = activity
+            val currentActivity = appContext.currentActivity
               ?: throw Exception("Activity not available for PlayStorePaywallDelegate")
             DefaultPaywallDelegate(currentActivity, delegateEventHandler)
           } else {
