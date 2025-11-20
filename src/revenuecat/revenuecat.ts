@@ -33,7 +33,6 @@ export class RevenueCatHeliumHandler {
   constructor(apiKey?: string) {
     if (apiKey) {
       Purchases.configure({apiKey});
-      Purchases.setLogLevel(LOG_LEVEL.ERROR);
     }
 
     void this.initializePackageMapping();
