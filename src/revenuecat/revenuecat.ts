@@ -28,6 +28,7 @@ export class RevenueCatHeliumHandler {
 
     private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
     private androidSubscriptionOptionCache: Record<string, SubscriptionOption> = {};
+    private androidInAppCache: Record<string, PurchasesStoreProduct> = {};
 
     constructor(apiKey?: string) {
         if (apiKey) {
@@ -93,12 +94,10 @@ export class RevenueCatHeliumHandler {
         basePlanId?: string,
         offerId?: string
     ): Promise<SubscriptionOption | undefined> {
-        // Check cache first
         if (this.androidSubscriptionOptionCache[chainedProductId]) {
             return this.androidSubscriptionOptionCache[chainedProductId];
         }
 
-        // Fetch the product
         try {
             const products = await Purchases.getProducts([baseProductId]);
             if (products.length === 0) {
@@ -107,12 +106,10 @@ export class RevenueCatHeliumHandler {
 
             const product = products[0];
 
-            // For Android, subscriptionOptions will be available
             if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
                 return undefined;
             }
 
-            // Find matching subscription option
             let subscriptionOption: SubscriptionOption | undefined;
 
             if (offerId && basePlanId) {
@@ -120,13 +117,11 @@ export class RevenueCatHeliumHandler {
                 const targetId = `${basePlanId}:${offerId}`;
                 subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
             } else if (basePlanId) {
-                // Look for base plan only
                 subscriptionOption = product.subscriptionOptions.find(
                     opt => opt.id === basePlanId && opt.isBasePlan
                 );
             }
 
-            // Cache and return
             if (subscriptionOption) {
                 this.androidSubscriptionOptionCache[chainedProductId] = subscriptionOption;
             }
@@ -138,57 +133,13 @@ export class RevenueCatHeliumHandler {
     }
 
     async makePurchase(productId: string): Promise<HeliumPurchaseResult> {
-        await this.ensureMappingInitialized();
-        // Keep this value as up-to-date as possible
-        setRevenueCatAppUserId(await Purchases.getAppUserID());
-
-        // Android-specific: Handle chained product IDs (productId:basePlanId:offerId)
-        if (Platform.OS === 'android' && productId.includes(':')) {
-            const { baseProductId, basePlanId, offerId } = this.parseAndroidProductId(productId);
-
-            const subscriptionOption = await this.findAndroidSubscriptionOption(
-                productId,
-                baseProductId,
-                basePlanId,
-                offerId
-            );
-
-            if (!subscriptionOption) {
-                return {
-                    status: 'failed',
-                    error: `Android subscription option not found for: ${productId}`
-                };
-            }
-
-            try {
-                const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
-
-                // Validate using base product ID for Android
-                const isActive = this.isProductActive(customerInfo, baseProductId);
-                if (isActive) {
-                    return { status: 'purchased' };
-                } else {
-                    return {
-                        status: 'failed',
-                        error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-                    };
-                }
-            } catch (error) {
-                const purchasesError = error as PurchasesError;
-
-                if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-                    return { status: 'pending' };
-                }
-
-                if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-                    return { status: 'cancelled' };
-                }
-
-                return { status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.' };
-            }
+      // Keep this value as up-to-date as possible
+      setRevenueCatAppUserId(await Purchases.getAppUserID());
+        if (Platform.OS === 'android') {
+            return this.makePurchaseAndroid(productId);
         }
 
-        // iOS/simple Android path: Use existing package/product logic
+        await this.ensureMappingInitialized();
         const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
         let rcProduct: PurchasesStoreProduct | undefined;
         if (!pkg) {
@@ -242,6 +193,95 @@ export class RevenueCatHeliumHandler {
             return { status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.' };
         }
     }
+
+  // Android-specific purchase logic (completely separated from iOS)
+  private async makePurchaseAndroid(productId: string): Promise<HeliumPurchaseResult> {
+    if (productId.includes(':')) {
+      const { baseProductId, basePlanId, offerId } = this.parseAndroidProductId(productId);
+
+      const subscriptionOption = await this.findAndroidSubscriptionOption(
+        productId,
+        baseProductId,
+        basePlanId,
+        offerId
+      );
+
+      if (!subscriptionOption) {
+        return {
+          status: 'failed',
+          error: `Android subscription option not found for: ${productId}`
+        };
+      }
+
+      try {
+        const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
+
+        const isActive = this.isProductActive(customerInfo, baseProductId);
+        if (isActive) {
+          return { status: 'purchased' };
+        } else {
+          return {
+            status: 'failed',
+            error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+          };
+        }
+      } catch (error) {
+        const purchasesError = error as PurchasesError;
+
+        if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+          return { status: 'pending' };
+        }
+
+        if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+          return { status: 'cancelled' };
+        }
+
+        return { status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.' };
+      }
+    } else {
+      let rcProduct: PurchasesStoreProduct | undefined = this.androidInAppCache[productId];
+
+      if (!rcProduct) {
+        try {
+          const products = await Purchases.getProducts([productId]);
+          if (products.length === 0) {
+            return { status: 'failed', error: `Android product not found: ${productId}` };
+          }
+          rcProduct = products[0];
+        } catch {
+          return { status: 'failed', error: `Failed to retrieve Android product: ${productId}` };
+        }
+
+        this.androidInAppCache[productId] = rcProduct;
+      }
+
+      try {
+        const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+
+        const isActive = this.isProductActive(customerInfo, productId);
+        if (isActive) {
+          return { status: 'purchased' };
+        } else {
+          return {
+            status: 'failed',
+            error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+          };
+        }
+      } catch (error) {
+        const purchasesError = error as PurchasesError;
+
+        if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+          return { status: 'pending' };
+        }
+
+        if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+          return { status: 'cancelled' };
+        }
+
+        return { status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.' };
+      }
+    }
+  }
 
     // Helper function to check if a product is active in CustomerInfo
     private isProductActive(customerInfo: CustomerInfo, productId: string): boolean {
