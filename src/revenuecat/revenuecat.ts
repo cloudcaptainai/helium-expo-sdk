@@ -1,5 +1,12 @@
-import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
-import type { PurchasesError, PurchasesPackage, CustomerInfoUpdateListener, CustomerInfo, PurchasesEntitlementInfo } from 'react-native-purchases';
+import type {
+  CustomerInfo,
+  PurchasesEntitlementInfo,
+  PurchasesError,
+  PurchasesPackage,
+  SubscriptionOption
+} from 'react-native-purchases';
+import Purchases, {LOG_LEVEL, PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
+import {Platform} from 'react-native';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
@@ -20,6 +27,7 @@ export class RevenueCatHeliumHandler {
     private initializationPromise: Promise<void> | null = null;
 
     private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
+    private androidSubscriptionOptionCache: Record<string, SubscriptionOption> = {};
 
     constructor(apiKey?: string) {
         if (apiKey) {
@@ -64,11 +72,123 @@ export class RevenueCatHeliumHandler {
         }
     }
 
+    // Android helper: Parse chained product ID format
+    private parseAndroidProductId(productId: string): {
+        baseProductId: string;
+        basePlanId?: string;
+        offerId?: string;
+    } {
+        const parts = productId.split(':');
+        return {
+            baseProductId: parts[0],
+            basePlanId: parts[1],
+            offerId: parts[2]
+        };
+    }
+
+    // Android helper: Find and cache subscription option
+    private async findAndroidSubscriptionOption(
+        chainedProductId: string,
+        baseProductId: string,
+        basePlanId?: string,
+        offerId?: string
+    ): Promise<SubscriptionOption | undefined> {
+        // Check cache first
+        if (this.androidSubscriptionOptionCache[chainedProductId]) {
+            return this.androidSubscriptionOptionCache[chainedProductId];
+        }
+
+        // Fetch the product
+        try {
+            const products = await Purchases.getProducts([baseProductId]);
+            if (products.length === 0) {
+                return undefined;
+            }
+
+            const product = products[0];
+
+            // For Android, subscriptionOptions will be available
+            if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
+                return undefined;
+            }
+
+            // Find matching subscription option
+            let subscriptionOption: SubscriptionOption | undefined;
+
+            if (offerId && basePlanId) {
+                // Look for specific offer: "basePlanId:offerId"
+                const targetId = `${basePlanId}:${offerId}`;
+                subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
+            } else if (basePlanId) {
+                // Look for base plan only
+                subscriptionOption = product.subscriptionOptions.find(
+                    opt => opt.id === basePlanId && opt.isBasePlan
+                );
+            }
+
+            // Cache and return
+            if (subscriptionOption) {
+                this.androidSubscriptionOptionCache[chainedProductId] = subscriptionOption;
+            }
+
+            return subscriptionOption;
+        } catch (error) {
+            return undefined;
+        }
+    }
+
     async makePurchase(productId: string): Promise<HeliumPurchaseResult> {
         await this.ensureMappingInitialized();
         // Keep this value as up-to-date as possible
         setRevenueCatAppUserId(await Purchases.getAppUserID());
 
+        // Android-specific: Handle chained product IDs (productId:basePlanId:offerId)
+        if (Platform.OS === 'android' && productId.includes(':')) {
+            const { baseProductId, basePlanId, offerId } = this.parseAndroidProductId(productId);
+
+            const subscriptionOption = await this.findAndroidSubscriptionOption(
+                productId,
+                baseProductId,
+                basePlanId,
+                offerId
+            );
+
+            if (!subscriptionOption) {
+                return {
+                    status: 'failed',
+                    error: `Android subscription option not found for: ${productId}`
+                };
+            }
+
+            try {
+                const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
+
+                // Validate using base product ID for Android
+                const isActive = this.isProductActive(customerInfo, baseProductId);
+                if (isActive) {
+                    return { status: 'purchased' };
+                } else {
+                    return {
+                        status: 'failed',
+                        error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+                    };
+                }
+            } catch (error) {
+                const purchasesError = error as PurchasesError;
+
+                if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+                    return { status: 'pending' };
+                }
+
+                if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+                    return { status: 'cancelled' };
+                }
+
+                return { status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.' };
+            }
+        }
+
+        // iOS/simple Android path: Use existing package/product logic
         const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
         let rcProduct: PurchasesStoreProduct | undefined;
         if (!pkg) {
@@ -111,28 +231,7 @@ export class RevenueCatHeliumHandler {
             const purchasesError = error as PurchasesError;
 
             if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-                // Wait for a terminal state for up to 5 seconds
-                return new Promise((resolve) => {
-                    // Define the listener function separately to remove it later
-                    const updateListener: CustomerInfoUpdateListener = (updatedCustomerInfo: CustomerInfo) => {
-                        const isActive = this.isProductActive(updatedCustomerInfo, productId);
-                        if (isActive) {
-                            clearTimeout(timeoutId);
-                            // Remove listener using the function reference
-                            Purchases.removeCustomerInfoUpdateListener(updateListener);
-                            resolve({ status: 'purchased' });
-                        }
-                    };
-
-                    const timeoutId = setTimeout(() => {
-                         // Remove listener using the function reference on timeout
-                        Purchases.removeCustomerInfoUpdateListener(updateListener);
-                        resolve({ status: 'pending' });
-                    }, 5000);
-
-                    // Add the listener
-                    Purchases.addCustomerInfoUpdateListener(updateListener);
-                });
+                return { status: 'pending' };
             }
 
             if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
