@@ -1,6 +1,7 @@
 package expo.modules.paywallsdk
 
 import android.app.Activity
+import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
@@ -9,6 +10,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.tryhelium.paywall.core.Helium
 import com.tryhelium.paywall.core.HeliumEnvironment
+import com.tryhelium.paywall.core.event.HeliumEvent
 import com.tryhelium.paywall.core.HeliumFallbackConfig
 import com.tryhelium.paywall.core.HeliumIdentityManager
 import com.tryhelium.paywall.core.HeliumUserTraits
@@ -21,8 +23,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.lang.ref.WeakReference
 import java.net.URL
 import kotlin.coroutines.resume
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
 
 // Record data classes for type-safe return values
 class PaywallInfoResult : Record {
@@ -39,6 +44,30 @@ class PaywallInfoResult : Record {
 class HasEntitlementResult : Record {
   @Field
   var hasEntitlement: Boolean? = null
+}
+
+/**
+ * Extension function to convert any object (especially HeliumEvent data classes) to a Map.
+ * Uses Kotlin reflection to extract all member properties from data classes.
+ */
+@Suppress("UNCHECKED_CAST")
+private fun Any.toMap(): Map<String, Any?> {
+  return try {
+    val kClass = this::class
+    kClass.memberProperties.associate { prop ->
+      prop.isAccessible = true
+      val value = (prop as kotlin.reflect.KProperty1<Any, *>).get(this)
+      prop.name to when (value) {
+        is Enum<*> -> value.name
+        is List<*> -> value
+        is Map<*, *> -> value
+        else -> value
+      }
+    }
+  } catch (e: Exception) {
+    android.util.Log.e("HeliumPaywallSdk", "Failed to convert to map: ${e.message}", e)
+    emptyMap()
+  }
 }
 
 // Singleton to manage purchase state that survives module recreation in dev mode
@@ -62,9 +91,11 @@ private object NativeModuleManager {
 }
 
 class HeliumPaywallSdkModule : Module() {
-  // References to Activity and Context
-  private var activity: Activity? = null
   private val gson = Gson()
+  private var activityRef: WeakReference<Activity>? = null
+
+  private val activity: Activity?
+    get() = appContext.currentActivity ?: activityRef?.get()
 
   override fun definition() = ModuleDefinition {
     Name("HeliumPaywallSdk")
@@ -76,17 +107,9 @@ class HeliumPaywallSdkModule : Module() {
     // Defines event names that the module can send to JavaScript
     Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
 
-    // Lifecycle events to capture Activity reference
+    // Lifecycle event to cache Activity reference for hot reload resilience
     OnActivityEntersForeground {
-      activity = appContext.currentActivity
-    }
-
-    OnActivityEntersBackground {
-      // Keep activity reference for now
-    }
-
-    OnActivityDestroys {
-      activity = null
+      activityRef = WeakReference(appContext.currentActivity)
     }
 
     // Initialize the Helium SDK with configuration
@@ -110,19 +133,30 @@ class HeliumPaywallSdkModule : Module() {
       // todo allow specification
       val environment = HeliumEnvironment.SANDBOX
 
+      // Event handler that converts events and adds backwards compatibility fields
+      val delegateEventHandler: (Any) -> Unit = { event ->
+        val eventMap = event.toMap().toMutableMap()
+        // Add deprecated fields for backwards compatibility
+        eventMap["paywallName"]?.let { eventMap["paywallTemplateName"] = it }
+        eventMap["error"]?.let { eventMap["errorDescription"] = it }
+        eventMap["productId"]?.let { eventMap["productKey"] = it }
+        eventMap["buttonName"]?.let { eventMap["ctaName"] = it }
+        NativeModuleManager.currentModule?.sendEvent("onHeliumPaywallEvent", eventMap)
+      }
+
       // Initialize on a coroutine scope
       CoroutineScope(Dispatchers.Main).launch {
         try {
           val context = appContext.reactContext
-            ?: throw Exception("Context not available")
+            ?: throw Exceptions.ReactContextLost()
 
           // Create delegate
           val delegate = if (useDefaultDelegate) {
             val currentActivity = activity
-              ?: throw Exception("Activity not available for PlayStorePaywallDelegate")
-            PlayStorePaywallDelegate(currentActivity)
+              ?: throw Exceptions.MissingActivity()
+            DefaultPaywallDelegate(currentActivity, delegateEventHandler)
           } else {
-            CustomPaywallDelegate(this@HeliumPaywallSdkModule)
+            CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
           }
 
           Helium.initialize(
@@ -184,38 +218,27 @@ class HeliumPaywallSdkModule : Module() {
       // Convert custom paywall traits
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
 
-      // Helper function to convert event to map
-      val convertEventToMap: (Any) -> Map<String, Any?> = { event ->
-        try {
-          val json = gson.toJson(event)
-          val type = object : TypeToken<Map<String, Any?>>() {}.type
-          gson.fromJson(json, type) ?: emptyMap()
-        } catch (e: Exception) {
-          emptyMap()
-        }
-      }
-
       Helium.presentUpsell(
         trigger = trigger,
         // TODO add support for these
 //        eventHandlers = PaywallEventHandlers.withHandlers(
 //          onOpen = { event ->
-//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//            sendEvent("paywallEventHandlers", event.toMap())
 //          },
 //          onClose = { event ->
-//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//            sendEvent("paywallEventHandlers", event.toMap())
 //          },
 //          onDismissed = { event ->
-//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//            sendEvent("paywallEventHandlers", event.toMap())
 //          },
 //          onPurchaseSucceeded = { event ->
-//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//            sendEvent("paywallEventHandlers", event.toMap())
 //          },
 //          onOpenFailed = { event ->
-//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//            sendEvent("paywallEventHandlers", event.toMap())
 //          },
 //          onCustomPaywallAction = { event ->
-//            sendEvent("paywallEventHandlers", convertEventToMap(event))
+//            sendEvent("paywallEventHandlers", event.toMap())
 //          }
 //        ),
 //        customPaywallTraits = convertedTraits,
@@ -438,9 +461,9 @@ class HeliumPaywallSdkModule : Module() {
     var perTriggerLoadingConfig: Map<String, HeliumFallbackConfig>? = null
     val perTriggerDict = input["perTriggerLoadingConfig"] as? Map<*, *>
     if (perTriggerDict != null) {
+      @Suppress("UNCHECKED_CAST")
       perTriggerLoadingConfig = perTriggerDict.mapNotNull { (key, value) ->
         if (key is String && value is Map<*, *>) {
-          @Suppress("UNCHECKED_CAST")
           val config = value as? Map<String, Any?>
           val triggerUseLoadingState = config?.get("useLoadingState") as? Boolean
           val triggerLoadingBudget = (config?.get("loadingBudget") as? Number)?.toLong()
@@ -451,7 +474,7 @@ class HeliumPaywallSdkModule : Module() {
         } else {
           null
         }
-      }.toMap()
+      }.toMap() as Map<String, HeliumFallbackConfig>
     }
 
     return HeliumFallbackConfig(
@@ -468,8 +491,13 @@ class HeliumPaywallSdkModule : Module() {
  * Similar to the InternalDelegate in iOS implementation.
  */
 class CustomPaywallDelegate(
-  private val module: HeliumPaywallSdkModule
+  private val module: HeliumPaywallSdkModule,
+  private val eventHandler: (Any) -> Unit
 ) : HeliumPaywallDelegate {
+
+  override fun onHeliumEvent(event: HeliumEvent) {
+    eventHandler(event)
+  }
 
   override suspend fun makePurchase(
     productDetails: ProductDetails,
@@ -538,5 +566,19 @@ class CustomPaywallDelegate(
         "type" to "restore"
       ))
     }
+  }
+}
+
+/**
+ * Default Paywall Delegate that extends PlayStorePaywallDelegate with event dispatching.
+ * Similar to the DefaultPurchaseDelegate in iOS implementation.
+ */
+class DefaultPaywallDelegate(
+  activity: Activity,
+  private val eventHandler: (Any) -> Unit
+) : PlayStorePaywallDelegate(activity) {
+
+  override fun onHeliumEvent(event: HeliumEvent) {
+    eventHandler(event)
   }
 }
