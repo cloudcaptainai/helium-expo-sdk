@@ -16,6 +16,7 @@ import com.tryhelium.paywall.core.HeliumIdentityManager
 import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraitsArgument
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
+import com.tryhelium.paywall.core.HeliumLightDarkMode
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
 import com.android.billingclient.api.ProductDetails
@@ -382,8 +383,16 @@ class HeliumPaywallSdkModule : Module() {
 
     // Set light/dark mode override
     Function("setLightDarkModeOverride") { mode: String ->
-      // TODO: Parse mode string (light, dark, system)
-      // TODO: Call Helium SDK setLightDarkModeOverride with appropriate enum value
+      val heliumMode: HeliumLightDarkMode = when (mode.lowercase()) {
+        "light" -> HeliumLightDarkMode.LIGHT
+        "dark" -> HeliumLightDarkMode.DARK
+        "system" -> HeliumLightDarkMode.SYSTEM
+        else -> {
+          android.util.Log.w("HeliumPaywallSdk", "Invalid mode: $mode, defaulting to system")
+          HeliumLightDarkMode.SYSTEM
+        }
+      }
+      Helium.shared.setLightDarkModeOverride(heliumMode)
     }
 
     // Enables the module to be used as a native view
