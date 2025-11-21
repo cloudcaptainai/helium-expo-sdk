@@ -115,6 +115,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     fallbackBundleString: fallbackBundleString,
     paywallLoadingConfig: convertBooleansToMarkers(config.paywallLoadingConfig),
     useDefaultDelegate: !config.purchaseConfig,
+    environment: config.environment,
   };
 
   // Initialize the native module

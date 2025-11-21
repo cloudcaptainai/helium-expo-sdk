@@ -139,9 +139,13 @@ class HeliumPaywallSdkModule : Module() {
         appContext.reactContext
       )
 
-      // Use SANDBOX environment by default
-      // todo allow specification
-      val environment = HeliumEnvironment.SANDBOX
+      // Parse environment parameter, defaulting to PRODUCTION
+      val environmentString = config["environment"] as? String
+      val environment = when (environmentString?.lowercase()) {
+        "sandbox" -> HeliumEnvironment.SANDBOX
+        "production" -> HeliumEnvironment.PRODUCTION
+        else -> HeliumEnvironment.PRODUCTION
+      }
 
       // Event handler that converts events and adds backwards compatibility fields
       val delegateEventHandler: (Any) -> Unit = { event ->
