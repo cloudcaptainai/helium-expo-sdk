@@ -125,9 +125,18 @@ class HeliumPaywallSdkModule : Module() {
       val customUserTraitsMap = config["customUserTraits"] as? Map<String, Any?>
       val customUserTraits = convertToHeliumUserTraits(customUserTraitsMap)
 
+      // Extract fallback bundle fields from top-level config
+      val fallbackBundleUrlString = config["fallbackBundleUrlString"] as? String
+      val fallbackBundleString = config["fallbackBundleString"] as? String
+
       @Suppress("UNCHECKED_CAST")
-      val paywallLoadingConfigMap = config["paywallLoadingConfig"] as? Map<String, Any?>
-      val fallbackConfig = convertToHeliumFallbackConfig(paywallLoadingConfigMap)
+      val paywallLoadingConfigMap = convertMarkersToBooleans(config["paywallLoadingConfig"] as? Map<String, Any?>)
+      val fallbackConfig = convertToHeliumFallbackConfig(
+        paywallLoadingConfigMap,
+        fallbackBundleUrlString,
+        fallbackBundleString,
+        appContext.reactContext
+      )
 
       // Use SANDBOX environment by default
       // todo allow specification
@@ -450,16 +459,19 @@ class HeliumPaywallSdkModule : Module() {
     }
   }
 
-  private fun convertToHeliumFallbackConfig(input: Map<String, Any?>?): HeliumFallbackConfig? {
-    if (input == null) return null
-
-    val useLoadingState = input["useLoadingState"] as? Boolean ?: true
-    val loadingBudget = (input["loadingBudget"] as? Number)?.toLong() ?: 2000L
-    val fallbackBundleName = input["fallbackBundleName"] as? String
+  private fun convertToHeliumFallbackConfig(
+    paywallLoadingConfig: Map<String, Any?>?,
+    fallbackBundleUrlString: String?,
+    fallbackBundleString: String?,
+    context: android.content.Context?
+  ): HeliumFallbackConfig? {
+    // Extract loading config settings
+    val useLoadingState = paywallLoadingConfig?.get("useLoadingState") as? Boolean ?: true
+    val loadingBudget = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toLong() ?: 2000L
 
     // Parse perTriggerLoadingConfig if present
     var perTriggerLoadingConfig: Map<String, HeliumFallbackConfig>? = null
-    val perTriggerDict = input["perTriggerLoadingConfig"] as? Map<*, *>
+    val perTriggerDict = paywallLoadingConfig?.get("perTriggerLoadingConfig") as? Map<*, *>
     if (perTriggerDict != null) {
       @Suppress("UNCHECKED_CAST")
       perTriggerLoadingConfig = perTriggerDict.mapNotNull { (key, value) ->
@@ -475,6 +487,30 @@ class HeliumPaywallSdkModule : Module() {
           null
         }
       }.toMap() as Map<String, HeliumFallbackConfig>
+    }
+
+    // Handle fallback bundle - write to helium_local directory where SDK expects it
+    var fallbackBundleName: String? = null
+    if (context != null && (fallbackBundleUrlString != null || fallbackBundleString != null)) {
+      try {
+        val heliumLocalDir = context.getDir("helium_local", android.content.Context.MODE_PRIVATE)
+        val destinationFile = java.io.File(heliumLocalDir, "helium-fallback.json")
+
+        if (fallbackBundleUrlString != null) {
+          // Copy file from Expo's document directory to helium_local
+          val sourceFile = java.io.File(java.net.URI.create(fallbackBundleUrlString))
+          if (sourceFile.exists()) {
+            sourceFile.copyTo(destinationFile, overwrite = true)
+            fallbackBundleName = "helium-fallback.json"
+          }
+        } else if (fallbackBundleString != null) {
+          // Write fallback bundle string to file
+          destinationFile.writeText(fallbackBundleString)
+          fallbackBundleName = "helium-fallback.json"
+        }
+      } catch (e: Exception) {
+        // Silently fail for now
+      }
     }
 
     return HeliumFallbackConfig(

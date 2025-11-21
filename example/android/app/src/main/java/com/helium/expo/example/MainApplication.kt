@@ -1,4 +1,4 @@
-package expo.modules.paywallsdk.example
+package com.helium.expo.example
 
 import android.app.Application
 import android.content.res.Configuration
