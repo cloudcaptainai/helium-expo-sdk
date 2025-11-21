@@ -73,6 +73,7 @@ export type HeliumPurchaseResult = {
 };
 export type HeliumDownloadStatus = 'downloadSuccess' | 'downloadFailure' | 'inProgress' | 'notDownloadedYet';
 export type HeliumLightDarkMode = 'light' | 'dark' | 'system';
+export type HeliumEnvironment = 'sandbox' | 'production';
 
 // --- Purchase Configuration Types ---
 
@@ -139,6 +140,11 @@ export interface HeliumConfig {
   fallbackBundle?: object;
   /** Configure loading behavior for paywalls that are mid-download. */
   paywallLoadingConfig?: HeliumPaywallLoadingConfig;
+  /** Environment to use for Android. (iOS auto-detects this.)
+   *  If not specified, Android environment will be "sandbox" if app is a debug build, "production otherwise".
+   *  Recommended to pass in "sandbox" for QA builds that behave like a production build but are actually just for testing.
+   */
+  environment?: HeliumEnvironment;
   customUserId?: string;
   customAPIEndpoint?: string;
   customUserTraits?: Record<string, any>;
@@ -155,6 +161,7 @@ export interface NativeHeliumConfig {
   fallbackBundleString?: string;
   paywallLoadingConfig?: HeliumPaywallLoadingConfig;
   useDefaultDelegate?: boolean;
+  environment?: string;
 }
 
 export type PresentUpsellParams = {
