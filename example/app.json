@@ -22,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "expo.modules.paywallsdk.example"
+      "package": "com.helium.expo.example"
     },
     "web": {
       "favicon": "./assets/favicon.png"
