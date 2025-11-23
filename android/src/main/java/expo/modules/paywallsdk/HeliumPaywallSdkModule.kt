@@ -554,17 +554,6 @@ class CustomPaywallDelegate(
     offerId: String?
   ): HeliumPaywallTransactionStatus {
     return suspendCancellableCoroutine { continuation ->
-      // Build chained product identifier: productId:basePlanId:offerId
-      val chainedProductId = buildString {
-        append(productDetails.productId)
-        if (basePlanId != null) {
-          append(":").append(basePlanId)
-        }
-        if (offerId != null) {
-          append(":").append(offerId)
-        }
-      }
-
       // First check singleton for orphaned continuation and clean it up
       NativeModuleManager.purchaseContinuation?.let { existingContinuation ->
         existingContinuation(HeliumPaywallTransactionStatus.Cancelled)
@@ -573,7 +562,7 @@ class CustomPaywallDelegate(
 
       val currentModule = NativeModuleManager.currentModule ?: module
 
-      NativeModuleManager.currentProductId = chainedProductId
+      NativeModuleManager.currentProductId = productDetails.productId
       NativeModuleManager.purchaseContinuation = { status ->
         continuation.resume(status)
       }
@@ -583,11 +572,19 @@ class CustomPaywallDelegate(
         NativeModuleManager.clearPurchase()
       }
 
-      // Send event to JavaScript
-      currentModule.sendEvent("onDelegateActionEvent", mapOf(
+      // Send event to JavaScript with separate parameters
+      val eventMap = mutableMapOf<String, Any?>(
         "type" to "purchase",
-        "productId" to chainedProductId
-      ))
+        "productId" to productDetails.productId
+      )
+      if (basePlanId != null) {
+        eventMap["basePlanId"] = basePlanId
+      }
+      if (offerId != null) {
+        eventMap["offerId"] = offerId
+      }
+
+      currentModule.sendEvent("onDelegateActionEvent", eventMap)
     }
   }
 
