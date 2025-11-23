@@ -8,6 +8,10 @@ import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
 import * as ExpoFileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
+
+const IOS = 'ios' as const;
+const ANDROID = 'android' as const;
 
 export { default } from './HeliumPaywallSdkModule';
 // export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
@@ -49,12 +53,44 @@ export const initialize = (config: HeliumConfig) => {
     addDelegateActionEventListener(async (event) => {
       try {
         if (event.type === 'purchase') {
-          if (event.productId) {
-            const result = await purchaseConfig.makePurchase(event.productId);
-            HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
-          } else {
+          if (!event.productId) {
             HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No product ID for purchase event.');
+            return;
           }
+
+          let result;
+
+          // Platform-specific purchase handling
+          if (Platform.OS === IOS) {
+            // iOS: Use makePurchaseIOS if available, otherwise use deprecated makePurchase
+            if (purchaseConfig.makePurchaseIOS) {
+              result = await purchaseConfig.makePurchaseIOS(event.productId);
+            } else if (purchaseConfig.makePurchase) {
+              result = await purchaseConfig.makePurchase(event.productId);
+            } else {
+              console.log('[Helium] No iOS purchase handler configured.');
+              HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No iOS purchase handler configured.');
+              return;
+            }
+          } else if (Platform.OS === ANDROID) {
+            // Android: Use makePurchaseAndroid if available
+            if (purchaseConfig.makePurchaseAndroid) {
+              result = await purchaseConfig.makePurchaseAndroid(
+                event.productId,
+                event.basePlanId,
+                event.offerId
+              );
+            } else {
+              console.log('[Helium] No Android purchase handler configured.');
+              HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No Android purchase handler configured.');
+              return;
+            }
+          } else {
+            HeliumPaywallSdkModule.handlePurchaseResult('failed', 'Unsupported platform.');
+            return;
+          }
+
+          HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
         } else if (event.type === 'restore') {
           const success = await purchaseConfig.restorePurchases();
           HeliumPaywallSdkModule.handleRestoreResult(success);
@@ -115,6 +151,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     fallbackBundleString: fallbackBundleString,
     paywallLoadingConfig: convertBooleansToMarkers(config.paywallLoadingConfig),
     useDefaultDelegate: !config.purchaseConfig,
+    environment: config.environment,
   };
 
   // Initialize the native module
