@@ -77,13 +77,11 @@ private object NativeModuleManager {
   var currentModule: HeliumPaywallSdkModule? = null
 
   // Store active operations
-  var currentProductId: String? = null
   var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
   var restoreContinuation: ((Boolean) -> Unit)? = null
 
   fun clearPurchase() {
     purchaseContinuation = null
-    currentProductId = null
   }
 
   fun clearRestore() {
@@ -562,7 +560,6 @@ class CustomPaywallDelegate(
 
       val currentModule = NativeModuleManager.currentModule ?: module
 
-      NativeModuleManager.currentProductId = productDetails.productId
       NativeModuleManager.purchaseContinuation = { status ->
         continuation.resume(status)
       }
