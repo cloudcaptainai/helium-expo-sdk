@@ -5,8 +5,7 @@ import type {
     PurchasesPackage,
     SubscriptionOption
 } from 'react-native-purchases';
-import Purchases, {LOG_LEVEL, PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
-import {Platform} from 'react-native';
+import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
@@ -16,7 +15,8 @@ export function createRevenueCatPurchaseConfig(config?: {
 }): HeliumPurchaseConfig {
     const rcHandler = new RevenueCatHeliumHandler(config?.apiKey);
     return {
-        makePurchase: rcHandler.makePurchase.bind(rcHandler),
+        makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
+        makePurchaseAndroid: rcHandler.makePurchaseAndroid.bind(rcHandler),
         restorePurchases: rcHandler.restorePurchases.bind(rcHandler),
     };
 }
@@ -27,8 +27,6 @@ export class RevenueCatHeliumHandler {
     private initializationPromise: Promise<void> | null = null;
 
     private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
-    private androidSubscriptionOptionCache: Record<string, SubscriptionOption> = {};
-    private androidInAppCache: Record<string, PurchasesStoreProduct> = {};
 
     constructor(apiKey?: string) {
         if (apiKey) {
@@ -73,12 +71,9 @@ export class RevenueCatHeliumHandler {
         }
     }
 
-    async makePurchase(productId: string): Promise<HeliumPurchaseResult> {
+    async makePurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
         // Keep this value as up-to-date as possible
         setRevenueCatAppUserId(await Purchases.getAppUserID());
-        if (Platform.OS === 'android') {
-            return this.makePurchaseAndroid(productId);
-        }
 
         await this.ensureMappingInitialized();
         const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
@@ -139,13 +134,14 @@ export class RevenueCatHeliumHandler {
     }
 
     // Android-specific purchase logic (completely separated from iOS)
-    private async makePurchaseAndroid(productId: string): Promise<HeliumPurchaseResult> {
-        if (productId.includes(':')) {
-            const {baseProductId, basePlanId, offerId} = this.parseAndroidProductId(productId);
+    async makePurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
+        // Keep this value as up-to-date as possible
+        setRevenueCatAppUserId(await Purchases.getAppUserID());
 
+        // Handle subscription with base plan or offer
+        if (basePlanId || offerId) {
             const subscriptionOption = await this.findAndroidSubscriptionOption(
                 productId,
-                baseProductId,
                 basePlanId,
                 offerId
             );
@@ -154,7 +150,7 @@ export class RevenueCatHeliumHandler {
                 try {
                     const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
 
-                    const isActive = this.isProductActive(customerInfo, baseProductId);
+                    const isActive = this.isProductActive(customerInfo, productId);
                     if (isActive) {
                         return {status: 'purchased'};
                     } else {
@@ -179,27 +175,22 @@ export class RevenueCatHeliumHandler {
             }
         }
 
-        const parentProductId = productId.includes(':') ? productId.split(':')[0] : productId;
-        let rcProduct: PurchasesStoreProduct | undefined = this.androidInAppCache[parentProductId];
-
-        if (!rcProduct) {
-            try {
-                const products = await Purchases.getProducts([parentProductId]);
-                if (products.length === 0) {
-                    return {status: 'failed', error: `Android product not found: ${parentProductId}`};
-                }
-                rcProduct = products[0];
-            } catch {
-                return {status: 'failed', error: `Failed to retrieve Android product: ${parentProductId}`};
+        // Handle one-time purchase or subscription that didn't have matching base plan / offer
+        let rcProduct: PurchasesStoreProduct;
+        try {
+            const products = await Purchases.getProducts([productId]);
+            if (products.length === 0) {
+                return {status: 'failed', error: `Android product not found: ${productId}`};
             }
-
-            this.androidInAppCache[parentProductId] = rcProduct;
+            rcProduct = products[0];
+        } catch {
+            return {status: 'failed', error: `Failed to retrieve Android product: ${productId}`};
         }
 
         try {
             const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
 
-            const isActive = this.isProductActive(customerInfo, parentProductId);
+            const isActive = this.isProductActive(customerInfo, productId);
             if (isActive) {
                 return {status: 'purchased'};
             } else {
@@ -223,33 +214,14 @@ export class RevenueCatHeliumHandler {
         }
     }
 
-    // Android helper: Parse chained product ID format
-    private parseAndroidProductId(productId: string): {
-        baseProductId: string;
-        basePlanId?: string;
-        offerId?: string;
-    } {
-        const parts = productId.split(':');
-        return {
-            baseProductId: parts[0],
-            basePlanId: parts[1],
-            offerId: parts[2]
-        };
-    }
-
-    // Android helper: Find and cache subscription option
+    // Android helper: Find subscription option
     private async findAndroidSubscriptionOption(
-        chainedProductId: string,
-        baseProductId: string,
+        productId: string,
         basePlanId?: string,
         offerId?: string
     ): Promise<SubscriptionOption | undefined> {
-        if (this.androidSubscriptionOptionCache[chainedProductId]) {
-            return this.androidSubscriptionOptionCache[chainedProductId];
-        }
-
         try {
-            const products = await Purchases.getProducts([baseProductId]);
+            const products = await Purchases.getProducts([productId]);
             if (products.length === 0) {
                 return undefined;
             }
@@ -270,10 +242,6 @@ export class RevenueCatHeliumHandler {
                 subscriptionOption = product.subscriptionOptions.find(
                     opt => opt.id === basePlanId && opt.isBasePlan
                 );
-            }
-
-            if (subscriptionOption) {
-                this.androidSubscriptionOptionCache[chainedProductId] = subscriptionOption;
             }
 
             return subscriptionOption;
