@@ -262,12 +262,12 @@ class HeliumPaywallSdkModule : Module() {
 
     // Hide the current upsell
     Function("hideUpsell") {
-      // TODO: Call Helium SDK hideUpsell()
+      Helium.hideUpsell()
     }
 
     // Hide all upsells
     Function("hideAllUpsells") {
-      // TODO: Call Helium SDK hideAllUpsells()
+      Helium.hideAllUpsells()
     }
 
     // Get download status of paywall assets
@@ -320,25 +320,20 @@ class HeliumPaywallSdkModule : Module() {
 
     // Check if user has entitlement for a specific paywall
     AsyncFunction("hasEntitlementForPaywall") { trigger: String ->
-      // TODO: Call Helium SDK hasEntitlementForPaywall(trigger)
-      // TODO: Return HasEntitlementResult with boolean value
+      val result = Helium.shared.hasEntitlementForPaywall(trigger)
       return@AsyncFunction HasEntitlementResult().apply {
-        hasEntitlement = false
+        hasEntitlement = result
       }
     }
 
     // Check if user has any active subscription
     AsyncFunction("hasAnyActiveSubscription") {
-      // TODO: Call Helium SDK hasAnyActiveSubscription()
-      // TODO: Return boolean
-      return@AsyncFunction false
+      return@AsyncFunction Helium.shared.hasAnyActiveSubscription()
     }
 
     // Check if user has any entitlement
     AsyncFunction("hasAnyEntitlement") {
-      // TODO: Call Helium SDK hasAnyEntitlement()
-      // TODO: Return boolean
-      return@AsyncFunction false
+      return@AsyncFunction Helium.shared.hasAnyEntitlement()
     }
 
     // Handle deep link
@@ -371,13 +366,16 @@ class HeliumPaywallSdkModule : Module() {
 
     // Disable restore failed dialog
     Function("disableRestoreFailedDialog") {
-      // TODO: Call Helium SDK restore config to disable restore failed dialog
+      Helium.shared.disableRestoreFailedDialog()
     }
 
     // Set custom restore failed strings
     Function("setCustomRestoreFailedStrings") { customTitle: String?, customMessage: String?, customCloseButtonText: String? ->
-      // TODO: Call Helium SDK restore config to set custom strings
-      // TODO: Pass customTitle, customMessage, customCloseButtonText
+      Helium.shared.setCustomRestoreFailedStrings(
+        customTitle = customTitle,
+        customMessage = customMessage,
+        customCloseButtonText = customCloseButtonText
+      )
     }
 
     // Reset Helium SDK
