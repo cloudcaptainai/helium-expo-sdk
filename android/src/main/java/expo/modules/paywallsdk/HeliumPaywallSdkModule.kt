@@ -11,6 +11,7 @@ import com.google.gson.reflect.TypeToken
 import com.tryhelium.paywall.core.Helium
 import com.tryhelium.paywall.core.HeliumEnvironment
 import com.tryhelium.paywall.core.event.HeliumEvent
+import com.tryhelium.paywall.core.event.PaywallEventHandlers
 import com.tryhelium.paywall.core.HeliumFallbackConfig
 import com.tryhelium.paywall.core.HeliumIdentityManager
 import com.tryhelium.paywall.core.HeliumUserTraits
@@ -232,31 +233,24 @@ class HeliumPaywallSdkModule : Module() {
       // Convert custom paywall traits
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
 
+      // Helper to send event to JavaScript
+      val sendPaywallEvent: (Any) -> Unit = { event ->
+        NativeModuleManager.currentModule?.sendEvent("paywallEventHandlers", event.toMap())
+      }
+
+      val eventHandlers = PaywallEventHandlers(
+        onOpen = { event -> sendPaywallEvent(event) },
+        onClose = { event -> sendPaywallEvent(event) },
+        onDismissed = { event -> sendPaywallEvent(event) },
+        onPurchaseSucceeded = { event -> sendPaywallEvent(event) },
+        onOpenFailed = { event -> sendPaywallEvent(event) },
+        onCustomPaywallAction = { event -> sendPaywallEvent(event) }
+      )
+
       Helium.presentUpsell(
         trigger = trigger,
-        // TODO add support for these
-//        eventHandlers = PaywallEventHandlers.withHandlers(
-//          onOpen = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onClose = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onDismissed = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onPurchaseSucceeded = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onOpenFailed = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onCustomPaywallAction = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          }
-//        ),
-//        customPaywallTraits = convertedTraits,
-//        dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false
+        dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled,
+        eventListener = eventHandlers
       )
     }
 
