@@ -6,14 +6,17 @@ import type {
     SubscriptionOption
 } from 'react-native-purchases';
 import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
+import {Platform} from 'react-native';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
 // Rename the factory function
 export function createRevenueCatPurchaseConfig(config?: {
     apiKey?: string;
+    apiKeyIOS?: string;
+    apiKeyAndroid?: string;
 }): HeliumPurchaseConfig {
-    const rcHandler = new RevenueCatHeliumHandler(config?.apiKey);
+    const rcHandler = new RevenueCatHeliumHandler(config);
     return {
         makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
         makePurchaseAndroid: rcHandler.makePurchaseAndroid.bind(rcHandler),
@@ -28,9 +31,19 @@ export class RevenueCatHeliumHandler {
 
     private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
 
-    constructor(apiKey?: string) {
-        if (apiKey) {
-            Purchases.configure({apiKey});
+    constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string }) {
+        // Determine which API key to use based on platform
+        let effectiveApiKey: string | undefined;
+        if (Platform.OS === 'ios' && config?.apiKeyIOS) {
+            effectiveApiKey = config.apiKeyIOS;
+        } else if (Platform.OS === 'android' && config?.apiKeyAndroid) {
+            effectiveApiKey = config.apiKeyAndroid;
+        } else {
+            effectiveApiKey = config?.apiKey;
+        }
+
+        if (effectiveApiKey) {
+            Purchases.configure({apiKey: effectiveApiKey});
         }
         void this.initializePackageMapping();
     }
