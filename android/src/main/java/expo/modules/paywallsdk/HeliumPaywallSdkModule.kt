@@ -2,7 +2,9 @@ package expo.modules.paywallsdk
 
 import android.app.Activity
 import expo.modules.kotlin.exception.Exceptions
+import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
@@ -91,6 +93,10 @@ private object NativeModuleManager {
 }
 
 class HeliumPaywallSdkModule : Module() {
+  companion object {
+    private const val DEFAULT_LOADING_BUDGET_MS = 7000L
+  }
+
   private val gson = Gson()
   private var activityRef: WeakReference<Activity>? = null
 
@@ -311,21 +317,35 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Check if user has entitlement for a specific paywall
-    AsyncFunction("hasEntitlementForPaywall") { trigger: String ->
+    AsyncFunction("hasEntitlementForPaywall") Coroutine { trigger: String ->
       val result = Helium.shared.hasEntitlementForPaywall(trigger)
-      return@AsyncFunction HasEntitlementResult().apply {
+      return@Coroutine HasEntitlementResult().apply {
         hasEntitlement = result
       }
     }
 
     // Check if user has any active subscription
-    AsyncFunction("hasAnyActiveSubscription") {
-      return@AsyncFunction Helium.shared.hasAnyActiveSubscription()
+    AsyncFunction("hasAnyActiveSubscription") { promise: Promise ->
+      CoroutineScope(Dispatchers.Main).launch {
+        try {
+          val result = Helium.shared.hasAnyActiveSubscription()
+          promise.resolve(result)
+        } catch (e: Exception) {
+          promise.reject("ERR_HAS_ANY_ACTIVE_SUBSCRIPTION", e.message, e)
+        }
+      }
     }
 
     // Check if user has any entitlement
-    AsyncFunction("hasAnyEntitlement") {
-      return@AsyncFunction Helium.shared.hasAnyEntitlement()
+    AsyncFunction("hasAnyEntitlement") { promise: Promise ->
+      CoroutineScope(Dispatchers.Main).launch {
+        try {
+          val result = Helium.shared.hasAnyEntitlement()
+          promise.resolve(result)
+        } catch (e: Exception) {
+          promise.reject("ERR_HAS_ANY_ENTITLEMENT", e.message, e)
+        }
+      }
     }
 
     // Handle deep link
@@ -470,7 +490,7 @@ class HeliumPaywallSdkModule : Module() {
   ): HeliumFallbackConfig? {
     // Extract loading config settings
     val useLoadingState = paywallLoadingConfig?.get("useLoadingState") as? Boolean ?: true
-    val loadingBudget = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toLong() ?: 2000L
+    val loadingBudget = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toLong() ?: DEFAULT_LOADING_BUDGET_MS
 
     // Parse perTriggerLoadingConfig if present
     var perTriggerLoadingConfig: Map<String, HeliumFallbackConfig>? = null
@@ -484,7 +504,7 @@ class HeliumPaywallSdkModule : Module() {
           val triggerLoadingBudget = (config?.get("loadingBudget") as? Number)?.toLong()
           key to HeliumFallbackConfig(
             useLoadingState = triggerUseLoadingState ?: true,
-            loadingBudgetInMs = triggerLoadingBudget ?: 2000L
+            loadingBudgetInMs = triggerLoadingBudget ?: DEFAULT_LOADING_BUDGET_MS
           )
         } else {
           null

@@ -81,13 +81,6 @@ export type HeliumEnvironment = 'sandbox' | 'production';
 
 // --- Purchase Configuration Types ---
 
-/** Android-specific product identifiers */
-export interface AndroidProductDetails {
-  productId: string;
-  basePlanId?: string;
-  offerId?: string;
-}
-
 /** Interface for providing custom purchase handling logic. */
 export interface HeliumPurchaseConfig {
   /**
