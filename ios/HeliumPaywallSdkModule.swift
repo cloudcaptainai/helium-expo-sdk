@@ -43,13 +43,11 @@ private class NativeModuleManager {
     // Store active operations
     var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
     var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
-    var currentProductId: String?
 
     private init() {}
 
     func clearPurchase() {
         activePurchaseContinuation = nil
-        currentProductId = nil
     }
 
     func clearRestore() {
@@ -140,7 +138,6 @@ public class HeliumPaywallSdkModule: Module {
 
           return await withCheckedContinuation { continuation in
             NativeModuleManager.shared.activePurchaseContinuation = continuation
-            NativeModuleManager.shared.currentProductId = productId
 
             // Send event to JavaScript
             module.sendEvent("onDelegateActionEvent", [

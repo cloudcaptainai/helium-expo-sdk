@@ -58,6 +58,10 @@ export type HeliumPaywallEvent = {
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
   productId?: string;
+  /** Android-specific: Base plan ID for subscriptions */
+  basePlanId?: string;
+  /** Android-specific: Offer ID for promotional offers */
+  offerId?: string;
 };
 
 export type HeliumPaywallSdkViewProps = {
@@ -77,23 +81,46 @@ export type HeliumEnvironment = 'sandbox' | 'production';
 
 // --- Purchase Configuration Types ---
 
-/** Interface for providing custom purchase handling logic. */
+/** Android-specific product identifiers */
+export interface AndroidProductDetails {
+  productId: string;
+  basePlanId?: string;
+  offerId?: string;
+}
 
+/** Interface for providing custom purchase handling logic. */
 export interface HeliumPurchaseConfig {
-  makePurchase: (productId: string) => Promise<HeliumPurchaseResult>;
+  /**
+   * @deprecated Use makePurchaseIOS / makePurchaseAndroid instead for platform-specific handling.
+   * This method will continue to work for backward compatibility but doesn't provide Android subscription parameters.
+   */
+  makePurchase?: (productId: string) => Promise<HeliumPurchaseResult>;
+
+  /** iOS-specific purchase handler. Receives a simple product ID string. */
+  makePurchaseIOS?: (productId: string) => Promise<HeliumPurchaseResult>;
+
+  /** Android-specific purchase handler. Receives product ID and optional subscription parameters. */
+  makePurchaseAndroid?: (productId: string, basePlanId?: string, offerId?: string) => Promise<HeliumPurchaseResult>;
+
   restorePurchases: () => Promise<boolean>;
 }
 
 // Helper function for creating Custom Purchase Config
 export function createCustomPurchaseConfig(callbacks: {
-  makePurchase: (productId: string) => Promise<HeliumPurchaseResult>;
+  /** @deprecated Use makePurchaseIOS or makePurchaseAndroid instead */
+  makePurchase?: (productId: string) => Promise<HeliumPurchaseResult>;
+  makePurchaseIOS?: (productId: string) => Promise<HeliumPurchaseResult>;
+  makePurchaseAndroid?: (productId: string, basePlanId?: string, offerId?: string) => Promise<HeliumPurchaseResult>;
   restorePurchases: () => Promise<boolean>;
 }): HeliumPurchaseConfig {
   return {
     makePurchase: callbacks.makePurchase,
+    makePurchaseIOS: callbacks.makePurchaseIOS,
+    makePurchaseAndroid: callbacks.makePurchaseAndroid,
     restorePurchases: callbacks.restorePurchases,
   };
 }
+//wtf do we even have createCustomPurchaseConfig...
 
 export type TriggerLoadingConfig = {
   /** Whether to show loading state for this trigger. Set to nil to use the global `useLoadingState` setting. */
