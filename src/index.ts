@@ -10,9 +10,6 @@ import { EventSubscription } from 'expo-modules-core';
 import * as ExpoFileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
-const IOS = 'ios' as const;
-const ANDROID = 'android' as const;
-
 export { default } from './HeliumPaywallSdkModule';
 // export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
 export * from  './HeliumPaywallSdk.types';
@@ -61,7 +58,7 @@ export const initialize = (config: HeliumConfig) => {
           let result;
 
           // Platform-specific purchase handling
-          if (Platform.OS === IOS) {
+          if (Platform.OS === 'ios') {
             // iOS: Use makePurchaseIOS if available, otherwise use deprecated makePurchase
             if (purchaseConfig.makePurchaseIOS) {
               result = await purchaseConfig.makePurchaseIOS(event.productId);
@@ -72,7 +69,7 @@ export const initialize = (config: HeliumConfig) => {
               HeliumPaywallSdkModule.handlePurchaseResult('failed', 'No iOS purchase handler configured.');
               return;
             }
-          } else if (Platform.OS === ANDROID) {
+          } else if (Platform.OS === 'android') {
             // Android: Use makePurchaseAndroid if available
             if (purchaseConfig.makePurchaseAndroid) {
               result = await purchaseConfig.makePurchaseAndroid(

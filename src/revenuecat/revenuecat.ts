@@ -1,9 +1,9 @@
 import type {
-    CustomerInfo,
-    PurchasesEntitlementInfo,
-    PurchasesError,
-    PurchasesPackage,
-    SubscriptionOption
+  CustomerInfo,
+  PurchasesEntitlementInfo,
+  PurchasesError,
+  PurchasesPackage,
+  SubscriptionOption
 } from 'react-native-purchases';
 import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import {Platform} from 'react-native';
@@ -12,271 +12,271 @@ import {setRevenueCatAppUserId} from "../index";
 
 // Rename the factory function
 export function createRevenueCatPurchaseConfig(config?: {
-    apiKey?: string;
-    apiKeyIOS?: string;
-    apiKeyAndroid?: string;
+  apiKey?: string;
+  apiKeyIOS?: string;
+  apiKeyAndroid?: string;
 }): HeliumPurchaseConfig {
-    const rcHandler = new RevenueCatHeliumHandler(config);
-    return {
-        makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
-        makePurchaseAndroid: rcHandler.makePurchaseAndroid.bind(rcHandler),
-        restorePurchases: rcHandler.restorePurchases.bind(rcHandler),
-    };
+  const rcHandler = new RevenueCatHeliumHandler(config);
+  return {
+    makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
+    makePurchaseAndroid: rcHandler.makePurchaseAndroid.bind(rcHandler),
+    restorePurchases: rcHandler.restorePurchases.bind(rcHandler),
+  };
 }
 
 export class RevenueCatHeliumHandler {
-    private productIdToPackageMapping: Record<string, PurchasesPackage> = {};
-    private isMappingInitialized: boolean = false;
-    private initializationPromise: Promise<void> | null = null;
+  private productIdToPackageMapping: Record<string, PurchasesPackage> = {};
+  private isMappingInitialized: boolean = false;
+  private initializationPromise: Promise<void> | null = null;
 
-    private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
+  private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
 
-    constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string }) {
-        // Determine which API key to use based on platform
-        let effectiveApiKey: string | undefined;
-        if (Platform.OS === 'ios' && config?.apiKeyIOS) {
-            effectiveApiKey = config.apiKeyIOS;
-        } else if (Platform.OS === 'android' && config?.apiKeyAndroid) {
-            effectiveApiKey = config.apiKeyAndroid;
-        } else {
-            effectiveApiKey = config?.apiKey;
-        }
-
-        if (effectiveApiKey) {
-            Purchases.configure({apiKey: effectiveApiKey});
-        }
-        void this.initializePackageMapping();
+  constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string }) {
+    // Determine which API key to use based on platform
+    let effectiveApiKey: string | undefined;
+    if (Platform.OS === 'ios' && config?.apiKeyIOS) {
+      effectiveApiKey = config.apiKeyIOS;
+    } else if (Platform.OS === 'android' && config?.apiKeyAndroid) {
+      effectiveApiKey = config.apiKeyAndroid;
+    } else {
+      effectiveApiKey = config?.apiKey;
     }
 
-    private async initializePackageMapping(): Promise<void> {
-        if (this.initializationPromise) {
-            return this.initializationPromise;
-        }
-        this.initializationPromise = (async () => {
-            try {
-                // Keep this value as up-to-date as possible
-                setRevenueCatAppUserId(await Purchases.getAppUserID());
-
-                const offerings = await Purchases.getOfferings();
-                const allOfferings = offerings.all;
-                for (const offering of Object.values(allOfferings)) {
-                    offering.availablePackages.forEach((pkg: PurchasesPackage) => {
-                        if (pkg.product?.identifier) {
-                            this.productIdToPackageMapping[pkg.product.identifier] = pkg;
-                        }
-                    });
-                }
-                this.isMappingInitialized = true;
-            } catch (error) {
-                this.isMappingInitialized = false;
-            } finally {
-                this.initializationPromise = null;
-            }
-        })();
-        return this.initializationPromise;
+    if (effectiveApiKey) {
+      Purchases.configure({apiKey: effectiveApiKey});
     }
+    void this.initializePackageMapping();
+  }
 
-    private async ensureMappingInitialized(): Promise<void> {
-        if (!this.isMappingInitialized && !this.initializationPromise) {
-            await this.initializePackageMapping();
-        } else if (this.initializationPromise) {
-            await this.initializationPromise;
-        }
+  private async initializePackageMapping(): Promise<void> {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
     }
-
-    async makePurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
+    this.initializationPromise = (async () => {
+      try {
         // Keep this value as up-to-date as possible
         setRevenueCatAppUserId(await Purchases.getAppUserID());
 
-        await this.ensureMappingInitialized();
-        const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
-        let rcProduct: PurchasesStoreProduct | undefined;
-        if (!pkg) {
-            // Use cached if available
-            rcProduct = this.rcProductToPackageMapping[productId];
-            if (!rcProduct) {
-                // Try to retrieve now
-                try {
-                    const rcProducts = await Purchases.getProducts([productId]);
-                    rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
-                } catch {
-                    // 'failed' status will be returned
-                }
-                if (rcProduct) {
-                    this.rcProductToPackageMapping[productId] = rcProduct;
-                }
+        const offerings = await Purchases.getOfferings();
+        const allOfferings = offerings.all;
+        for (const offering of Object.values(allOfferings)) {
+          offering.availablePackages.forEach((pkg: PurchasesPackage) => {
+            if (pkg.product?.identifier) {
+              this.productIdToPackageMapping[pkg.product.identifier] = pkg;
             }
+          });
         }
+        this.isMappingInitialized = true;
+      } catch (error) {
+        this.isMappingInitialized = false;
+      } finally {
+        this.initializationPromise = null;
+      }
+    })();
+    return this.initializationPromise;
+  }
 
-        try {
-            let customerInfo: CustomerInfo;
-            if (pkg) {
-                customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
-            } else if (rcProduct) {
-                customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
-            } else {
-                return {status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}`};
-            }
-            const isActive = this.isProductActive(customerInfo, productId);
-            if (isActive) {
-                return {status: 'purchased'};
-            } else {
-                // This case might occur if the purchase succeeded but the entitlement wasn't immediately active
-                // or if a different product became active.
-                // Consider if polling/listening might be needed here too, similar to pending.
-                // For now, returning failed as the specific product isn't confirmed active.
-                return {
-                    status: 'failed',
-                    error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-                };
-            }
-        } catch (error) {
-            const purchasesError = error as PurchasesError;
-
-            if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-                return {status: 'pending'};
-            }
-
-            if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-                return {status: 'cancelled'};
-            }
-
-            // Handle other errors
-            return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
-        }
+  private async ensureMappingInitialized(): Promise<void> {
+    if (!this.isMappingInitialized && !this.initializationPromise) {
+      await this.initializePackageMapping();
+    } else if (this.initializationPromise) {
+      await this.initializationPromise;
     }
+  }
 
-    // Android-specific purchase logic (completely separated from iOS)
-    async makePurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
-        // Keep this value as up-to-date as possible
-        setRevenueCatAppUserId(await Purchases.getAppUserID());
+  async makePurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
+    // Keep this value as up-to-date as possible
+    setRevenueCatAppUserId(await Purchases.getAppUserID());
 
-        // Handle subscription with base plan or offer
-        if (basePlanId || offerId) {
-            const subscriptionOption = await this.findAndroidSubscriptionOption(
-                productId,
-                basePlanId,
-                offerId
-            );
-
-            if (subscriptionOption) {
-                try {
-                    const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
-
-                    const isActive = this.isProductActive(customerInfo, productId);
-                    if (isActive) {
-                        return {status: 'purchased'};
-                    } else {
-                        return {
-                            status: 'failed',
-                            error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-                        };
-                    }
-                } catch (error) {
-                    const purchasesError = error as PurchasesError;
-
-                    if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-                        return {status: 'pending'};
-                    }
-
-                    if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-                        return {status: 'cancelled'};
-                    }
-
-                    return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
-                }
-            }
-        }
-
-        // Handle one-time purchase or subscription that didn't have matching base plan / offer
-        let rcProduct: PurchasesStoreProduct;
+    await this.ensureMappingInitialized();
+    const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
+    let rcProduct: PurchasesStoreProduct | undefined;
+    if (!pkg) {
+      // Use cached if available
+      rcProduct = this.rcProductToPackageMapping[productId];
+      if (!rcProduct) {
+        // Try to retrieve now
         try {
-            const products = await Purchases.getProducts([productId]);
-            if (products.length === 0) {
-                return {status: 'failed', error: `Android product not found: ${productId}`};
-            }
-            rcProduct = products[0];
+          const rcProducts = await Purchases.getProducts([productId]);
+          rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
         } catch {
-            return {status: 'failed', error: `Failed to retrieve Android product: ${productId}`};
+          // 'failed' status will be returned
         }
+        if (rcProduct) {
+          this.rcProductToPackageMapping[productId] = rcProduct;
+        }
+      }
+    }
 
+    try {
+      let customerInfo: CustomerInfo;
+      if (pkg) {
+        customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
+      } else if (rcProduct) {
+        customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+      } else {
+        return {status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}`};
+      }
+      const isActive = this.isProductActive(customerInfo, productId);
+      if (isActive) {
+        return {status: 'purchased'};
+      } else {
+        // This case might occur if the purchase succeeded but the entitlement wasn't immediately active
+        // or if a different product became active.
+        // Consider if polling/listening might be needed here too, similar to pending.
+        // For now, returning failed as the specific product isn't confirmed active.
+        return {
+          status: 'failed',
+          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+        };
+      }
+    } catch (error) {
+      const purchasesError = error as PurchasesError;
+
+      if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+        return {status: 'pending'};
+      }
+
+      if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        return {status: 'cancelled'};
+      }
+
+      // Handle other errors
+      return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+    }
+  }
+
+  // Android-specific purchase logic (completely separated from iOS)
+  async makePurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
+    // Keep this value as up-to-date as possible
+    setRevenueCatAppUserId(await Purchases.getAppUserID());
+
+    // Handle subscription with base plan or offer
+    if (basePlanId || offerId) {
+      const subscriptionOption = await this.findAndroidSubscriptionOption(
+        productId,
+        basePlanId,
+        offerId
+      );
+
+      if (subscriptionOption) {
         try {
-            const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+          const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
 
-            const isActive = this.isProductActive(customerInfo, productId);
-            if (isActive) {
-                return {status: 'purchased'};
-            } else {
-                return {
-                    status: 'failed',
-                    error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-                };
-            }
+          const isActive = this.isProductActive(customerInfo, productId);
+          if (isActive) {
+            return {status: 'purchased'};
+          } else {
+            return {
+              status: 'failed',
+              error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+            };
+          }
         } catch (error) {
-            const purchasesError = error as PurchasesError;
+          const purchasesError = error as PurchasesError;
 
-            if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-                return {status: 'pending'};
-            }
+          if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+            return {status: 'pending'};
+          }
 
-            if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-                return {status: 'cancelled'};
-            }
+          if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+            return {status: 'cancelled'};
+          }
 
-            return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+          return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
         }
+      }
     }
 
-    // Android helper: Find subscription option
-    private async findAndroidSubscriptionOption(
-        productId: string,
-        basePlanId?: string,
-        offerId?: string
-    ): Promise<SubscriptionOption | undefined> {
-        try {
-            const products = await Purchases.getProducts([productId]);
-            if (products.length === 0) {
-                return undefined;
-            }
-
-            const product = products[0];
-
-            if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
-                return undefined;
-            }
-
-            let subscriptionOption: SubscriptionOption | undefined;
-
-            if (offerId && basePlanId) {
-                // Look for specific offer: "basePlanId:offerId"
-                const targetId = `${basePlanId}:${offerId}`;
-                subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
-            } else if (basePlanId) {
-                subscriptionOption = product.subscriptionOptions.find(
-                    opt => opt.id === basePlanId && opt.isBasePlan
-                );
-            }
-
-            return subscriptionOption;
-        } catch (error) {
-            return undefined;
-        }
+    // Handle one-time purchase or subscription that didn't have matching base plan / offer
+    let rcProduct: PurchasesStoreProduct;
+    try {
+      const products = await Purchases.getProducts([productId]);
+      if (products.length === 0) {
+        return {status: 'failed', error: `Android product not found: ${productId}`};
+      }
+      rcProduct = products[0];
+    } catch {
+      return {status: 'failed', error: `Failed to retrieve Android product: ${productId}`};
     }
 
-    // Helper function to check if a product is active in CustomerInfo
-    private isProductActive(customerInfo: CustomerInfo, productId: string): boolean {
-        return Object.values(customerInfo.entitlements.active).some((entitlement: PurchasesEntitlementInfo) => entitlement.productIdentifier === productId)
-            || customerInfo.activeSubscriptions.includes(productId)
-            || customerInfo.allPurchasedProductIdentifiers.includes(productId);
-    }
+    try {
+      const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
 
-    async restorePurchases(): Promise<boolean> {
-        try {
-            const customerInfo = await Purchases.restorePurchases();
-            const isActive = Object.keys(customerInfo.entitlements.active).length > 0;
-            return isActive;
-        } catch (error) {
-            return false;
-        }
+      const isActive = this.isProductActive(customerInfo, productId);
+      if (isActive) {
+        return {status: 'purchased'};
+      } else {
+        return {
+          status: 'failed',
+          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+        };
+      }
+    } catch (error) {
+      const purchasesError = error as PurchasesError;
+
+      if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+        return {status: 'pending'};
+      }
+
+      if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        return {status: 'cancelled'};
+      }
+
+      return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
     }
+  }
+
+  // Android helper: Find subscription option
+  private async findAndroidSubscriptionOption(
+    productId: string,
+    basePlanId?: string,
+    offerId?: string
+  ): Promise<SubscriptionOption | undefined> {
+    try {
+      const products = await Purchases.getProducts([productId]);
+      if (products.length === 0) {
+        return undefined;
+      }
+
+      const product = products[0];
+
+      if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
+        return undefined;
+      }
+
+      let subscriptionOption: SubscriptionOption | undefined;
+
+      if (offerId && basePlanId) {
+        // Look for specific offer: "basePlanId:offerId"
+        const targetId = `${basePlanId}:${offerId}`;
+        subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
+      } else if (basePlanId) {
+        subscriptionOption = product.subscriptionOptions.find(
+          opt => opt.id === basePlanId && opt.isBasePlan
+        );
+      }
+
+      return subscriptionOption;
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  // Helper function to check if a product is active in CustomerInfo
+  private isProductActive(customerInfo: CustomerInfo, productId: string): boolean {
+    return Object.values(customerInfo.entitlements.active).some((entitlement: PurchasesEntitlementInfo) => entitlement.productIdentifier === productId)
+      || customerInfo.activeSubscriptions.includes(productId)
+      || customerInfo.allPurchasedProductIdentifiers.includes(productId);
+  }
+
+  async restorePurchases(): Promise<boolean> {
+    try {
+      const customerInfo = await Purchases.restorePurchases();
+      const isActive = Object.keys(customerInfo.entitlements.active).length > 0;
+      return isActive;
+    } catch (error) {
+      return false;
+    }
+  }
 }
