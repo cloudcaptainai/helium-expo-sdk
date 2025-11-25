@@ -2,7 +2,9 @@ package expo.modules.paywallsdk
 
 import android.app.Activity
 import expo.modules.kotlin.exception.Exceptions
+import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
@@ -11,6 +13,8 @@ import com.google.gson.reflect.TypeToken
 import com.tryhelium.paywall.core.Helium
 import com.tryhelium.paywall.core.HeliumEnvironment
 import com.tryhelium.paywall.core.event.HeliumEvent
+import com.tryhelium.paywall.core.event.PaywallEventHandlers
+import com.tryhelium.paywall.core.event.*
 import com.tryhelium.paywall.core.HeliumFallbackConfig
 import com.tryhelium.paywall.core.HeliumIdentityManager
 import com.tryhelium.paywall.core.HeliumUserTraits
@@ -71,6 +75,35 @@ private fun Any.toMap(): Map<String, Any?> {
   }
 }
 
+/**
+ * Extracts the event type string from a HeliumEvent for JavaScript consumption.
+ * Maps Android SDK event class names to camelCase type strings expected by TypeScript.
+ */
+private fun getEventType(event: Any): String? {
+  return when (event) {
+    is PaywallOpen -> "paywallOpen"
+    is PaywallClose -> "paywallClose"
+    is PaywallDismissed -> "paywallDismissed"
+    is PaywallOpenFailed -> "paywallOpenFailed"
+    is PaywallSkipped -> "paywallSkipped"
+    is PaywallButtonPressed -> "paywallButtonPressed"
+    is ProductSelected -> "productSelected"
+    is PurchasedPressed -> "purchasePressed"
+    is PurchaseSucceeded -> "purchaseSucceeded"
+    is PurchaseCancelled -> "purchaseCancelled"
+    is PurchaseFailed -> "purchaseFailed"
+    is PurchaseRestored -> "purchaseRestored"
+    is PurchaseRestoreFailed -> "purchaseRestoreFailed"
+    is PurchasePending -> "purchasePending"
+    is PaywallsDownloadSuccess -> "paywallsDownloadSuccess"
+    is PaywallsDownloadError -> "paywallsDownloadError"
+    is PaywallWebViewRendered -> "paywallWebViewRendered"
+    is CustomPaywallAction -> "customPaywallAction"
+    //is UserAllocatedEvent -> "userAllocated"
+    else -> "unknown"
+  }
+}
+
 // Singleton to manage purchase state that survives module recreation in dev mode
 private object NativeModuleManager {
   // Always keep reference to the current module
@@ -90,6 +123,10 @@ private object NativeModuleManager {
 }
 
 class HeliumPaywallSdkModule : Module() {
+  companion object {
+    private const val DEFAULT_LOADING_BUDGET_MS = 7000L
+  }
+
   private val gson = Gson()
   private var activityRef: WeakReference<Activity>? = null
 
@@ -153,6 +190,10 @@ class HeliumPaywallSdkModule : Module() {
         eventMap["error"]?.let { eventMap["errorDescription"] = it }
         eventMap["productId"]?.let { eventMap["productKey"] = it }
         eventMap["buttonName"]?.let { eventMap["ctaName"] = it }
+
+        // Add event type for JavaScript consumption
+        getEventType(event)?.let { eventMap["type"] = it }
+
         NativeModuleManager.currentModule?.sendEvent("onHeliumPaywallEvent", eventMap)
       }
 
@@ -230,42 +271,38 @@ class HeliumPaywallSdkModule : Module() {
       // Convert custom paywall traits
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
 
+      // Helper to send event to JavaScript
+      val sendPaywallEvent: (Any) -> Unit = { event ->
+        val eventMap = event.toMap().toMutableMap()
+        // Add event type for JavaScript consumption
+        getEventType(event)?.let { eventMap["type"] = it }
+        NativeModuleManager.currentModule?.sendEvent("paywallEventHandlers", eventMap)
+      }
+
+      val eventHandlers = PaywallEventHandlers(
+        onOpen = { event -> sendPaywallEvent(event) },
+        onClose = { event -> sendPaywallEvent(event) },
+        onDismissed = { event -> sendPaywallEvent(event) },
+        onPurchaseSucceeded = { event -> sendPaywallEvent(event) },
+        onOpenFailed = { event -> sendPaywallEvent(event) },
+        onCustomPaywallAction = { event -> sendPaywallEvent(event) }
+      )
+
       Helium.presentUpsell(
         trigger = trigger,
-        // TODO add support for these
-//        eventHandlers = PaywallEventHandlers.withHandlers(
-//          onOpen = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onClose = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onDismissed = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onPurchaseSucceeded = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onOpenFailed = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          },
-//          onCustomPaywallAction = { event ->
-//            sendEvent("paywallEventHandlers", event.toMap())
-//          }
-//        ),
-//        customPaywallTraits = convertedTraits,
-//        dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false
+        dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled,
+        eventListener = eventHandlers
       )
     }
 
     // Hide the current upsell
     Function("hideUpsell") {
-      // TODO: Call Helium SDK hideUpsell()
+      Helium.hideUpsell()
     }
 
     // Hide all upsells
     Function("hideAllUpsells") {
-      // TODO: Call Helium SDK hideAllUpsells()
+      Helium.hideAllUpsells()
     }
 
     // Get download status of paywall assets
@@ -317,26 +354,35 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Check if user has entitlement for a specific paywall
-    AsyncFunction("hasEntitlementForPaywall") { trigger: String ->
-      // TODO: Call Helium SDK hasEntitlementForPaywall(trigger)
-      // TODO: Return HasEntitlementResult with boolean value
-      return@AsyncFunction HasEntitlementResult().apply {
-        hasEntitlement = false
+    AsyncFunction("hasEntitlementForPaywall") Coroutine { trigger: String ->
+      val result = Helium.shared.hasEntitlementForPaywall(trigger)
+      return@Coroutine HasEntitlementResult().apply {
+        hasEntitlement = result
       }
     }
 
     // Check if user has any active subscription
-    AsyncFunction("hasAnyActiveSubscription") {
-      // TODO: Call Helium SDK hasAnyActiveSubscription()
-      // TODO: Return boolean
-      return@AsyncFunction false
+    AsyncFunction("hasAnyActiveSubscription") { promise: Promise ->
+      CoroutineScope(Dispatchers.Main).launch {
+        try {
+          val result = Helium.shared.hasAnyActiveSubscription()
+          promise.resolve(result)
+        } catch (e: Exception) {
+          promise.reject("ERR_HAS_ANY_ACTIVE_SUBSCRIPTION", e.message, e)
+        }
+      }
     }
 
     // Check if user has any entitlement
-    AsyncFunction("hasAnyEntitlement") {
-      // TODO: Call Helium SDK hasAnyEntitlement()
-      // TODO: Return boolean
-      return@AsyncFunction false
+    AsyncFunction("hasAnyEntitlement") { promise: Promise ->
+      CoroutineScope(Dispatchers.Main).launch {
+        try {
+          val result = Helium.shared.hasAnyEntitlement()
+          promise.resolve(result)
+        } catch (e: Exception) {
+          promise.reject("ERR_HAS_ANY_ENTITLEMENT", e.message, e)
+        }
+      }
     }
 
     // Handle deep link
@@ -369,13 +415,16 @@ class HeliumPaywallSdkModule : Module() {
 
     // Disable restore failed dialog
     Function("disableRestoreFailedDialog") {
-      // TODO: Call Helium SDK restore config to disable restore failed dialog
+      Helium.shared.disableRestoreFailedDialog()
     }
 
     // Set custom restore failed strings
     Function("setCustomRestoreFailedStrings") { customTitle: String?, customMessage: String?, customCloseButtonText: String? ->
-      // TODO: Call Helium SDK restore config to set custom strings
-      // TODO: Pass customTitle, customMessage, customCloseButtonText
+      Helium.shared.setCustomRestoreFailedStrings(
+        customTitle = customTitle,
+        customMessage = customMessage,
+        customCloseButtonText = customCloseButtonText
+      )
     }
 
     // Reset Helium SDK
@@ -478,7 +527,7 @@ class HeliumPaywallSdkModule : Module() {
   ): HeliumFallbackConfig? {
     // Extract loading config settings
     val useLoadingState = paywallLoadingConfig?.get("useLoadingState") as? Boolean ?: true
-    val loadingBudget = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toLong() ?: 2000L
+    val loadingBudget = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toLong() ?: DEFAULT_LOADING_BUDGET_MS
 
     // Parse perTriggerLoadingConfig if present
     var perTriggerLoadingConfig: Map<String, HeliumFallbackConfig>? = null
@@ -492,7 +541,7 @@ class HeliumPaywallSdkModule : Module() {
           val triggerLoadingBudget = (config?.get("loadingBudget") as? Number)?.toLong()
           key to HeliumFallbackConfig(
             useLoadingState = triggerUseLoadingState ?: true,
-            loadingBudgetInMs = triggerLoadingBudget ?: 2000L
+            loadingBudgetInMs = triggerLoadingBudget ?: DEFAULT_LOADING_BUDGET_MS
           )
         } else {
           null

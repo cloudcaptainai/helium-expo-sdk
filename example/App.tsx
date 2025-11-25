@@ -9,12 +9,16 @@ export default function App() {
     initialize({
       apiKey: 'api-key-here',
       purchaseConfig: createCustomPurchaseConfig({
-        makePurchase: async (productId) => {
-          // Your purchase logic here
+        makePurchaseIOS: async (productId) => {
+          console.log(`ios purchase! ${productId}`);
+          return { status: 'purchased' };
+        },
+        makePurchaseAndroid: async (productId, basePlanId, offerId) => {
+          console.log(`android purchase! ${productId} ${basePlanId} ${offerId}`);
           return { status: 'purchased' };
         },
         restorePurchases: async () => {
-          // Your restore logic here
+          console.log('restore Purchases');
           return true;
         }
       }),
