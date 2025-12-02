@@ -331,11 +331,12 @@ export const getExperimentInfoForTrigger = (trigger: string): ExperimentInfo | u
     return;
   }
   if (result.getExperimentInfoErrorMsg) {
+    console.log(`[Helium] getExperimentInfoForTrigger bridging error. ${result.getExperimentInfoErrorMsg}`);
     return;
   }
   // Validate required field exists before casting
-  if (!result.trigger) {
-    console.log('[Helium] getExperimentInfoForTrigger returned data without required trigger field.');
+  if (!result.experimentId) {
+    console.log('[Helium] getExperimentInfoForTrigger returned data without required experimentId field.');
     return;
   }
   return result as ExperimentInfo;
