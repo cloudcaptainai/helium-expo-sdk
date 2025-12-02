@@ -64,7 +64,7 @@ export interface ExperimentInfo {
   /**
    * All triggers where this experiment is configured
    */
-  allTriggers?: [string];
+  triggers?: string[];
 
   /**
    * Experiment name
