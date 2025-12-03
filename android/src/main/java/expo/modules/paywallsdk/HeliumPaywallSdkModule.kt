@@ -489,7 +489,7 @@ class HeliumPaywallSdkModule : Module() {
         } else {
           null
         }
-      } as? Map<String, HeliumFallbackConfig>
+      }.toMap() as? Map<String, HeliumFallbackConfig>
     }
 
     // Handle fallback bundle - write to helium_local directory where SDK expects it
