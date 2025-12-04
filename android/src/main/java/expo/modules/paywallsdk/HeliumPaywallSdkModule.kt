@@ -13,8 +13,8 @@ import com.google.gson.reflect.TypeToken
 import com.tryhelium.paywall.core.Helium
 import com.tryhelium.paywall.core.HeliumEnvironment
 import com.tryhelium.paywall.core.event.HeliumEvent
+import com.tryhelium.paywall.core.event.HeliumEventDictionaryMapper
 import com.tryhelium.paywall.core.event.PaywallEventHandlers
-import com.tryhelium.paywall.core.event.*
 import com.tryhelium.paywall.core.HeliumFallbackConfig
 import com.tryhelium.paywall.core.HeliumIdentityManager
 import com.tryhelium.paywall.core.HeliumUserTraits
@@ -49,59 +49,6 @@ class PaywallInfoResult : Record {
 class HasEntitlementResult : Record {
   @Field
   var hasEntitlement: Boolean? = null
-}
-
-/**
- * Extension function to convert any object (especially HeliumEvent data classes) to a Map.
- * Uses Kotlin reflection to extract all member properties from data classes.
- */
-@Suppress("UNCHECKED_CAST")
-private fun Any.toMap(): Map<String, Any?> {
-  return try {
-    val kClass = this::class
-    kClass.memberProperties.associate { prop ->
-      prop.isAccessible = true
-      val value = (prop as kotlin.reflect.KProperty1<Any, *>).get(this)
-      prop.name to when (value) {
-        is Enum<*> -> value.name
-        is List<*> -> value
-        is Map<*, *> -> value
-        else -> value
-      }
-    }
-  } catch (e: Exception) {
-    android.util.Log.e("HeliumPaywallSdk", "Failed to convert to map: ${e.message}", e)
-    emptyMap()
-  }
-}
-
-/**
- * Extracts the event type string from a HeliumEvent for JavaScript consumption.
- * Maps Android SDK event class names to camelCase type strings expected by TypeScript.
- */
-private fun getEventType(event: Any): String? {
-  return when (event) {
-    is PaywallOpen -> "paywallOpen"
-    is PaywallClose -> "paywallClose"
-    is PaywallDismissed -> "paywallDismissed"
-    is PaywallOpenFailed -> "paywallOpenFailed"
-    is PaywallSkipped -> "paywallSkipped"
-    is PaywallButtonPressed -> "paywallButtonPressed"
-    is ProductSelected -> "productSelected"
-    is PurchasedPressed -> "purchasePressed"
-    is PurchaseSucceeded -> "purchaseSucceeded"
-    is PurchaseCancelled -> "purchaseCancelled"
-    is PurchaseFailed -> "purchaseFailed"
-    is PurchaseRestored -> "purchaseRestored"
-    is PurchaseRestoreFailed -> "purchaseRestoreFailed"
-    is PurchasePending -> "purchasePending"
-    is PaywallsDownloadSuccess -> "paywallsDownloadSuccess"
-    is PaywallsDownloadError -> "paywallsDownloadError"
-    is PaywallWebViewRendered -> "paywallWebViewRendered"
-    is CustomPaywallAction -> "customPaywallAction"
-    //is UserAllocatedEvent -> "userAllocated"
-    else -> "unknown"
-  }
 }
 
 // Singleton to manage purchase state that survives module recreation in dev mode
@@ -183,16 +130,13 @@ class HeliumPaywallSdkModule : Module() {
       }
 
       // Event handler that converts events and adds backwards compatibility fields
-      val delegateEventHandler: (Any) -> Unit = { event ->
-        val eventMap = event.toMap().toMutableMap()
+      val delegateEventHandler: (HeliumEvent) -> Unit = { event ->
+        val eventMap = HeliumEventDictionaryMapper.toDictionary(event).toMutableMap()
         // Add deprecated fields for backwards compatibility
         eventMap["paywallName"]?.let { eventMap["paywallTemplateName"] = it }
         eventMap["error"]?.let { eventMap["errorDescription"] = it }
         eventMap["productId"]?.let { eventMap["productKey"] = it }
         eventMap["buttonName"]?.let { eventMap["ctaName"] = it }
-
-        // Add event type for JavaScript consumption
-        getEventType(event)?.let { eventMap["type"] = it }
 
         NativeModuleManager.currentModule?.sendEvent("onHeliumPaywallEvent", eventMap)
       }
@@ -272,10 +216,8 @@ class HeliumPaywallSdkModule : Module() {
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
 
       // Helper to send event to JavaScript
-      val sendPaywallEvent: (Any) -> Unit = { event ->
-        val eventMap = event.toMap().toMutableMap()
-        // Add event type for JavaScript consumption
-        getEventType(event)?.let { eventMap["type"] = it }
+      val sendPaywallEvent: (HeliumEvent) -> Unit = { event ->
+        val eventMap = HeliumEventDictionaryMapper.toDictionary(event).toMutableMap()
         NativeModuleManager.currentModule?.sendEvent("paywallEventHandlers", eventMap)
       }
 
@@ -291,6 +233,7 @@ class HeliumPaywallSdkModule : Module() {
       Helium.presentUpsell(
         trigger = trigger,
         dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled,
+        customPaywallTraits = convertedTraits,
         eventListener = eventHandlers
       )
     }
@@ -546,7 +489,7 @@ class HeliumPaywallSdkModule : Module() {
         } else {
           null
         }
-      }.toMap() as Map<String, HeliumFallbackConfig>
+      }.toMap() as? Map<String, HeliumFallbackConfig>
     }
 
     // Handle fallback bundle - write to helium_local directory where SDK expects it
@@ -588,7 +531,7 @@ class HeliumPaywallSdkModule : Module() {
  */
 class CustomPaywallDelegate(
   private val module: HeliumPaywallSdkModule,
-  private val eventHandler: (Any) -> Unit
+  private val eventHandler: (HeliumEvent) -> Unit
 ) : HeliumPaywallDelegate {
 
   override fun onHeliumEvent(event: HeliumEvent) {
@@ -667,7 +610,7 @@ class CustomPaywallDelegate(
  */
 class DefaultPaywallDelegate(
   activity: Activity,
-  private val eventHandler: (Any) -> Unit
+  private val eventHandler: (HeliumEvent) -> Unit
 ) : PlayStorePaywallDelegate(activity) {
 
   override fun onHeliumEvent(event: HeliumEvent) {
