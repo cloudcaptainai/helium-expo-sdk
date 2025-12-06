@@ -1,10 +1,4 @@
-import type {
-  CustomerInfo,
-  PurchasesEntitlementInfo,
-  PurchasesError,
-  PurchasesPackage,
-  SubscriptionOption
-} from 'react-native-purchases';
+import type {PurchasesError, PurchasesPackage, SubscriptionOption} from 'react-native-purchases';
 import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import {Platform} from 'react-native';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
@@ -109,27 +103,14 @@ export class RevenueCatHeliumHandler {
     }
 
     try {
-      let customerInfo: CustomerInfo;
       if (pkg) {
-        customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
+        await Purchases.purchasePackage(pkg);
       } else if (rcProduct) {
-        customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+        await Purchases.purchaseStoreProduct(rcProduct);
       } else {
         return {status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}`};
       }
-      const isActive = this.isProductActive(customerInfo, productId);
-      if (isActive) {
-        return {status: 'purchased'};
-      } else {
-        // This case might occur if the purchase succeeded but the entitlement wasn't immediately active
-        // or if a different product became active.
-        // Consider if polling/listening might be needed here too, similar to pending.
-        // For now, returning failed as the specific product isn't confirmed active.
-        return {
-          status: 'failed',
-          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-        };
-      }
+      return {status: 'purchased'};
     } catch (error) {
       const purchasesError = error as PurchasesError;
 
@@ -141,7 +122,6 @@ export class RevenueCatHeliumHandler {
         return {status: 'cancelled'};
       }
 
-      // Handle other errors
       return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
     }
   }
@@ -161,17 +141,8 @@ export class RevenueCatHeliumHandler {
 
       if (subscriptionOption) {
         try {
-          const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
-
-          const isActive = this.isProductActive(customerInfo, productId);
-          if (isActive) {
-            return {status: 'purchased'};
-          } else {
-            return {
-              status: 'failed',
-              error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-            };
-          }
+          await Purchases.purchaseSubscriptionOption(subscriptionOption);
+          return {status: 'purchased'};
         } catch (error) {
           const purchasesError = error as PurchasesError;
 
@@ -201,17 +172,8 @@ export class RevenueCatHeliumHandler {
     }
 
     try {
-      const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
-
-      const isActive = this.isProductActive(customerInfo, productId);
-      if (isActive) {
-        return {status: 'purchased'};
-      } else {
-        return {
-          status: 'failed',
-          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-        };
-      }
+      await Purchases.purchaseStoreProduct(rcProduct);
+      return {status: 'purchased'};
     } catch (error) {
       const purchasesError = error as PurchasesError;
 
@@ -263,18 +225,10 @@ export class RevenueCatHeliumHandler {
     }
   }
 
-  // Helper function to check if a product is active in CustomerInfo
-  private isProductActive(customerInfo: CustomerInfo, productId: string): boolean {
-    return Object.values(customerInfo.entitlements.active).some((entitlement: PurchasesEntitlementInfo) => entitlement.productIdentifier === productId)
-      || customerInfo.activeSubscriptions.includes(productId)
-      || customerInfo.allPurchasedProductIdentifiers.includes(productId);
-  }
-
   async restorePurchases(): Promise<boolean> {
     try {
       const customerInfo = await Purchases.restorePurchases();
-      const isActive = Object.keys(customerInfo.entitlements.active).length > 0;
-      return isActive;
+      return Object.keys(customerInfo.entitlements.active).length > 0;
     } catch (error) {
       return false;
     }
