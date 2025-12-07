@@ -1,4 +1,10 @@
-import type {PurchasesError, PurchasesPackage, SubscriptionOption} from 'react-native-purchases';
+import type {
+  CustomerInfo,
+  PurchasesEntitlementInfo,
+  PurchasesError,
+  PurchasesPackage,
+  SubscriptionOption
+} from 'react-native-purchases';
 import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import {Platform} from 'react-native';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
@@ -103,14 +109,27 @@ export class RevenueCatHeliumHandler {
     }
 
     try {
+      let customerInfo: CustomerInfo;
       if (pkg) {
-        await Purchases.purchasePackage(pkg);
+        customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
       } else if (rcProduct) {
-        await Purchases.purchaseStoreProduct(rcProduct);
+        customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
       } else {
         return {status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}`};
       }
-      return {status: 'purchased'};
+      const isActive = this.isProductActive(customerInfo, productId);
+      if (isActive) {
+        return {status: 'purchased'};
+      } else {
+        // This case might occur if the purchase succeeded but the entitlement wasn't immediately active
+        // or if a different product became active.
+        // Consider if polling/listening might be needed here too, similar to pending.
+        // For now, returning failed as the specific product isn't confirmed active.
+        return {
+          status: 'failed',
+          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+        };
+      }
     } catch (error) {
       const purchasesError = error as PurchasesError;
 
@@ -141,8 +160,17 @@ export class RevenueCatHeliumHandler {
 
       if (subscriptionOption) {
         try {
-          await Purchases.purchaseSubscriptionOption(subscriptionOption);
-          return {status: 'purchased'};
+          const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
+
+          const isActive = this.isProductActive(customerInfo, productId);
+          if (isActive) {
+            return {status: 'purchased'};
+          } else {
+            return {
+              status: 'failed',
+              error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+            };
+          }
         } catch (error) {
           const purchasesError = error as PurchasesError;
 
@@ -172,8 +200,17 @@ export class RevenueCatHeliumHandler {
     }
 
     try {
-      await Purchases.purchaseStoreProduct(rcProduct);
-      return {status: 'purchased'};
+      const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+
+      const isActive = this.isProductActive(customerInfo, productId);
+      if (isActive) {
+        return {status: 'purchased'};
+      } else {
+        return {
+          status: 'failed',
+          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
+        };
+      }
     } catch (error) {
       const purchasesError = error as PurchasesError;
 
@@ -224,6 +261,13 @@ export class RevenueCatHeliumHandler {
     } catch (error) {
       return undefined;
     }
+  }
+
+  // Helper function to check if a product is active in CustomerInfo
+  private isProductActive(customerInfo: CustomerInfo, productId: string): boolean {
+    return Object.values(customerInfo.entitlements.active).some((entitlement: PurchasesEntitlementInfo) => entitlement.productIdentifier === productId)
+      || customerInfo.activeSubscriptions.includes(productId)
+      || customerInfo.allPurchasedProductIdentifiers.includes(productId);
   }
 
   async restorePurchases(): Promise<boolean> {
