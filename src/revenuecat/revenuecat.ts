@@ -141,7 +141,6 @@ export class RevenueCatHeliumHandler {
         return {status: 'cancelled'};
       }
 
-      // Handle other errors
       return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
     }
   }
@@ -239,9 +238,13 @@ export class RevenueCatHeliumHandler {
         return undefined;
       }
 
-      const product = products[0];
+      // RC will return multiple products if multiple base plans per subscription
+      // Collect all subscription options from all products into a flat list
+      const allSubscriptionOptions = products.flatMap(
+        product => product.subscriptionOptions ?? []
+      );
 
-      if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
+      if (allSubscriptionOptions.length === 0) {
         return undefined;
       }
 
@@ -250,11 +253,11 @@ export class RevenueCatHeliumHandler {
       if (offerId && basePlanId) {
         // Look for specific offer: "basePlanId:offerId"
         const targetId = `${basePlanId}:${offerId}`;
-        subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
-      } else if (basePlanId) {
-        subscriptionOption = product.subscriptionOptions.find(
-          opt => opt.id === basePlanId && opt.isBasePlan
-        );
+        subscriptionOption = allSubscriptionOptions.find(opt => opt.id === targetId);
+      }
+      if (!subscriptionOption && basePlanId) {
+        // Otherwise the RC option id will simply be base plan id
+        subscriptionOption = allSubscriptionOptions.find(opt => opt.id === basePlanId);
       }
 
       return subscriptionOption;
@@ -273,8 +276,7 @@ export class RevenueCatHeliumHandler {
   async restorePurchases(): Promise<boolean> {
     try {
       const customerInfo = await Purchases.restorePurchases();
-      const isActive = Object.keys(customerInfo.entitlements.active).length > 0;
-      return isActive;
+      return Object.keys(customerInfo.entitlements.active).length > 0;
     } catch (error) {
       return false;
     }
