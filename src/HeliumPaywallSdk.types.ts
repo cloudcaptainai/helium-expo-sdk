@@ -113,6 +113,7 @@ export function createCustomPurchaseConfig(callbacks: {
     restorePurchases: callbacks.restorePurchases,
   };
 }
+//wtf do we even have createCustomPurchaseConfig...
 
 export type TriggerLoadingConfig = {
   /** Whether to show loading state for this trigger. Set to nil to use the global `useLoadingState` setting. */

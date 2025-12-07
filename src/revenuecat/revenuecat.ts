@@ -248,16 +248,19 @@ export class RevenueCatHeliumHandler {
         return undefined;
       }
 
+      let subscriptionOption: SubscriptionOption | undefined;
+
       if (offerId && basePlanId) {
         // Look for specific offer: "basePlanId:offerId"
         const targetId = `${basePlanId}:${offerId}`;
-        return allSubscriptionOptions.find(opt => opt.id === targetId);
-      } else if (basePlanId) {
+        subscriptionOption = allSubscriptionOptions.find(opt => opt.id === targetId);
+      }
+      if (!subscriptionOption && basePlanId) {
         // Otherwise the RC option id will simply be base plan id
-        return allSubscriptionOptions.find(opt => opt.id === basePlanId);
+        subscriptionOption = allSubscriptionOptions.find(opt => opt.id === basePlanId);
       }
 
-      return undefined;
+      return subscriptionOption;
     } catch (error) {
       return undefined;
     }
