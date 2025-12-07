@@ -204,7 +204,7 @@ export class RevenueCatHeliumHandler {
       // RC will return multiple products if multiple base plans per subscription
       for (const product of products) {
         if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
-          return undefined;
+          continue;
         }
 
         let subscriptionOption: SubscriptionOption | undefined;
