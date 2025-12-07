@@ -202,28 +202,22 @@ export class RevenueCatHeliumHandler {
       }
 
       // RC will return multiple products if multiple base plans per subscription
-      for (const product of products) {
-        if (!product.subscriptionOptions || product.subscriptionOptions.length === 0) {
-          continue;
-        }
+      // Collect all subscription options from all products into a flat list
+      const allSubscriptionOptions = products.flatMap(
+        product => product.subscriptionOptions ?? []
+      );
 
-        let subscriptionOption: SubscriptionOption | undefined;
+      if (allSubscriptionOptions.length === 0) {
+        return undefined;
+      }
 
-        if (offerId && basePlanId) {
-          // Look for specific offer: "basePlanId:offerId"
-          const targetId = `${basePlanId}:${offerId}`;
-          subscriptionOption = product.subscriptionOptions.find(opt => opt.id === targetId);
-        }
-        if (!subscriptionOption && basePlanId) {
-          // Otherwise the RC option id will simply be base plan id
-          subscriptionOption = product.subscriptionOptions.find(
-            opt => opt.id === basePlanId
-          );
-        }
-
-        if (subscriptionOption) {
-          return subscriptionOption;
-        }
+      if (offerId && basePlanId) {
+        // Look for specific offer: "basePlanId:offerId"
+        const targetId = `${basePlanId}:${offerId}`;
+        return allSubscriptionOptions.find(opt => opt.id === targetId);
+      } else if (basePlanId) {
+        // Otherwise the RC option id will simply be base plan id
+        return allSubscriptionOptions.find(opt => opt.id === basePlanId);
       }
 
       return undefined;
