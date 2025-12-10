@@ -140,7 +140,7 @@ export class RevenueCatHeliumHandler {
         try {
           const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
 
-          return this.evaluatePurchaseResult(customerInfo, productId, basePlanId);
+          return this.evaluatePurchaseResult(customerInfo, productId);
         } catch (error) {
           return this.handlePurchasesError(error);
         }
@@ -169,20 +169,9 @@ export class RevenueCatHeliumHandler {
     }
 
     try {
-      let customerInfo: CustomerInfo;
-      let purchasedBasePlanId: string | undefined;
+      const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
 
-      if (rcProduct.defaultOption) {
-        // Subscription: explicitly purchase the default option if available
-        // for safer isProductActive logic
-        purchasedBasePlanId = rcProduct.defaultOption.id?.split(':')[0];
-        customerInfo = (await Purchases.purchaseSubscriptionOption(rcProduct.defaultOption)).customerInfo;
-      } else {
-        // Non-subscription or sub with no defaultOption: use purchaseStoreProduct
-        customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
-      }
-
-      return this.evaluatePurchaseResult(customerInfo, productId, purchasedBasePlanId);
+      return this.evaluatePurchaseResult(customerInfo, productId);
     } catch (error) {
       return this.handlePurchasesError(error);
     }
@@ -229,34 +218,21 @@ export class RevenueCatHeliumHandler {
   }
 
   // Helper function to check if a product is active in CustomerInfo
-  private isProductActive(customerInfo: CustomerInfo, productId: string, basePlanId?: string): boolean {
-    if (basePlanId) {
-      // Android subscription: check with basePlanId
-      const androidSubId = `${productId}:${basePlanId}`;
-      return Object.values(customerInfo.entitlements.active).some(
-        (entitlement: PurchasesEntitlementInfo) =>
-          entitlement.productIdentifier === productId && entitlement.productPlanIdentifier === basePlanId
-      )
-        || customerInfo.activeSubscriptions.includes(androidSubId)
-        || customerInfo.allPurchasedProductIdentifiers.includes(androidSubId);
-    }
-    // iOS or non-subscription:
-    return Object.values(customerInfo.entitlements.active).some(
-      (entitlement: PurchasesEntitlementInfo) => entitlement.productIdentifier === productId
-    )
+  private isProductActive(customerInfo: CustomerInfo, productId: string): boolean {
+    return Object.values(customerInfo.entitlements.active).some((entitlement: PurchasesEntitlementInfo) => entitlement.productIdentifier === productId)
       || customerInfo.activeSubscriptions.includes(productId)
       || customerInfo.allPurchasedProductIdentifiers.includes(productId);
   }
 
   // Helper function to evaluate purchase result based on product activation status
-  private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string, basePlanId?: string): HeliumPurchaseResult {
-    const isActive = this.isProductActive(customerInfo, productId, basePlanId);
+  private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string): HeliumPurchaseResult {
+    const isActive = this.isProductActive(customerInfo, productId);
     if (isActive) {
       return {status: 'purchased'};
     } else {
       return {
         status: 'failed',
-        error: '[RC] Purchase possibly complete but entitlement/subscription not active for this product.'
+        error: '[RC] Purchase possibly complete but entitlement not active for this product.'
       };
     }
   }
