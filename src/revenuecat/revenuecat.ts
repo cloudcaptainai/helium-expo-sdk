@@ -169,11 +169,20 @@ export class RevenueCatHeliumHandler {
     }
 
     try {
-      const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+      let customerInfo: CustomerInfo;
+      let purchasedBasePlanId: string | undefined;
 
-      // Extract basePlanId from defaultOption.id (format: "basePlanId" or "basePlanId:offerId")
-      const defaultBasePlanId = rcProduct.defaultOption?.id?.split(':')[0];
-      return this.evaluatePurchaseResult(customerInfo, productId, defaultBasePlanId);
+      if (rcProduct.defaultOption) {
+        // Subscription: explicitly purchase the default option if available
+        // for safer isProductActive logic
+        purchasedBasePlanId = rcProduct.defaultOption.id?.split(':')[0];
+        customerInfo = (await Purchases.purchaseSubscriptionOption(rcProduct.defaultOption)).customerInfo;
+      } else {
+        // Non-subscription or sub with no defaultOption: use purchaseStoreProduct
+        customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+      }
+
+      return this.evaluatePurchaseResult(customerInfo, productId, purchasedBasePlanId);
     } catch (error) {
       return this.handlePurchasesError(error);
     }
