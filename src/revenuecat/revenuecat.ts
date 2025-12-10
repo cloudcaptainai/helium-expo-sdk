@@ -5,7 +5,7 @@ import type {
   PurchasesPackage,
   SubscriptionOption
 } from 'react-native-purchases';
-import Purchases, {PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
+import Purchases, {PRODUCT_CATEGORY, PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import {Platform} from 'react-native';
 import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
@@ -117,31 +117,9 @@ export class RevenueCatHeliumHandler {
       } else {
         return {status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}`};
       }
-      const isActive = this.isProductActive(customerInfo, productId);
-      if (isActive) {
-        return {status: 'purchased'};
-      } else {
-        // This case might occur if the purchase succeeded but the entitlement wasn't immediately active
-        // or if a different product became active.
-        // Consider if polling/listening might be needed here too, similar to pending.
-        // For now, returning failed as the specific product isn't confirmed active.
-        return {
-          status: 'failed',
-          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-        };
-      }
+      return this.evaluatePurchaseResult(customerInfo, productId);
     } catch (error) {
-      const purchasesError = error as PurchasesError;
-
-      if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-        return {status: 'pending'};
-      }
-
-      if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-        return {status: 'cancelled'};
-      }
-
-      return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+      return this.handlePurchasesError(error);
     }
   }
 
@@ -162,67 +140,40 @@ export class RevenueCatHeliumHandler {
         try {
           const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
 
-          const isActive = this.isProductActive(customerInfo, productId);
-          if (isActive) {
-            return {status: 'purchased'};
-          } else {
-            return {
-              status: 'failed',
-              error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-            };
-          }
+          return this.evaluatePurchaseResult(customerInfo, productId);
         } catch (error) {
-          const purchasesError = error as PurchasesError;
-
-          if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-            return {status: 'pending'};
-          }
-
-          if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-            return {status: 'cancelled'};
-          }
-
-          return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+          return this.handlePurchasesError(error);
         }
       }
     }
 
     // Handle one-time purchase or subscription that didn't have matching base plan / offer
-    let rcProduct: PurchasesStoreProduct;
+    let rcProduct: PurchasesStoreProduct | undefined;
     try {
-      const products = await Purchases.getProducts([productId]);
-      if (products.length === 0) {
-        return {status: 'failed', error: `Android product not found: ${productId}`};
+      // Try non-subscription (NON_SUBSCRIPTION) product first; most likely not a sub at this point
+      let products = await Purchases.getProducts([productId], PRODUCT_CATEGORY.NON_SUBSCRIPTION);
+      if (products.length > 0) {
+        rcProduct = products[0];
+      } else {
+        // Then try subscription product (let RC pick option since we couldn't find a match)
+        products = await Purchases.getProducts([productId]);
+        if (products.length > 0) {
+          rcProduct = products[0];
+        }
       }
-      rcProduct = products[0];
+      if (!rcProduct) {
+        return {status: 'failed', error: `[RC] Android product not found: ${productId}`};
+      }
     } catch {
-      return {status: 'failed', error: `Failed to retrieve Android product: ${productId}`};
+      return {status: 'failed', error: `[RC] Failed to retrieve Android product: ${productId}`};
     }
 
     try {
       const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
 
-      const isActive = this.isProductActive(customerInfo, productId);
-      if (isActive) {
-        return {status: 'purchased'};
-      } else {
-        return {
-          status: 'failed',
-          error: 'Purchase possibly complete but entitlement/subscription not active for this product.'
-        };
-      }
+      return this.evaluatePurchaseResult(customerInfo, productId);
     } catch (error) {
-      const purchasesError = error as PurchasesError;
-
-      if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
-        return {status: 'pending'};
-      }
-
-      if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-        return {status: 'cancelled'};
-      }
-
-      return {status: 'failed', error: purchasesError?.message || 'RevenueCat purchase failed.'};
+      return this.handlePurchasesError(error);
     }
   }
 
@@ -271,6 +222,35 @@ export class RevenueCatHeliumHandler {
     return Object.values(customerInfo.entitlements.active).some((entitlement: PurchasesEntitlementInfo) => entitlement.productIdentifier === productId)
       || customerInfo.activeSubscriptions.includes(productId)
       || customerInfo.allPurchasedProductIdentifiers.includes(productId);
+  }
+
+  // Helper function to evaluate purchase result based on product activation status
+  private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string): HeliumPurchaseResult {
+    const isActive = this.isProductActive(customerInfo, productId);
+    if (isActive) {
+      return {status: 'purchased'};
+    } else {
+      return {
+        status: 'failed',
+        error: '[RC] Purchase possibly complete but entitlement/subscription not active for this product.'
+      };
+    }
+  }
+
+  // Helper function to handle RevenueCat purchase errors
+  private handlePurchasesError(error: unknown): HeliumPurchaseResult {
+    const purchasesError = error as PurchasesError;
+
+    if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+      return {status: 'pending'};
+    }
+
+    if (purchasesError?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+      return {status: 'cancelled'};
+    }
+
+    const errorDesc = purchasesError?.message || 'purchase failed.';
+    return {status: 'failed', error: `[RC] ${errorDesc} code: ${purchasesError?.code}`};
   }
 
   async restorePurchases(): Promise<boolean> {
