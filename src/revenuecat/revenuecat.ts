@@ -224,17 +224,13 @@ export class RevenueCatHeliumHandler {
       || customerInfo.allPurchasedProductIdentifiers.includes(productId);
   }
 
-  // Helper function to evaluate purchase result based on product activation status
+  // Helper function to process purchase result
   private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string): HeliumPurchaseResult {
-    const isActive = this.isProductActive(customerInfo, productId);
-    if (isActive) {
-      return {status: 'purchased'};
-    } else {
-      return {
-        status: 'failed',
-        error: '[RC] Purchase possibly complete but entitlement not active for this product.'
-      };
+    if (!this.isProductActive(customerInfo, productId)) {
+      console.log('Purchase succeeded but product not immediately active in customerInfo:', productId);
     }
+
+    return {status: 'purchased'};
   }
 
   // Helper function to handle RevenueCat purchase errors

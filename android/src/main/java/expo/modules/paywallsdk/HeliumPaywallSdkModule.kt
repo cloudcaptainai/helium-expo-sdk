@@ -102,6 +102,7 @@ class HeliumPaywallSdkModule : Module() {
       val apiKey = config["apiKey"] as? String ?: ""
       val customUserId = config["customUserId"] as? String
       val customAPIEndpoint = config["customAPIEndpoint"] as? String
+      val revenueCatAppUserId = config["revenueCatAppUserId"] as? String
       val useDefaultDelegate = config["useDefaultDelegate"] as? Boolean ?: false
 
       @Suppress("UNCHECKED_CAST")
@@ -163,6 +164,7 @@ class HeliumPaywallSdkModule : Module() {
             customUserId = customUserId,
             customApiEndpoint = customAPIEndpoint,
             customUserTraits = customUserTraits,
+            revenueCatAppUserId = revenueCatAppUserId,
             fallbackConfig = fallbackConfig,
             environment = environment
           )
@@ -445,7 +447,7 @@ class HeliumPaywallSdkModule : Module() {
       is String -> HeliumUserTraitsArgument.StringParam(value)
       is Int -> HeliumUserTraitsArgument.IntParam(value)
       is Long -> HeliumUserTraitsArgument.LongParam(value)
-      is Double -> HeliumUserTraitsArgument.DoubleParam(value.toString())
+      is Double -> HeliumUserTraitsArgument.DoubleParam(value)
       is Boolean -> HeliumUserTraitsArgument.BooleanParam(value)
       is List<*> -> {
         val items = value.mapNotNull { convertToHeliumUserTraitsArgument(it) }
