@@ -105,6 +105,8 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     needs: [check-version, get-current-version, test, release]
     if: always() && (needs.check-version.outputs.version-changed == 'true' || github.event_name == 'workflow_dispatch')
     steps:
