@@ -227,7 +227,7 @@ export class RevenueCatHeliumHandler {
   // Helper function to process purchase result
   private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string): HeliumPurchaseResult {
     if (!this.isProductActive(customerInfo, productId)) {
-      console.log('Purchase succeeded but product not immediately active in customerInfo:', productId);
+      console.log('[Helium] Purchase succeeded but product not immediately active in customerInfo:', productId);
     }
 
     return {status: 'purchased'};
