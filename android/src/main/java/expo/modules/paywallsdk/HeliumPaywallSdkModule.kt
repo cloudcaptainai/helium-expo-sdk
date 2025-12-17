@@ -234,6 +234,7 @@ class HeliumPaywallSdkModule : Module() {
 
       Helium.presentUpsell(
         trigger = trigger,
+        activityContext = activity,
         dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled,
         customPaywallTraits = convertedTraits,
         eventListener = eventHandlers
@@ -384,7 +385,7 @@ class HeliumPaywallSdkModule : Module() {
         "dark" -> HeliumLightDarkMode.DARK
         "system" -> HeliumLightDarkMode.SYSTEM
         else -> {
-          android.util.Log.w("HeliumPaywallSdk", "Invalid mode: $mode, defaulting to system")
+          android.util.Log.w("HeliumPaywallSdk", "Invalid light/dark mode: $mode, defaulting to system")
           HeliumLightDarkMode.SYSTEM
         }
       }

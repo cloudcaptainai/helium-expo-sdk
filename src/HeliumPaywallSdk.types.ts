@@ -160,7 +160,7 @@ export interface HeliumConfig {
   /** Configure loading behavior for paywalls that are mid-download. */
   paywallLoadingConfig?: HeliumPaywallLoadingConfig;
   /** Environment to use for Android. (iOS auto-detects this.)
-   *  If not specified, Android environment will be "sandbox" if app is a debug build, "production otherwise".
+   *  If not specified, Android environment will be "sandbox" if app is a debug build, "production" otherwise.
    *  Recommended to pass in "sandbox" for QA builds that behave like a production build but are actually just for testing.
    */
   environment?: HeliumEnvironment;
@@ -194,7 +194,9 @@ export type PresentUpsellParams = {
 };
 
 export interface PaywallInfo {
+  /** Name of the paywall. */
   paywallTemplateName: string;
+  /** Will be false if the paywall should not be shown due to targeting or workflow configuration (Helium handles this for you in presentUpsell) */
   shouldShow: boolean;
 }
 
