@@ -24,9 +24,6 @@ import com.tryhelium.paywall.core.HeliumLightDarkMode
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
 import com.android.billingclient.api.ProductDetails
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.ref.WeakReference
 import java.net.URL
@@ -305,27 +302,13 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Check if user has any active subscription
-    AsyncFunction("hasAnyActiveSubscription") { promise: Promise ->
-      CoroutineScope(Dispatchers.Main).launch {
-        try {
-          val result = Helium.shared.hasAnyActiveSubscription()
-          promise.resolve(result)
-        } catch (e: Exception) {
-          promise.reject("ERR_HAS_ANY_ACTIVE_SUBSCRIPTION", e.message, e)
-        }
-      }
+    AsyncFunction("hasAnyActiveSubscription") Coroutine { ->
+      return@Coroutine Helium.shared.hasAnyActiveSubscription()
     }
 
     // Check if user has any entitlement
-    AsyncFunction("hasAnyEntitlement") { promise: Promise ->
-      CoroutineScope(Dispatchers.Main).launch {
-        try {
-          val result = Helium.shared.hasAnyEntitlement()
-          promise.resolve(result)
-        } catch (e: Exception) {
-          promise.reject("ERR_HAS_ANY_ENTITLEMENT", e.message, e)
-        }
-      }
+    AsyncFunction("hasAnyEntitlement") Coroutine { ->
+      return@Coroutine Helium.shared.hasAnyEntitlement()
     }
 
     // Handle deep link
