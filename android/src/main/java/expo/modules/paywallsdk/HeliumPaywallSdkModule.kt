@@ -142,36 +142,33 @@ class HeliumPaywallSdkModule : Module() {
         NativeModuleManager.currentModule?.sendEvent("onHeliumPaywallEvent", eventMap)
       }
 
-      // Initialize on a coroutine scope
-      CoroutineScope(Dispatchers.Main).launch {
-        try {
-          val context = appContext.reactContext
-            ?: throw Exceptions.ReactContextLost()
+      try {
+        val context = appContext.reactContext
+          ?: throw Exceptions.ReactContextLost()
 
-          // Create delegate
-          val delegate = if (useDefaultDelegate) {
-            val currentActivity = activity
-              ?: throw Exceptions.MissingActivity()
-            DefaultPaywallDelegate(currentActivity, delegateEventHandler)
-          } else {
-            CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
-          }
-
-          Helium.initialize(
-            context = context,
-            apiKey = apiKey,
-            heliumPaywallDelegate = delegate,
-            customUserId = customUserId,
-            customApiEndpoint = customAPIEndpoint,
-            customUserTraits = customUserTraits,
-            revenueCatAppUserId = revenueCatAppUserId,
-            fallbackConfig = fallbackConfig,
-            environment = environment
-          )
-        } catch (e: Exception) {
-          // Log error but don't throw - initialization errors will be handled by SDK
-          android.util.Log.e("HeliumPaywallSdk", "Failed to initialize: ${e.message}", e)
+        // Create delegate
+        val delegate = if (useDefaultDelegate) {
+          val currentActivity = activity
+            ?: throw Exceptions.MissingActivity()
+          DefaultPaywallDelegate(currentActivity, delegateEventHandler)
+        } else {
+          CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
         }
+
+        Helium.initialize(
+          context = context,
+          apiKey = apiKey,
+          heliumPaywallDelegate = delegate,
+          customUserId = customUserId,
+          customApiEndpoint = customAPIEndpoint,
+          customUserTraits = customUserTraits,
+          revenueCatAppUserId = revenueCatAppUserId,
+          fallbackConfig = fallbackConfig,
+          environment = environment
+        )
+      } catch (e: Exception) {
+        // Log error but don't throw - initialization errors will be handled by SDK
+        android.util.Log.e("HeliumPaywallSdk", "Failed to initialize: ${e.message}", e)
       }
     }
 

@@ -28,7 +28,7 @@ function addPaywallEventHandlersListener(listener: (event: HeliumPaywallEvent) =
 }
 
 let isInitialized = false;
-export const initialize = (config: HeliumConfig) => {
+export const initialize = async (config: HeliumConfig) => {
   if (isInitialized) {
     return;
   }
@@ -108,7 +108,7 @@ export const initialize = (config: HeliumConfig) => {
     callPaywallEventHandlers(event);
   });
 
-  nativeInitializeAsync(config).catch(error => {
+  await nativeInitializeAsync(config).catch(error => {
     console.error('[Helium] Initialization failed:', error);
   });
 };
