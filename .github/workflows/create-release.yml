@@ -74,7 +74,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: write # so can create release and create tag
     needs: [check-version, get-current-version, test]
     if: always() && (needs.check-version.outputs.version-changed == 'true' || github.event_name == 'workflow_dispatch')
@@ -127,8 +126,6 @@ jobs:
         run: npm run prepare
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_KEY }}
         run: npm publish --access public
 
       - name: Success output
