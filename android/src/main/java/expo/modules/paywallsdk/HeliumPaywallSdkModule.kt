@@ -24,9 +24,6 @@ import com.tryhelium.paywall.core.HeliumLightDarkMode
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
 import com.android.billingclient.api.ProductDetails
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.ref.WeakReference
 import java.net.URL
@@ -142,36 +139,33 @@ class HeliumPaywallSdkModule : Module() {
         NativeModuleManager.currentModule?.sendEvent("onHeliumPaywallEvent", eventMap)
       }
 
-      // Initialize on a coroutine scope
-      CoroutineScope(Dispatchers.Main).launch {
-        try {
-          val context = appContext.reactContext
-            ?: throw Exceptions.ReactContextLost()
+      try {
+        val context = appContext.reactContext
+          ?: throw Exceptions.ReactContextLost()
 
-          // Create delegate
-          val delegate = if (useDefaultDelegate) {
-            val currentActivity = activity
-              ?: throw Exceptions.MissingActivity()
-            DefaultPaywallDelegate(currentActivity, delegateEventHandler)
-          } else {
-            CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
-          }
-
-          Helium.initialize(
-            context = context,
-            apiKey = apiKey,
-            heliumPaywallDelegate = delegate,
-            customUserId = customUserId,
-            customApiEndpoint = customAPIEndpoint,
-            customUserTraits = customUserTraits,
-            revenueCatAppUserId = revenueCatAppUserId,
-            fallbackConfig = fallbackConfig,
-            environment = environment
-          )
-        } catch (e: Exception) {
-          // Log error but don't throw - initialization errors will be handled by SDK
-          android.util.Log.e("HeliumPaywallSdk", "Failed to initialize: ${e.message}", e)
+        // Create delegate
+        val delegate = if (useDefaultDelegate) {
+          val currentActivity = activity
+            ?: throw Exceptions.MissingActivity()
+          DefaultPaywallDelegate(currentActivity, delegateEventHandler)
+        } else {
+          CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
         }
+
+        Helium.initialize(
+          context = context,
+          apiKey = apiKey,
+          heliumPaywallDelegate = delegate,
+          customUserId = customUserId,
+          customApiEndpoint = customAPIEndpoint,
+          customUserTraits = customUserTraits,
+          revenueCatAppUserId = revenueCatAppUserId,
+          fallbackConfig = fallbackConfig,
+          environment = environment
+        )
+      } catch (e: Exception) {
+        // Log error but don't throw - initialization errors will be handled by SDK
+        android.util.Log.e("HeliumPaywallSdk", "Failed to initialize: ${e.message}", e)
       }
     }
 
@@ -308,27 +302,13 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Check if user has any active subscription
-    AsyncFunction("hasAnyActiveSubscription") { promise: Promise ->
-      CoroutineScope(Dispatchers.Main).launch {
-        try {
-          val result = Helium.shared.hasAnyActiveSubscription()
-          promise.resolve(result)
-        } catch (e: Exception) {
-          promise.reject("ERR_HAS_ANY_ACTIVE_SUBSCRIPTION", e.message, e)
-        }
-      }
+    AsyncFunction("hasAnyActiveSubscription") Coroutine { ->
+      return@Coroutine Helium.shared.hasAnyActiveSubscription()
     }
 
     // Check if user has any entitlement
-    AsyncFunction("hasAnyEntitlement") { promise: Promise ->
-      CoroutineScope(Dispatchers.Main).launch {
-        try {
-          val result = Helium.shared.hasAnyEntitlement()
-          promise.resolve(result)
-        } catch (e: Exception) {
-          promise.reject("ERR_HAS_ANY_ENTITLEMENT", e.message, e)
-        }
-      }
+    AsyncFunction("hasAnyEntitlement") Coroutine { ->
+      return@Coroutine Helium.shared.hasAnyEntitlement()
     }
 
     // Handle deep link

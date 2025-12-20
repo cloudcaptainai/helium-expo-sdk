@@ -5,27 +5,17 @@ import {useEffect} from "react";
 import {createCustomPurchaseConfig} from "expo-paywall-sdk";
 
 export default function App() {
-  useEffect(() => {
-    initialize({
+  const asyncHeliumInit = async () => {
+    await initialize({
       apiKey: 'api-key-here',
-      purchaseConfig: createCustomPurchaseConfig({
-        makePurchaseIOS: async (productId) => {
-          console.log(`ios purchase! ${productId}`);
-          return { status: 'purchased' };
-        },
-        makePurchaseAndroid: async (productId, basePlanId, offerId) => {
-          console.log(`android purchase! ${productId} ${basePlanId} ${offerId}`);
-          return { status: 'purchased' };
-        },
-        restorePurchases: async () => {
-          console.log('restore Purchases');
-          return true;
-        }
-      }),
       onHeliumPaywallEvent: function (event: HeliumPaywallEvent): void {
         console.log('Helium Paywall Event:', event);
-      }
+      },
     });
+  };
+
+  useEffect(() => {
+    void asyncHeliumInit();
   }, []);
 
   return (
