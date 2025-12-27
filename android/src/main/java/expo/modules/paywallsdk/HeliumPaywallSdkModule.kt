@@ -290,7 +290,7 @@ class HeliumPaywallSdkModule : Module() {
 
     // Set custom user ID
     Function("setCustomUserId") { newUserId: String ->
-      HeliumIdentityManager.shared.overrideUserId(customUserId = newUserId, customUserTraits = null)
+      Helium.shared.overrideUserId(customUserId = newUserId, customUserTraits = null)
     }
 
     // Check if user has entitlement for a specific paywall
