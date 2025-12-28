@@ -7,6 +7,7 @@ import {
 import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { EventSubscription } from 'expo-modules-core';
+import * as ExpoFileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
 export { default } from './HeliumPaywallSdkModule';
@@ -117,16 +118,29 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
   let fallbackBundleString;
   if (config.fallbackBundle) {
     try {
-      const ExpoFileSystem = await getExpoFileSystem();
       const jsonContent = JSON.stringify(config.fallbackBundle);
 
-      // Write to documents directory
-      fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
-      // This is ASYNC but that's ok because helium initialize in swift code is async anyways.
-      await ExpoFileSystem.writeAsStringAsync(
-        fallbackBundleUrlString,
-        jsonContent
-      );
+      // Feature detection: check which expo-file-system API is available
+      // Expo 52/53 has documentDirectory + writeAsStringAsync
+      // Expo 54+ has File + Paths (new class-based API)
+      const hasLegacyApi = typeof ExpoFileSystem.documentDirectory === 'string'
+        && typeof ExpoFileSystem.writeAsStringAsync === 'function';
+      const hasNewApi = 'File' in ExpoFileSystem && 'Paths' in ExpoFileSystem;
+
+      if (hasLegacyApi) {
+        // Expo 52/53 - use legacy API
+        fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
+        await ExpoFileSystem.writeAsStringAsync(fallbackBundleUrlString, jsonContent);
+      } else if (hasNewApi) {
+        // Expo 54+ - use new class-based API
+        // @ts-ignore - Types may not be available in older Expo versions
+        const file = new ExpoFileSystem.File(ExpoFileSystem.Paths.document, 'helium-fallback.json');
+        file.create({ overwrite: true });
+        file.write(jsonContent);
+        fallbackBundleUrlString = file.uri;
+      } else {
+        throw new Error('No compatible expo-file-system API found');
+      }
     } catch (error) {
       // Just use string approach if expo-file-system is unavailable or fails
       console.log(
@@ -398,20 +412,6 @@ function convertValueBooleansToMarkers(value: any): any {
     return value.map(convertValueBooleansToMarkers);
   }
   return value;
-}
-
-// Helper to get expo-file-system with fallback for Expo 52/53/54 compatibility
-// Expo 54+ moved the old API to expo-file-system/legacy
-async function getExpoFileSystem() {
-  const fs = await import('expo-file-system');
-
-  // Check if old API exists (Expo 52/53)
-  if (typeof fs.documentDirectory === 'string' && typeof fs.writeAsStringAsync === 'function') {
-    return fs;
-  }
-
-  // New API detected (Expo 54+), use legacy import
-  return await import('expo-file-system/legacy');
 }
 
 export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';
