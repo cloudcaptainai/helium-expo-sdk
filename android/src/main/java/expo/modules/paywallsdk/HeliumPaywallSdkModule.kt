@@ -216,11 +216,7 @@ class HeliumPaywallSdkModule : Module() {
         eventMap["productId"]?.let { eventMap["productKey"] = it }
         eventMap["buttonName"]?.let { eventMap["ctaName"] = it }
 
-        NativeModuleManager.safeSendEvent(
-          "onHeliumPaywallEvent",
-          eventMap,
-          this@HeliumPaywallSdkModule
-        )
+        NativeModuleManager.safeSendEvent("onHeliumPaywallEvent", eventMap)
       }
 
       try {
@@ -233,7 +229,7 @@ class HeliumPaywallSdkModule : Module() {
             ?: throw Exceptions.MissingActivity()
           DefaultPaywallDelegate(currentActivity, delegateEventHandler)
         } else {
-          CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
+          CustomPaywallDelegate(delegateEventHandler)
         }
 
         Helium.initialize(
@@ -599,9 +595,10 @@ class HeliumPaywallSdkModule : Module() {
 /**
  * Custom Helium Paywall Delegate that bridges purchase calls to React Native.
  * Similar to the InternalDelegate in iOS implementation.
+ * Note: We don't store a module reference to avoid memory leaks - the Helium SDK
+ * keeps this delegate alive forever, so any captured module would never be GC'd.
  */
 class CustomPaywallDelegate(
-  private val module: HeliumPaywallSdkModule,
   private val eventHandler: (HeliumEvent) -> Unit
 ) : HeliumPaywallDelegate {
 
@@ -642,7 +639,7 @@ class CustomPaywallDelegate(
         eventMap["offerId"] = offerId
       }
 
-      NativeModuleManager.safeSendEvent("onDelegateActionEvent", eventMap, module)
+      NativeModuleManager.safeSendEvent("onDelegateActionEvent", eventMap)
     }
   }
 
@@ -664,7 +661,7 @@ class CustomPaywallDelegate(
       }
 
       // Send event to JavaScript
-      NativeModuleManager.safeSendEvent("onDelegateActionEvent", mapOf("type" to "restore"), module)
+      NativeModuleManager.safeSendEvent("onDelegateActionEvent", mapOf("type" to "restore"))
     }
   }
 }
