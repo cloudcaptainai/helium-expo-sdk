@@ -120,17 +120,31 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     try {
       const jsonContent = JSON.stringify(config.fallbackBundle);
 
-      // Write to documents directory
-      fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
-      // This is ASYNC but that's ok because helium initialize in swift code is async anyways.
-      await ExpoFileSystem.writeAsStringAsync(
-        fallbackBundleUrlString,
-        jsonContent
-      );
+      // Feature detection: check which expo-file-system API is available
+      // Expo 52/53 has documentDirectory + writeAsStringAsync
+      // Expo 54+ has File + Paths (new class-based API)
+      const hasLegacyApi = typeof ExpoFileSystem.documentDirectory === 'string'
+        && typeof ExpoFileSystem.writeAsStringAsync === 'function';
+      const hasNewApi = 'File' in ExpoFileSystem && 'Paths' in ExpoFileSystem;
+
+      if (hasLegacyApi) {
+        // Expo 52/53 - use legacy API
+        fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
+        await ExpoFileSystem.writeAsStringAsync(fallbackBundleUrlString, jsonContent);
+      } else if (hasNewApi) {
+        // Expo 54+ - use new class-based API
+        // @ts-ignore - Types may not be available in older Expo versions
+        const file = new ExpoFileSystem.File(ExpoFileSystem.Paths.document, 'helium-fallback.json');
+        file.create({ overwrite: true });
+        file.write(jsonContent);
+        fallbackBundleUrlString = file.uri;
+      } else {
+        throw new Error('No compatible expo-file-system API found');
+      }
     } catch (error) {
-      // Fallback to string approach if unexpected error occurs
+      // Just use string approach if expo-file-system is unavailable or fails
       console.log(
-        '[Helium] expo-file-system not available, attempting to pass fallback bundle as string.'
+        '[Helium] expo-file-system not available, passing fallback bundle as string.'
       );
       fallbackBundleString = JSON.stringify(config.fallbackBundle);
     }
