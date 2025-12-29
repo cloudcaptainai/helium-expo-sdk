@@ -161,7 +161,6 @@ class HeliumPaywallSdkModule : Module() {
 
     OnCreate {
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule
-      NativeModuleManager.flushEvents(this@HeliumPaywallSdkModule)
     }
 
     // Defines event names that the module can send to JavaScript
@@ -175,6 +174,7 @@ class HeliumPaywallSdkModule : Module() {
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
+      NativeModuleManager.flushEvents(this@HeliumPaywallSdkModule)
 
       val apiKey = config["apiKey"] as? String ?: ""
       val customUserId = config["customUserId"] as? String
