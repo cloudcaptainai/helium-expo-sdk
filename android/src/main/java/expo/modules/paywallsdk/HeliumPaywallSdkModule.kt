@@ -50,6 +50,9 @@ class HasEntitlementResult : Record {
 
 // Singleton to manage purchase state that survives module recreation in dev mode
 private object NativeModuleManager {
+  private const val MAX_QUEUED_EVENTS = 30
+  private const val EVENT_EXPIRATION_MS = 30_000L
+
   // Always keep reference to the current module
   var currentModule: HeliumPaywallSdkModule? = null
 
@@ -57,12 +60,88 @@ private object NativeModuleManager {
   var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
   var restoreContinuation: ((Boolean) -> Unit)? = null
 
+  // Event queue for when no module is available in the registry
+  private data class PendingEvent(
+    val eventName: String,
+    val eventData: Map<String, Any?>,
+    val timestamp: Long = System.currentTimeMillis()
+  )
+  private val pendingEvents = mutableListOf<PendingEvent>()
+
   fun clearPurchase() {
     purchaseContinuation = null
   }
 
   fun clearRestore() {
     restoreContinuation = null
+  }
+
+  // Queue an event for later delivery when module becomes available
+  private fun queueEvent(eventName: String, eventData: Map<String, Any?>) {
+    synchronized(pendingEvents) {
+      if (pendingEvents.size >= MAX_QUEUED_EVENTS) {
+        pendingEvents.removeAt(0)
+        android.util.Log.w("HeliumPaywallSdk", "Event queue full, dropping oldest event")
+      }
+      pendingEvents.add(PendingEvent(eventName, eventData))
+      android.util.Log.d("HeliumPaywallSdk", "Queued event: $eventName (queue size: ${pendingEvents.size})")
+    }
+  }
+
+  // Flush queued events to a module
+  fun flushEvents(module: HeliumPaywallSdkModule) {
+    val eventsToSend: List<PendingEvent>
+    synchronized(pendingEvents) {
+      if (pendingEvents.isEmpty()) return
+      eventsToSend = pendingEvents.toList()
+      pendingEvents.clear()
+    }
+
+    android.util.Log.d("HeliumPaywallSdk", "Flushing ${eventsToSend.size} queued events")
+
+    val now = System.currentTimeMillis()
+    eventsToSend.forEach { event ->
+      val age = now - event.timestamp
+      if (age > EVENT_EXPIRATION_MS) {
+        android.util.Log.w("HeliumPaywallSdk", "Dropping stale event: ${event.eventName} (age: ${age}ms)")
+        return@forEach
+      }
+      try {
+        module.sendEvent(event.eventName, event.eventData)
+      } catch (e: IllegalArgumentException) {
+        android.util.Log.w("HeliumPaywallSdk", "Failed to flush event ${event.eventName}, dropping: ${e.message}")
+      }
+    }
+  }
+
+  // Safe event sending with backup module and queue
+  fun safeSendEvent(
+    eventName: String,
+    eventData: Map<String, Any?>,
+    backupModule: HeliumPaywallSdkModule? = null
+  ) {
+    // Try 1: Use currentModule (most likely to be the correct registered module)
+    currentModule?.let { module ->
+      try {
+        module.sendEvent(eventName, eventData)
+        return
+      } catch (e: IllegalArgumentException) {
+        android.util.Log.w("HeliumPaywallSdk", "currentModule not in registry: ${e.message}")
+      }
+    }
+
+    // Try 2: Use backup module if provided and different from currentModule
+    if (backupModule != null && backupModule !== currentModule) {
+      try {
+        backupModule.sendEvent(eventName, eventData)
+        return
+      } catch (e: IllegalArgumentException) {
+        android.util.Log.w("HeliumPaywallSdk", "backupModule not in registry: ${e.message}")
+      }
+    }
+
+    // Try 3: Queue the event for later delivery
+    queueEvent(eventName, eventData)
   }
 }
 
@@ -95,6 +174,7 @@ class HeliumPaywallSdkModule : Module() {
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
+      NativeModuleManager.flushEvents(this@HeliumPaywallSdkModule)
 
       val apiKey = config["apiKey"] as? String ?: ""
       val customUserId = config["customUserId"] as? String
@@ -136,7 +216,7 @@ class HeliumPaywallSdkModule : Module() {
         eventMap["productId"]?.let { eventMap["productKey"] = it }
         eventMap["buttonName"]?.let { eventMap["ctaName"] = it }
 
-        NativeModuleManager.currentModule?.sendEvent("onHeliumPaywallEvent", eventMap)
+        NativeModuleManager.safeSendEvent("onHeliumPaywallEvent", eventMap)
       }
 
       try {
@@ -149,7 +229,7 @@ class HeliumPaywallSdkModule : Module() {
             ?: throw Exceptions.MissingActivity()
           DefaultPaywallDelegate(currentActivity, delegateEventHandler)
         } else {
-          CustomPaywallDelegate(this@HeliumPaywallSdkModule, delegateEventHandler)
+          CustomPaywallDelegate(delegateEventHandler)
         }
 
         Helium.initialize(
@@ -214,7 +294,11 @@ class HeliumPaywallSdkModule : Module() {
       // Helper to send event to JavaScript
       val sendPaywallEvent: (HeliumEvent) -> Unit = { event ->
         val eventMap = HeliumEventDictionaryMapper.toDictionary(event).toMutableMap()
-        NativeModuleManager.currentModule?.sendEvent("paywallEventHandlers", eventMap)
+        NativeModuleManager.safeSendEvent(
+          "paywallEventHandlers",
+          eventMap,
+          this@HeliumPaywallSdkModule
+        )
       }
 
       val eventHandlers = PaywallEventHandlers(
@@ -511,9 +595,10 @@ class HeliumPaywallSdkModule : Module() {
 /**
  * Custom Helium Paywall Delegate that bridges purchase calls to React Native.
  * Similar to the InternalDelegate in iOS implementation.
+ * Note: We don't store a module reference to avoid memory leaks - the Helium SDK
+ * keeps this delegate alive forever, so any captured module would never be GC'd.
  */
 class CustomPaywallDelegate(
-  private val module: HeliumPaywallSdkModule,
   private val eventHandler: (HeliumEvent) -> Unit
 ) : HeliumPaywallDelegate {
 
@@ -532,8 +617,6 @@ class CustomPaywallDelegate(
         existingContinuation(HeliumPaywallTransactionStatus.Cancelled)
         NativeModuleManager.clearPurchase()
       }
-
-      val currentModule = NativeModuleManager.currentModule ?: module
 
       NativeModuleManager.purchaseContinuation = { status ->
         continuation.resume(status)
@@ -556,7 +639,7 @@ class CustomPaywallDelegate(
         eventMap["offerId"] = offerId
       }
 
-      currentModule.sendEvent("onDelegateActionEvent", eventMap)
+      NativeModuleManager.safeSendEvent("onDelegateActionEvent", eventMap)
     }
   }
 
@@ -568,8 +651,6 @@ class CustomPaywallDelegate(
         NativeModuleManager.clearRestore()
       }
 
-      val currentModule = NativeModuleManager.currentModule ?: module
-
       NativeModuleManager.restoreContinuation = { success ->
         continuation.resume(success)
       }
@@ -580,9 +661,7 @@ class CustomPaywallDelegate(
       }
 
       // Send event to JavaScript
-      currentModule.sendEvent("onDelegateActionEvent", mapOf(
-        "type" to "restore"
-      ))
+      NativeModuleManager.safeSendEvent("onDelegateActionEvent", mapOf("type" to "restore"))
     }
   }
 }
