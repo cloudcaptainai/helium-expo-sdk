@@ -37,12 +37,24 @@ struct HasEntitlementResult: Record {
 private class NativeModuleManager {
     static let shared = NativeModuleManager()
 
+    private let maxQueuedEvents = 30
+    private let eventExpirationSeconds: TimeInterval = 30.0
+
     // Always keep reference to the current module
     var currentModule: HeliumPaywallSdkModule?
 
     // Store active operations
     var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
     var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
+
+    // Event queue for when no module is available or sendEvent fails
+    private struct PendingEvent {
+        let eventName: String
+        let eventData: [String: Any]
+        let timestamp: Date
+    }
+    private var pendingEvents: [PendingEvent] = []
+    private let eventLock = NSLock()
 
     private init() {}
 
@@ -52,6 +64,69 @@ private class NativeModuleManager {
 
     func clearRestore() {
         activeRestoreContinuation = nil
+    }
+
+    // Queue an event for later delivery when module becomes available
+    private func queueEvent(eventName: String, eventData: [String: Any]) {
+        eventLock.lock()
+        defer { eventLock.unlock() }
+
+        if pendingEvents.count >= maxQueuedEvents {
+            pendingEvents.removeFirst()
+            print("[HeliumPaywallSdk] Event queue full, dropping oldest event")
+        }
+        pendingEvents.append(PendingEvent(eventName: eventName, eventData: eventData, timestamp: Date()))
+        print("[HeliumPaywallSdk] Queued event: \(eventName) (queue size: \(pendingEvents.count))")
+    }
+
+    // Flush queued events to a module
+    func flushEvents(module: HeliumPaywallSdkModule) {
+        eventLock.lock()
+        guard !pendingEvents.isEmpty else {
+            eventLock.unlock()
+            return
+        }
+        let eventsToSend = pendingEvents
+        pendingEvents.removeAll()
+        eventLock.unlock()
+
+        print("[HeliumPaywallSdk] Flushing \(eventsToSend.count) queued events")
+
+        let now = Date()
+        for event in eventsToSend {
+            let age = now.timeIntervalSince(event.timestamp)
+            if age > eventExpirationSeconds {
+                print("[HeliumPaywallSdk] Dropping stale event: \(event.eventName) (age: \(age)s)")
+                continue
+            }
+
+            var error: NSError?
+            let success = ObjCExceptionCatcher.tryBlock({
+                module.sendEvent(event.eventName, event.eventData)
+            }, error: &error)
+
+            if !success {
+                print("[HeliumPaywallSdk] Failed to flush event \(event.eventName): \(error?.localizedDescription ?? "unknown")")
+            }
+        }
+    }
+
+    // Safe event sending with exception catching and backup queue
+    func safeSendEvent(eventName: String, eventData: [String: Any]) {
+        guard let module = currentModule else {
+            queueEvent(eventName: eventName, eventData: eventData)
+            return
+        }
+
+        var error: NSError?
+        let success = ObjCExceptionCatcher.tryBlock({
+            module.sendEvent(eventName, eventData)
+        }, error: &error)
+
+        if !success {
+            print("[HeliumPaywallSdk] Failed to send event \(eventName): \(error?.localizedDescription ?? "unknown")")
+            queueEvent(eventName: eventName, eventData: eventData)
+        }
     }
 }
 
@@ -80,6 +155,7 @@ public class HeliumPaywallSdkModule: Module {
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
       NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
+      NativeModuleManager.shared.flushEvents(module: self) // flush any queued events now that JS listeners are ready
 
       let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
@@ -118,7 +194,7 @@ public class HeliumPaywallSdkModule: Module {
           if let buttonName = eventDict["buttonName"] {
               eventDict["ctaName"] = buttonName
           }
-          NativeModuleManager.shared.currentModule?.sendEvent("onHeliumPaywallEvent", eventDict)
+          NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumPaywallEvent", eventData: eventDict)
       }
 
       // Create delegate with closures that send events to JavaScript
@@ -131,16 +207,11 @@ public class HeliumPaywallSdkModule: Module {
             NativeModuleManager.shared.clearPurchase()
           }
 
-          // Get current module from singleton
-          guard let module = NativeModuleManager.shared.currentModule else {
-            return .failed(PurchaseError.purchaseFailed(errorMsg: "Module not active!"))
-          }
-
           return await withCheckedContinuation { continuation in
             NativeModuleManager.shared.activePurchaseContinuation = continuation
 
             // Send event to JavaScript
-            module.sendEvent("onDelegateActionEvent", [
+            NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
               "type": "purchase",
               "productId": productId
             ])
@@ -153,16 +224,11 @@ public class HeliumPaywallSdkModule: Module {
             NativeModuleManager.shared.clearRestore()
           }
 
-          // Get current module from singleton
-          guard let module = NativeModuleManager.shared.currentModule else {
-            return false
-          }
-
           return await withCheckedContinuation { continuation in
             NativeModuleManager.shared.activeRestoreContinuation = continuation
 
             // Send event to JavaScript
-            module.sendEvent("onDelegateActionEvent", [
+            NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
               "type": "restore"
             ])
           }
@@ -251,7 +317,7 @@ public class HeliumPaywallSdkModule: Module {
             trigger: trigger,
             eventHandlers: PaywallEventHandlers.withHandlers(
                 onAnyEvent: { event in
-                    NativeModuleManager.shared.currentModule?.sendEvent("paywallEventHandlers", event.toDictionary())
+                    NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: event.toDictionary())
                 }
             ),
             customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),

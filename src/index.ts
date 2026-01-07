@@ -41,7 +41,7 @@ export const initialize = async (config: HeliumConfig) => {
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
     handlePaywallEvent(event);
-    config.onHeliumPaywallEvent(event);
+    config.onHeliumPaywallEvent?.(event);
   });
 
   // Set up delegate action listener for purchase and restore operations
