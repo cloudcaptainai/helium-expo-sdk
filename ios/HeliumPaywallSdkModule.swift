@@ -100,13 +100,11 @@ private class NativeModuleManager {
                 continue
             }
 
-            var error: NSError?
-            let success = ObjCExceptionCatcher.tryBlock({
+            let success = ObjCExceptionCatcher.execute {
                 module.sendEvent(event.eventName, event.eventData)
-            }, error: &error)
-
+            }
             if !success {
-                print("[HeliumPaywallSdk] Failed to flush event \(event.eventName): \(error?.localizedDescription ?? "unknown")")
+                print("[HeliumPaywallSdk] Failed to flush event \(event.eventName)")
             }
         }
     }
@@ -118,13 +116,12 @@ private class NativeModuleManager {
             return
         }
 
-        var error: NSError?
-        let success = ObjCExceptionCatcher.tryBlock({
+        let success = ObjCExceptionCatcher.execute {
             module.sendEvent(eventName, eventData)
-        }, error: &error)
+        }
 
         if !success {
-            print("[HeliumPaywallSdk] Failed to send event \(eventName): \(error?.localizedDescription ?? "unknown")")
+            print("[HeliumPaywallSdk] Failed to send event \(eventName), queueing for retry")
             queueEvent(eventName: eventName, eventData: eventData)
         }
     }

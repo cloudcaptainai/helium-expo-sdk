@@ -1,9 +1,8 @@
 #import <Foundation/Foundation.h>
 
-NS_ASSUME_NONNULL_BEGIN
-
 @interface ObjCExceptionCatcher : NSObject
-+ (BOOL)tryBlock:(void(NS_NOESCAPE ^)(void))tryBlock error:(NSError *_Nullable *_Nullable)error;
-@end
 
-NS_ASSUME_NONNULL_END
+// Executes block and catches any NSException. Returns YES if successful, NO if exception caught.
++ (BOOL)execute:(void(NS_NOESCAPE ^)(void))block;
+
+@end

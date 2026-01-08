@@ -2,20 +2,13 @@
 
 @implementation ObjCExceptionCatcher
 
-+ (BOOL)tryBlock:(void(NS_NOESCAPE ^)(void))tryBlock error:(NSError *_Nullable *_Nullable)error {
++ (BOOL)execute:(void(NS_NOESCAPE ^)(void))block {
     @try {
-        tryBlock();
+        block();
         return YES;
     }
     @catch (NSException *exception) {
-        if (error) {
-            *error = [NSError errorWithDomain:@"ObjCException"
-                                         code:0
-                                     userInfo:@{
-                NSLocalizedDescriptionKey: exception.reason ?: @"Unknown exception",
-                @"ExceptionName": exception.name ?: @"Unknown"
-            }];
-        }
+        NSLog(@"[HeliumPaywallSdk] Caught NSException: %@ - %@", exception.name, exception.reason);
         return NO;
     }
 }
