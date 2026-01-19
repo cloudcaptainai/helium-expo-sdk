@@ -315,7 +315,15 @@ export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
 /**
  * Reset Helium entirely so you can call initialize again. Only for advanced use cases.
  */
-export const resetHelium = HeliumPaywallSdkModule.resetHelium;
+export const resetHelium = () => {
+  paywallEventHandlers = undefined;
+  presentOnFallback = undefined;
+  HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
+  HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
+  HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
+  HeliumPaywallSdkModule.resetHelium();
+  isInitialized = false;
+};
 
 /**
  * Set custom strings to show in the dialog that Helium will display if a "Restore Purchases" action is not successful.
