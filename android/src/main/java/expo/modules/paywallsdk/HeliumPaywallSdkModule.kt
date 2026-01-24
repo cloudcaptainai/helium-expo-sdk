@@ -537,7 +537,8 @@ class HeliumPaywallSdkModule : Module() {
   ): HeliumFallbackConfig? {
     // Extract loading config settings
     val useLoadingState = paywallLoadingConfig?.get("useLoadingState") as? Boolean ?: true
-    val loadingBudget = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toLong() ?: DEFAULT_LOADING_BUDGET_MS
+    val loadingBudgetSeconds = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toLong()
+    val loadingBudget = loadingBudgetSeconds?.let { it * 1000 } ?: DEFAULT_LOADING_BUDGET_MS
 
     // Parse perTriggerLoadingConfig if present
     var perTriggerLoadingConfig: Map<String, HeliumFallbackConfig>? = null
@@ -548,7 +549,8 @@ class HeliumPaywallSdkModule : Module() {
         if (key is String && value is Map<*, *>) {
           val config = value as? Map<String, Any?>
           val triggerUseLoadingState = config?.get("useLoadingState") as? Boolean
-          val triggerLoadingBudget = (config?.get("loadingBudget") as? Number)?.toLong()
+          val triggerLoadingBudgetSeconds = (config?.get("loadingBudget") as? Number)?.toLong()
+          val triggerLoadingBudget = triggerLoadingBudgetSeconds?.let { it * 1000 }
           key to HeliumFallbackConfig(
             useLoadingState = triggerUseLoadingState ?: true,
             loadingBudgetInMs = triggerLoadingBudget ?: DEFAULT_LOADING_BUDGET_MS

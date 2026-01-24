@@ -131,7 +131,7 @@ export type HeliumPaywallLoadingConfig = {
   /**
    * Maximum time (in seconds) to show the loading state before displaying fallback.
    * After this timeout, the fallback view will be shown even if the paywall is still downloading.
-   * Default: 2.0 seconds
+   * Default: 7.0 seconds
    */
   loadingBudget?: number;
   /**
