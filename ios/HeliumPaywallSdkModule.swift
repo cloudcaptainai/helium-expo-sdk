@@ -340,7 +340,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
-      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, fallbackReason: .bridgingError)
+    // Taking this out for now, there is no instance of it firing and method is no longer exposed
+    // by native SDK
+//       HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, fallbackReason: .bridgingError)
     }
 
     Function("getPaywallInfo") { (trigger: String) in
