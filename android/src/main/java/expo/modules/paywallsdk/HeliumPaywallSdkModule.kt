@@ -223,6 +223,8 @@ class HeliumPaywallSdkModule : Module() {
       val wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?: "unknown"
       HeliumSdkConfig.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
 
+      val delegateType = config["delegateType"] as? String ?: "custom"
+
       try {
         val context = appContext.reactContext
           ?: throw Exceptions.ReactContextLost()
@@ -233,7 +235,7 @@ class HeliumPaywallSdkModule : Module() {
             ?: throw Exceptions.MissingActivity()
           DefaultPaywallDelegate(currentActivity, delegateEventHandler)
         } else {
-          CustomPaywallDelegate(delegateEventHandler)
+          CustomPaywallDelegate(delegateType, delegateEventHandler)
         }
 
         Helium.initialize(
@@ -605,6 +607,7 @@ class HeliumPaywallSdkModule : Module() {
  * keeps this delegate alive forever, so any captured module would never be GC'd.
  */
 class CustomPaywallDelegate(
+  override val delegateType: String,
   private val eventHandler: (HeliumEvent) -> Unit
 ) : HeliumPaywallDelegate {
 

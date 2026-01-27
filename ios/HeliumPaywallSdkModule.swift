@@ -175,6 +175,7 @@ public class HeliumPaywallSdkModule: Module {
       }
 
       let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
+      let delegateType = config["delegateType"] as? String
 
       let delegateEventHandler: (HeliumEvent) -> Void = { event in
           var eventDict = event.toDictionary()
@@ -196,6 +197,7 @@ public class HeliumPaywallSdkModule: Module {
 
       // Create delegate with closures that send events to JavaScript
       let internalDelegate = InternalDelegate(
+        delegateType: delegateType,
         eventHandler: delegateEventHandler,
         purchaseHandler: { productId in
           // First check singleton for orphaned continuation and clean it up
@@ -486,15 +488,20 @@ public class HeliumPaywallSdkModule: Module {
 }
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {
+    private let _delegateType: String?
+    public var delegateType: String { _delegateType ?? "custom" }
+
     private let eventHandler: (HeliumEvent) -> Void
     private let purchaseHandler: (String) async -> HeliumPaywallTransactionStatus
     private let restoreHandler: () async -> Bool
 
     init(
+        delegateType: String?,
         eventHandler: @escaping (HeliumEvent) -> Void,
         purchaseHandler: @escaping (String) async -> HeliumPaywallTransactionStatus,
         restoreHandler: @escaping () async -> Bool
     ) {
+        self._delegateType = delegateType
         self.eventHandler = eventHandler
         self.purchaseHandler = purchaseHandler
         self.restoreHandler = restoreHandler

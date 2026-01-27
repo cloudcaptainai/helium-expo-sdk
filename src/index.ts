@@ -174,6 +174,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     useDefaultDelegate: !config.purchaseConfig,
     environment: config.environment,
     wrapperSdkVersion: SDK_VERSION,
+    delegateType: config.purchaseConfig?._delegateType,
   };
 
   // Initialize the native module
