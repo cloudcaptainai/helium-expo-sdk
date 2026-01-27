@@ -96,6 +96,9 @@ export interface HeliumPurchaseConfig {
   makePurchaseAndroid?: (productId: string, basePlanId?: string, offerId?: string) => Promise<HeliumPurchaseResult>;
 
   restorePurchases: () => Promise<boolean>;
+
+  /** @internal Used to identify the purchase delegate type for analytics. */
+  _delegateType?: string;
 }
 
 // Helper function for creating Custom Purchase Config
@@ -181,6 +184,8 @@ export interface NativeHeliumConfig {
   paywallLoadingConfig?: HeliumPaywallLoadingConfig;
   useDefaultDelegate?: boolean;
   environment?: string;
+  wrapperSdkVersion?: string;
+  delegateType?: string;
 }
 
 export type PresentUpsellParams = {

@@ -21,6 +21,7 @@ import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraitsArgument
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
+import com.tryhelium.paywall.core.HeliumSdkConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
 import com.android.billingclient.api.ProductDetails
@@ -219,6 +220,11 @@ class HeliumPaywallSdkModule : Module() {
         NativeModuleManager.safeSendEvent("onHeliumPaywallEvent", eventMap)
       }
 
+      val wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?: "unknown"
+      HeliumSdkConfig.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
+
+      val delegateType = config["delegateType"] as? String ?: "custom"
+
       try {
         val context = appContext.reactContext
           ?: throw Exceptions.ReactContextLost()
@@ -229,7 +235,7 @@ class HeliumPaywallSdkModule : Module() {
             ?: throw Exceptions.MissingActivity()
           DefaultPaywallDelegate(currentActivity, delegateEventHandler)
         } else {
-          CustomPaywallDelegate(delegateEventHandler)
+          CustomPaywallDelegate(delegateType, delegateEventHandler)
         }
 
         Helium.initialize(
@@ -601,6 +607,7 @@ class HeliumPaywallSdkModule : Module() {
  * keeps this delegate alive forever, so any captured module would never be GC'd.
  */
 class CustomPaywallDelegate(
+  override val delegateType: String,
   private val eventHandler: (HeliumEvent) -> Unit
 ) : HeliumPaywallDelegate {
 

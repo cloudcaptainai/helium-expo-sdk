@@ -175,6 +175,7 @@ public class HeliumPaywallSdkModule: Module {
       }
 
       let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
+      let delegateType = config["delegateType"] as? String
 
       let delegateEventHandler: (HeliumEvent) -> Void = { event in
           var eventDict = event.toDictionary()
@@ -196,6 +197,7 @@ public class HeliumPaywallSdkModule: Module {
 
       // Create delegate with closures that send events to JavaScript
       let internalDelegate = InternalDelegate(
+        delegateType: delegateType,
         eventHandler: delegateEventHandler,
         purchaseHandler: { productId in
           // First check singleton for orphaned continuation and clean it up
@@ -248,6 +250,9 @@ public class HeliumPaywallSdkModule: Module {
           fallbackBundleURL = tempURL
         }
       }
+
+      let wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?? "unknown"
+      HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: wrapperSdkVersion)
 
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
@@ -335,7 +340,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("fallbackOpenOrCloseEvent") { (trigger: String?, isOpen: Bool, viewType: String?) in
-      HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, fallbackReason: .bridgingError)
+    // Taking this out for now, there is no instance of it firing and method is no longer exposed
+    // by native SDK
+//       HeliumPaywallDelegateWrapper.shared.onFallbackOpenCloseEvent(trigger: trigger, isOpen: isOpen, viewType: viewType, fallbackReason: .bridgingError)
     }
 
     Function("getPaywallInfo") { (trigger: String) in
@@ -483,15 +490,20 @@ public class HeliumPaywallSdkModule: Module {
 }
 
 fileprivate class InternalDelegate: HeliumPaywallDelegate {
+    private let _delegateType: String?
+    public var delegateType: String { _delegateType ?? "custom" }
+
     private let eventHandler: (HeliumEvent) -> Void
     private let purchaseHandler: (String) async -> HeliumPaywallTransactionStatus
     private let restoreHandler: () async -> Bool
 
     init(
+        delegateType: String?,
         eventHandler: @escaping (HeliumEvent) -> Void,
         purchaseHandler: @escaping (String) async -> HeliumPaywallTransactionStatus,
         restoreHandler: @escaping () async -> Bool
     ) {
+        self._delegateType = delegateType
         self.eventHandler = eventHandler
         self.purchaseHandler = purchaseHandler
         self.restoreHandler = restoreHandler

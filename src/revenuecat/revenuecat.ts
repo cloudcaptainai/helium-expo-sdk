@@ -21,6 +21,7 @@ export function createRevenueCatPurchaseConfig(config?: {
     makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
     makePurchaseAndroid: rcHandler.makePurchaseAndroid.bind(rcHandler),
     restorePurchases: rcHandler.restorePurchases.bind(rcHandler),
+    _delegateType: 'h_revenuecat',
   };
 }
 

@@ -10,6 +10,13 @@ import { EventSubscription } from 'expo-modules-core';
 import * as ExpoFileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
+let SDK_VERSION = 'unknown';
+try {
+  SDK_VERSION = require('../package.json').version;
+} catch {
+  // package.json can't be loaded, accept that we won't get wrapper sdk version
+}
+
 export { default } from './HeliumPaywallSdkModule';
 // export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
 export * from  './HeliumPaywallSdk.types';
@@ -166,6 +173,8 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     paywallLoadingConfig: convertBooleansToMarkers(config.paywallLoadingConfig),
     useDefaultDelegate: !config.purchaseConfig,
     environment: config.environment,
+    wrapperSdkVersion: SDK_VERSION,
+    delegateType: config.purchaseConfig?._delegateType,
   };
 
   // Initialize the native module
