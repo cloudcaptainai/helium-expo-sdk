@@ -249,6 +249,9 @@ public class HeliumPaywallSdkModule: Module {
         }
       }
 
+      let wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?? "unknown"
+      HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: wrapperSdkVersion)
+
       Helium.shared.initialize(
         apiKey: config["apiKey"] as? String ?? "",
         heliumPaywallDelegate: useDefaultDelegate ? defaultDelegate : internalDelegate,

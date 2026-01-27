@@ -21,6 +21,7 @@ import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraitsArgument
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
+import com.tryhelium.paywall.core.HeliumSdkConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
 import com.android.billingclient.api.ProductDetails
@@ -218,6 +219,9 @@ class HeliumPaywallSdkModule : Module() {
 
         NativeModuleManager.safeSendEvent("onHeliumPaywallEvent", eventMap)
       }
+
+      val wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?: "unknown"
+      HeliumSdkConfig.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
 
       try {
         val context = appContext.reactContext

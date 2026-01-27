@@ -181,6 +181,7 @@ export interface NativeHeliumConfig {
   paywallLoadingConfig?: HeliumPaywallLoadingConfig;
   useDefaultDelegate?: boolean;
   environment?: string;
+  wrapperSdkVersion?: string;
 }
 
 export type PresentUpsellParams = {
