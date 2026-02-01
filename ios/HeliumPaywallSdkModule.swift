@@ -38,7 +38,7 @@ private class NativeModuleManager {
     static let shared = NativeModuleManager()
 
     private let maxQueuedEvents = 30
-    private let eventExpirationSeconds: TimeInterval = 30.0
+    private let eventExpirationSeconds: TimeInterval = 10.0
 
     // Always keep reference to the current module
     var currentModule: HeliumPaywallSdkModule?
