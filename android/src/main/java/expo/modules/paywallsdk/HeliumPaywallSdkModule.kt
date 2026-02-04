@@ -19,7 +19,6 @@ import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraitsArgument
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
-import com.tryhelium.paywall.core.HeliumSdkConfig
 import com.tryhelium.paywall.core.PaywallPresentationConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
@@ -196,11 +195,11 @@ class HeliumPaywallSdkModule : Module() {
       val useLoadingState = paywallLoadingConfigMap?.get("useLoadingState") as? Boolean ?: true
       val loadingBudgetSeconds = (paywallLoadingConfigMap?.get("loadingBudget") as? Number)?.toDouble()
       val loadingBudgetMs = loadingBudgetSeconds?.let { (it * 1000).toLong() } ?: DEFAULT_LOADING_BUDGET_MS
-      if !(useLoadingState) {
+      if (!useLoadingState) {
         // Setting <= 0 will disable loading state
-        Helium.config.defaultLoadingBudget = -1
+        Helium.config.defaultLoadingBudgetInMs = -1
       } else {
-        Helium.config.defaultLoadingBudget = loadingBudgetMs ?: DEFAULT_LOADING_BUDGET_MS
+        Helium.config.defaultLoadingBudgetInMs = loadingBudgetMs ?: DEFAULT_LOADING_BUDGET_MS
       }
 
       // Parse environment parameter, defaulting to PRODUCTION
@@ -224,7 +223,7 @@ class HeliumPaywallSdkModule : Module() {
       }
 
       val wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?: "unknown"
-      HeliumSdkConfig.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
+      Helium.config.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
 
       // Set up bridging logger to forward native SDK logs to JavaScript
       Helium.config.logger = BridgingLogger()
@@ -249,14 +248,14 @@ class HeliumPaywallSdkModule : Module() {
         revenueCatAppUserId?.let { Helium.identity.revenueCatAppUserId = it }
 
         Helium.config.heliumPaywallDelegate = delegate
-        customAPIEndpoint?.let { Helium.config.customAPIEndpoint = it }
+        customAPIEndpoint?.let { Helium.config.customApiEndpoint = it }
 
         setupFallbackBundle(context, fallbackBundleUrlString, fallbackBundleString)
 
         Helium.initialize(
           context = context,
           apiKey = apiKey,
-          environment: environment,
+          environment = environment,
         )
       } catch (e: Exception) {
         // Log error but don't throw - initialization errors will be handled by SDK

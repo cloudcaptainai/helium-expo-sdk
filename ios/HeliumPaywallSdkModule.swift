@@ -386,7 +386,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     AsyncFunction("hasEntitlementForPaywall") { (trigger: String) in
-      let hasEntitlement = await Helium.entitlements.hasForPaywall(trigger: trigger)
+      let hasEntitlement = await Helium.entitlements.hasEntitlementForPaywall(trigger: trigger)
       return HasEntitlementResult(hasEntitlement: hasEntitlement)
     }
 

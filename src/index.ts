@@ -149,13 +149,13 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
       if (hasLegacyApi) {
         // Expo 52/53 - use legacy API
         // @ts-ignore - documentDirectory only exists in Expo 52/53 types
-        fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-fallback.json`;
+        fallbackBundleUrlString = `${ExpoFileSystem.documentDirectory}helium-expo-fallbacks.json`;
         // @ts-ignore - writeAsStringAsync only exists in Expo 52/53 types
         await ExpoFileSystem.writeAsStringAsync(fallbackBundleUrlString, jsonContent);
       } else if (hasNewApi) {
         // Expo 54+ - use new class-based API
         // @ts-ignore - Types may not be available in older Expo versions
-        const file = new ExpoFileSystem.File(ExpoFileSystem.Paths.document, 'helium-fallback.json');
+        const file = new ExpoFileSystem.File(ExpoFileSystem.Paths.document, 'helium-expo-fallbacks.json');
         file.create({ overwrite: true });
         file.write(jsonContent);
         fallbackBundleUrlString = file.uri;
