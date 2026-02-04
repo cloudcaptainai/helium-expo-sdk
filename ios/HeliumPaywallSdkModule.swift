@@ -47,6 +47,9 @@ private class NativeModuleManager {
     var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
     var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
 
+    // Log listener token - stored here so it survives module recreation
+    var logListenerToken: HeliumLogListenerToken?
+
     // Event queue for when no module is available or sendEvent fails
     private struct PendingEvent {
         let eventName: String
@@ -147,7 +150,7 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -267,6 +270,19 @@ public class HeliumPaywallSdkModule: Module {
       }
 
       Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
+
+      // Set up log listener if not already registered
+      if NativeModuleManager.shared.logListenerToken == nil {
+        NativeModuleManager.shared.logListenerToken = HeliumLogger.addLogListener { event in
+          let eventData: [String: Any] = [
+            "level": event.level.rawValue,
+            "category": event.category.rawValue,
+            "message": event.message,
+            "metadata": event.metadata
+          ]
+          NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumLogEvent", eventData: eventData)
+        }
+      }
     }
 
     // Function for JavaScript to provide purchase result
@@ -419,6 +435,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("resetHelium") {
+      // Clean up log listener
+      NativeModuleManager.shared.logListenerToken?.remove()
+      NativeModuleManager.shared.logListenerToken = nil
       Helium.resetHelium()
     }
 

@@ -1,6 +1,7 @@
 import {
   DelegateActionEvent,
   HeliumConfig,
+  HeliumLogEvent,
   HeliumPaywallEvent,
   NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
 } from "./HeliumPaywallSdk.types";
@@ -34,6 +35,10 @@ function addPaywallEventHandlersListener(listener: (event: HeliumPaywallEvent) =
   return HeliumPaywallSdkModule.addListener('paywallEventHandlers', listener);
 }
 
+function addHeliumLogEventListener(listener: (event: HeliumLogEvent) => void): EventSubscription {
+  return HeliumPaywallSdkModule.addListener('onHeliumLogEvent', listener);
+}
+
 let isInitialized = false;
 export const initialize = async (config: HeliumConfig) => {
   if (isInitialized) {
@@ -44,6 +49,7 @@ export const initialize = async (config: HeliumConfig) => {
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
   HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
+  HeliumPaywallSdkModule.removeAllListeners('onHeliumLogEvent');
 
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
@@ -113,6 +119,11 @@ export const initialize = async (config: HeliumConfig) => {
 
   addPaywallEventHandlersListener((event) => {
     callPaywallEventHandlers(event);
+  });
+
+  // Set up listener for native SDK logs
+  addHeliumLogEventListener((event) => {
+    logHeliumEvent(event);
   });
 
   await nativeInitializeAsync(config).catch(error => {
@@ -291,6 +302,32 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
   }
 }
 
+/**
+ * Routes native SDK log events to the appropriate console method.
+ * Log levels: 1=error, 2=warn, 3=info, 4=debug, 5=trace
+ */
+function logHeliumEvent(event: HeliumLogEvent) {
+  const { level, message, metadata } = event;
+  const hasMetadata = Object.keys(metadata).length > 0;
+
+  switch (level) {
+    case 1: // error
+      hasMetadata ? console.error(message, metadata) : console.error(message);
+      break;
+    case 2: // warn
+      hasMetadata ? console.warn(message, metadata) : console.warn(message);
+      break;
+    case 3: // info
+      hasMetadata ? console.info(message, metadata) : console.info(message);
+      break;
+    case 4: // debug
+    case 5: // trace
+    default:
+      hasMetadata ? console.debug(message, metadata) : console.debug(message);
+      break;
+  }
+}
+
 export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
@@ -330,6 +367,7 @@ export const resetHelium = () => {
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
   HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
+  HeliumPaywallSdkModule.removeAllListeners('onHeliumLogEvent');
   HeliumPaywallSdkModule.resetHelium();
   isInitialized = false;
 };

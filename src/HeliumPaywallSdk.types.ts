@@ -8,7 +8,20 @@ export type HeliumPaywallSdkModuleEvents = {
   onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
   paywallEventHandlers: (params: HeliumPaywallEvent) => void;
+  onHeliumLogEvent: (params: HeliumLogEvent) => void;
 };
+
+/** A log event emitted by the Helium SDK. */
+export interface HeliumLogEvent {
+  /** Numeric log level (1=error, 2=warn, 3=info, 4=debug, 5=trace). */
+  level: number;
+  /** The category/subsystem that generated this log (iOS) or tag (Android). */
+  category: string;
+  /** The log message (prefixed with "[Helium] "). */
+  message: string;
+  /** Key-value metadata associated with this log event (iOS only, empty on Android). */
+  metadata: Record<string, string>;
+}
 export type HeliumPaywallEvent = {
   type: 'paywallOpen' | 'paywallClose' | 'paywallDismissed' |
     'paywallOpenFailed' | 'paywallSkipped' | 'paywallButtonPressed' |

@@ -23,6 +23,7 @@ import com.tryhelium.paywall.core.HeliumSdkConfig
 import com.tryhelium.paywall.core.PaywallPresentationConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
+import com.tryhelium.paywall.core.logger.HeliumLogger
 import com.android.billingclient.api.ProductDetails
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.ref.WeakReference
@@ -164,7 +165,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Defines event names that the module can send to JavaScript
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent")
 
     // Lifecycle event to cache Activity reference for hot reload resilience
     OnActivityEntersForeground {
@@ -224,6 +225,9 @@ class HeliumPaywallSdkModule : Module() {
 
       val wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?: "unknown"
       HeliumSdkConfig.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
+
+      // Set up bridging logger to forward native SDK logs to JavaScript
+      Helium.config.logger = BridgingLogger()
 
       val delegateType = config["delegateType"] as? String ?: "custom"
 
@@ -455,6 +459,8 @@ class HeliumPaywallSdkModule : Module() {
 
     // Reset Helium SDK
     Function("resetHelium") {
+      // Reset logger back to default stdout logger
+      Helium.config.logger = HeliumLogger.Stdout
       Helium.resetHelium()
     }
 
@@ -665,5 +671,58 @@ class DefaultPaywallDelegate(
 
   override fun onHeliumEvent(event: HeliumEvent) {
     eventHandler(event)
+  }
+}
+
+/**
+ * Bridging logger that forwards native SDK logs to JavaScript while also
+ * logging to stdout (logcat) for local debugging.
+ *
+ * Log level mapping to match iOS:
+ * - e (error) -> level 1
+ * - w (warn) -> level 2
+ * - i (info) -> level 3
+ * - d (debug) -> level 4
+ * - v (verbose/trace) -> level 5
+ */
+class BridgingLogger : HeliumLogger {
+  override val baseLogTag: String = "Helium"
+
+  // Also log to stdout so logcat still works
+  private val stdoutLogger = HeliumLogger.Stdout
+
+  override fun e(tag: String, message: String) {
+    stdoutLogger.e(tag, message)
+    sendLogEvent(level = 1, tag = tag, message = message)
+  }
+
+  override fun w(tag: String, message: String) {
+    stdoutLogger.w(tag, message)
+    sendLogEvent(level = 2, tag = tag, message = message)
+  }
+
+  override fun i(tag: String, message: String) {
+    stdoutLogger.i(tag, message)
+    sendLogEvent(level = 3, tag = tag, message = message)
+  }
+
+  override fun d(tag: String, message: String) {
+    stdoutLogger.d(tag, message)
+    sendLogEvent(level = 4, tag = tag, message = message)
+  }
+
+  override fun v(tag: String, message: String) {
+    stdoutLogger.v(tag, message)
+    sendLogEvent(level = 5, tag = tag, message = message)
+  }
+
+  private fun sendLogEvent(level: Int, tag: String, message: String) {
+    val eventData = mapOf(
+      "level" to level,
+      "category" to tag,
+      "message" to "[Helium] $message",
+      "metadata" to emptyMap<String, String>()
+    )
+    NativeModuleManager.safeSendEvent("onHeliumLogEvent", eventData)
   }
 }
