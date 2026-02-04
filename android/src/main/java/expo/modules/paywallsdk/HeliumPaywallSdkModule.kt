@@ -570,12 +570,10 @@ class HeliumPaywallSdkModule : Module() {
         val sourceFile = java.io.File(java.net.URI.create(fallbackBundleUrlString))
         if (sourceFile.exists()) {
           sourceFile.copyTo(destinationFile, overwrite = true)
-          Helium.config.customFallbacksFileName = "helium-expo-fallbacks.json"
         }
       } else if (fallbackBundleString != null) {
         // Write fallback bundle string to file
         destinationFile.writeText(fallbackBundleString)
-        Helium.config.customFallbacksFileName = "helium-expo-fallbacks.json"
       }
     } catch (e: Exception) {
       android.util.Log.w("HeliumPaywallSdk", "Failed to write fallback bundle: ${e.message}")
