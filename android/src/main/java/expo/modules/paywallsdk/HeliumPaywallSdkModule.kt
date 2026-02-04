@@ -15,13 +15,12 @@ import com.tryhelium.paywall.core.HeliumEnvironment
 import com.tryhelium.paywall.core.event.HeliumEvent
 import com.tryhelium.paywall.core.event.HeliumEventDictionaryMapper
 import com.tryhelium.paywall.core.event.PaywallEventHandlers
-import com.tryhelium.paywall.core.HeliumFallbackConfig
-import com.tryhelium.paywall.core.HeliumIdentityManager
 import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraitsArgument
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
 import com.tryhelium.paywall.core.HeliumSdkConfig
+import com.tryhelium.paywall.core.PaywallPresentationConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
 import com.android.billingclient.api.ProductDetails
@@ -193,12 +192,15 @@ class HeliumPaywallSdkModule : Module() {
 
       @Suppress("UNCHECKED_CAST")
       val paywallLoadingConfigMap = convertMarkersToBooleans(config["paywallLoadingConfig"] as? Map<String, Any?>)
-      val fallbackConfig = convertToHeliumFallbackConfig(
-        paywallLoadingConfigMap,
-        fallbackBundleUrlString,
-        fallbackBundleString,
-        appContext.reactContext
-      )
+      val useLoadingState = paywallLoadingConfigMap?.get("useLoadingState") as? Boolean ?: true
+      val loadingBudgetSeconds = (paywallLoadingConfigMap?.get("loadingBudget") as? Number)?.toDouble()
+      val loadingBudgetMs = loadingBudgetSeconds?.let { (it * 1000).toLong() } ?: DEFAULT_LOADING_BUDGET_MS
+      if !(useLoadingState) {
+        // Setting <= 0 will disable loading state
+        Helium.config.defaultLoadingBudget = -1
+      } else {
+        Helium.config.defaultLoadingBudget = loadingBudgetMs ?: DEFAULT_LOADING_BUDGET_MS
+      }
 
       // Parse environment parameter, defaulting to PRODUCTION
       val environmentString = config["environment"] as? String
@@ -238,16 +240,19 @@ class HeliumPaywallSdkModule : Module() {
           CustomPaywallDelegate(delegateType, delegateEventHandler)
         }
 
+        customUserId?.let { Helium.identity.userId = it }
+        customUserTraits?.let { Helium.identity.setUserTraits(it) }
+        revenueCatAppUserId?.let { Helium.identity.revenueCatAppUserId = it }
+
+        Helium.config.heliumPaywallDelegate = delegate
+        customAPIEndpoint?.let { Helium.config.customAPIEndpoint = it }
+
+        setupFallbackBundle(context, fallbackBundleUrlString, fallbackBundleString)
+
         Helium.initialize(
           context = context,
           apiKey = apiKey,
-          heliumPaywallDelegate = delegate,
-          customUserId = customUserId,
-          customApiEndpoint = customAPIEndpoint,
-          customUserTraits = customUserTraits,
-          revenueCatAppUserId = revenueCatAppUserId,
-          fallbackConfig = fallbackConfig,
-          environment = environment
+          environment: environment,
         )
       } catch (e: Exception) {
         // Log error but don't throw - initialization errors will be handled by SDK
@@ -316,23 +321,28 @@ class HeliumPaywallSdkModule : Module() {
         onCustomPaywallAction = { event -> sendPaywallEvent(event) }
       )
 
-      Helium.presentUpsell(
+      Helium.presentPaywall(
         trigger = trigger,
-        activityContext = activity,
-        dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled,
-        customPaywallTraits = convertedTraits,
-        eventListener = eventHandlers
+        config = PaywallPresentationConfig(
+          fromActivityContext = activity,
+          customPaywallTraits = convertedTraits,
+          dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false
+        ),
+        eventListener = eventHandlers,
+        onPaywallNotShown = { _ ->
+          // nothing for now
+        }
       )
     }
 
     // Hide the current upsell
     Function("hideUpsell") {
-      Helium.hideUpsell()
+      Helium.hidePaywall()
     }
 
     // Hide all upsells
     Function("hideAllUpsells") {
-      Helium.hideAllUpsells()
+      Helium.hideAllPaywalls()
     }
 
     // Get download status of paywall assets
@@ -375,12 +385,12 @@ class HeliumPaywallSdkModule : Module() {
 
     // Set RevenueCat app user ID
     Function("setRevenueCatAppUserId") { rcAppUserId: String ->
-      HeliumIdentityManager.shared.setRevenueCatAppUserId(rcAppUserId)
+      Helium.identity.revenueCatAppUserId = rcAppUserId
     }
 
     // Set custom user ID
     Function("setCustomUserId") { newUserId: String ->
-      Helium.shared.overrideUserId(customUserId = newUserId, customUserTraits = null)
+      Helium.identity.userId = newUserId
     }
 
     // Check if user has entitlement for a specific paywall
@@ -535,69 +545,38 @@ class HeliumPaywallSdkModule : Module() {
     }
   }
 
-  private fun convertToHeliumFallbackConfig(
-    paywallLoadingConfig: Map<String, Any?>?,
+  /**
+   * Sets up the fallback bundle by writing it to the helium_local directory where the SDK expects it.
+   * Accepts either a URL string pointing to an existing file, or a JSON string to write directly.
+   */
+  private fun setupFallbackBundle(
+    context: android.content.Context,
     fallbackBundleUrlString: String?,
-    fallbackBundleString: String?,
-    context: android.content.Context?
-  ): HeliumFallbackConfig? {
-    // Extract loading config settings
-    val useLoadingState = paywallLoadingConfig?.get("useLoadingState") as? Boolean ?: true
-    val loadingBudgetSeconds = (paywallLoadingConfig?.get("loadingBudget") as? Number)?.toDouble()
-    val loadingBudget = loadingBudgetSeconds?.let { (it * 1000).toLong() } ?: DEFAULT_LOADING_BUDGET_MS
+    fallbackBundleString: String?
+  ) {
+    if (fallbackBundleUrlString == null && fallbackBundleString == null) return
 
-    // Parse perTriggerLoadingConfig if present
-    var perTriggerLoadingConfig: Map<String, HeliumFallbackConfig>? = null
-    val perTriggerDict = paywallLoadingConfig?.get("perTriggerLoadingConfig") as? Map<*, *>
-    if (perTriggerDict != null) {
-      @Suppress("UNCHECKED_CAST")
-      perTriggerLoadingConfig = perTriggerDict.mapNotNull { (key, value) ->
-        if (key is String && value is Map<*, *>) {
-          val config = value as? Map<String, Any?>
-          val triggerUseLoadingState = config?.get("useLoadingState") as? Boolean
-          val triggerLoadingBudgetSeconds = (config?.get("loadingBudget") as? Number)?.toDouble()
-          val triggerLoadingBudget = triggerLoadingBudgetSeconds?.let { (it * 1000).toLong() }
-          key to HeliumFallbackConfig(
-            useLoadingState = triggerUseLoadingState ?: true,
-            loadingBudgetInMs = triggerLoadingBudget ?: DEFAULT_LOADING_BUDGET_MS
-          )
-        } else {
-          null
+    try {
+      val heliumLocalDir = context.getDir("helium_local", android.content.Context.MODE_PRIVATE)
+      val destinationFile = java.io.File(heliumLocalDir, "helium-expo-fallbacks.json")
+
+      if (fallbackBundleUrlString != null) {
+        // Copy file from Expo's document directory to helium_local
+        val sourceFile = java.io.File(java.net.URI.create(fallbackBundleUrlString))
+        if (sourceFile.exists()) {
+          sourceFile.copyTo(destinationFile, overwrite = true)
+          Helium.config.customFallbacksFileName = "helium-expo-fallbacks.json"
         }
-      }.toMap() as? Map<String, HeliumFallbackConfig>
-    }
-
-    // Handle fallback bundle - write to helium_local directory where SDK expects it
-    var fallbackBundleName: String? = null
-    if (context != null && (fallbackBundleUrlString != null || fallbackBundleString != null)) {
-      try {
-        val heliumLocalDir = context.getDir("helium_local", android.content.Context.MODE_PRIVATE)
-        val destinationFile = java.io.File(heliumLocalDir, "helium-fallback.json")
-
-        if (fallbackBundleUrlString != null) {
-          // Copy file from Expo's document directory to helium_local
-          val sourceFile = java.io.File(java.net.URI.create(fallbackBundleUrlString))
-          if (sourceFile.exists()) {
-            sourceFile.copyTo(destinationFile, overwrite = true)
-            fallbackBundleName = "helium-fallback.json"
-          }
-        } else if (fallbackBundleString != null) {
-          // Write fallback bundle string to file
-          destinationFile.writeText(fallbackBundleString)
-          fallbackBundleName = "helium-fallback.json"
-        }
-      } catch (e: Exception) {
-        // Silently fail for now
+      } else if (fallbackBundleString != null) {
+        // Write fallback bundle string to file
+        destinationFile.writeText(fallbackBundleString)
+        Helium.config.customFallbacksFileName = "helium-expo-fallbacks.json"
       }
+    } catch (e: Exception) {
+      android.util.Log.w("HeliumPaywallSdk", "Failed to write fallback bundle: ${e.message}")
     }
-
-    return HeliumFallbackConfig(
-      useLoadingState = useLoadingState,
-      loadingBudgetInMs = loadingBudget,
-      perTriggerLoadingConfig = perTriggerLoadingConfig,
-      fallbackBundleName = fallbackBundleName
-    )
   }
+
 }
 
 /**
