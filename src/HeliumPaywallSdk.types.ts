@@ -117,13 +117,6 @@ export function createCustomPurchaseConfig(callbacks: {
   };
 }
 
-export type TriggerLoadingConfig = {
-  /** Whether to show loading state for this trigger. Set to nil to use the global `useLoadingState` setting. */
-  useLoadingState?: boolean;
-  /** Maximum seconds to show loading for this trigger. Set to nil to use the global `loadingBudget` setting. */
-  loadingBudget?: number;
-};
-
 export type HeliumPaywallLoadingConfig = {
   /**
    * Whether to show a loading state while fetching paywall configuration.
@@ -137,13 +130,6 @@ export type HeliumPaywallLoadingConfig = {
    * Default: 7.0 seconds
    */
   loadingBudget?: number;
-  /**
-   * Optional per-trigger loading configuration overrides.
-   * Use this to customize loading behavior for specific triggers.
-   * Keys are trigger names, values are TriggerLoadingConfig instances.
-   * Example: Disable loading for "onboarding" trigger while keeping it for others.
-   */
-  perTriggerLoadingConfig?: Record<string, TriggerLoadingConfig>;
 };
 
 export interface HeliumConfig {
