@@ -683,41 +683,41 @@ class DefaultPaywallDelegate(
  * - v (verbose/trace) -> level 5
  */
 class BridgingLogger : HeliumLogger {
-  override val baseLogTag: String = "Helium"
+  override val logTag: String = "Helium"
 
   // Also log to stdout so logcat still works
   private val stdoutLogger = HeliumLogger.Stdout
 
-  override fun e(tag: String, message: String) {
-    stdoutLogger.e(tag, message)
-    sendLogEvent(level = 1, tag = tag, message = message)
+  override fun e(message: String) {
+    stdoutLogger.e(message)
+    sendLogEvent(level = 1, message = message)
   }
 
-  override fun w(tag: String, message: String) {
-    stdoutLogger.w(tag, message)
-    sendLogEvent(level = 2, tag = tag, message = message)
+  override fun w(message: String) {
+    stdoutLogger.w(message)
+    sendLogEvent(level = 2, message = message)
   }
 
-  override fun i(tag: String, message: String) {
-    stdoutLogger.i(tag, message)
-    sendLogEvent(level = 3, tag = tag, message = message)
+  override fun i(message: String) {
+    stdoutLogger.i(message)
+    sendLogEvent(level = 3, message = message)
   }
 
-  override fun d(tag: String, message: String) {
-    stdoutLogger.d(tag, message)
-    sendLogEvent(level = 4, tag = tag, message = message)
+  override fun d(message: String) {
+    stdoutLogger.d(message)
+    sendLogEvent(level = 4, message = message)
   }
 
-  override fun v(tag: String, message: String) {
-    stdoutLogger.v(tag, message)
-    sendLogEvent(level = 5, tag = tag, message = message)
+  override fun v(message: String) {
+    stdoutLogger.v(message)
+    sendLogEvent(level = 5, message = message)
   }
 
-  private fun sendLogEvent(level: Int, tag: String, message: String) {
+  private fun sendLogEvent(level: Int, message: String) {
     val eventData = mapOf(
       "level" to level,
-      "category" to tag,
-      "message" to "[Helium] $message",
+      "category" to logTag,
+      "message" to "[$logTag] $message",
       "metadata" to emptyMap<String, String>()
     )
     NativeModuleManager.safeSendEvent("onHeliumLogEvent", eventData)
