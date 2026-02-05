@@ -398,7 +398,7 @@ class HeliumPaywallSdkModule : Module() {
 
     // Check if user has entitlement for a specific paywall
     AsyncFunction("hasEntitlementForPaywall") Coroutine { trigger: String ->
-      val result = Helium.shared.hasEntitlementForPaywall(trigger)
+      val result = Helium.entitlements.hasEntitlementForPaywall(trigger)
       return@Coroutine HasEntitlementResult().apply {
         hasEntitlement = result
       }
@@ -406,12 +406,12 @@ class HeliumPaywallSdkModule : Module() {
 
     // Check if user has any active subscription
     AsyncFunction("hasAnyActiveSubscription") Coroutine { ->
-      return@Coroutine Helium.shared.hasAnyActiveSubscription()
+      return@Coroutine Helium.entitlements.hasAnyActiveSubscription()
     }
 
     // Check if user has any entitlement
     AsyncFunction("hasAnyEntitlement") Coroutine { ->
-      return@Coroutine Helium.shared.hasAnyEntitlement()
+      return@Coroutine Helium.entitlements.hasAnyEntitlement()
     }
 
     // Handle deep link
@@ -422,7 +422,7 @@ class HeliumPaywallSdkModule : Module() {
 
     // Get experiment info for a trigger
     Function("getExperimentInfoForTrigger") { trigger: String ->
-      val experimentInfo = Helium.shared.getExperimentInfoForTrigger(trigger)
+      val experimentInfo = Helium.experiments.getExperimentInfoForTrigger(trigger)
 
       return@Function if (experimentInfo == null) {
         mapOf<String, Any?>(
