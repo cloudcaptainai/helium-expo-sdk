@@ -14,12 +14,12 @@ Pod::Spec.new do |s|
     :ios => '15.1',
     :tvos => '15.1'
   }
-  s.swift_version  = '5.4'
+  s.swift_version  = '5.7'
   s.source         = { git: 'https://github.com/cloudcaptainai/helium-expo-sdk' }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'Helium', '3.1.6'
+  s.dependency 'Helium', '4.1.2'
 
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {

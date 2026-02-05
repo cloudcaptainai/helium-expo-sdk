@@ -47,6 +47,9 @@ private class NativeModuleManager {
     var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
     var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
 
+    // Log listener token - stored here so it survives module recreation
+    var logListenerToken: HeliumLogListenerToken?
+
     // Event queue for when no module is available or sendEvent fails
     private struct PendingEvent {
         let eventName: String
@@ -147,7 +150,7 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -157,21 +160,15 @@ public class HeliumPaywallSdkModule: Module {
       let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
       let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
       let fallbackBundleString = config["fallbackBundleString"] as? String
-      
+
       let paywallLoadingConfig = convertMarkersToBooleans(config["paywallLoadingConfig"] as? [String: Any])
       let useLoadingState = paywallLoadingConfig?["useLoadingState"] as? Bool ?? true
-      let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval ?? 2.0
-      
-      var perTriggerLoadingConfig: [String: TriggerLoadingConfig]? = nil
-      if let perTriggerDict = paywallLoadingConfig?["perTriggerLoadingConfig"] as? [String: [String: Any]] {
-        var triggerConfigs: [String: TriggerLoadingConfig] = [:]
-        for (trigger, config) in perTriggerDict {
-          triggerConfigs[trigger] = TriggerLoadingConfig(
-            useLoadingState: config["useLoadingState"] as? Bool,
-            loadingBudget: config["loadingBudget"] as? TimeInterval
-          )
-        }
-        perTriggerLoadingConfig = triggerConfigs
+      let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval
+      if !useLoadingState {
+        // Setting <= 0 will disable loading state
+        Helium.config.defaultLoadingBudget = -1
+      } else {
+        Helium.config.defaultLoadingBudget = loadingBudget ?? 7.0
       }
 
       let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
@@ -243,7 +240,7 @@ public class HeliumPaywallSdkModule: Module {
       } else if let jsonString = fallbackBundleString {
         // write the string to a temp file
         let tempURL = FileManager.default.temporaryDirectory
-          .appendingPathComponent("helium-fallback.json")
+          .appendingPathComponent("helium-expo-fallbacks.json")
 
         if let data = jsonString.data(using: .utf8) {
           try? data.write(to: tempURL)
@@ -254,23 +251,42 @@ public class HeliumPaywallSdkModule: Module {
       let wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?? "unknown"
       HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: wrapperSdkVersion)
 
-      Helium.shared.initialize(
-        apiKey: config["apiKey"] as? String ?? "",
-        heliumPaywallDelegate: useDefaultDelegate ? defaultDelegate : internalDelegate,
-        fallbackConfig: HeliumFallbackConfig.withMultipleFallbacks(
-            // As a workaround for required fallback check in iOS, supply empty fallbackPerTrigger
-            // since currently iOS requires some type of fallback but RN does not.
-            fallbackPerTrigger: [:],
-            fallbackBundle: fallbackBundleURL,
-            useLoadingState: useLoadingState,
-            loadingBudget: loadingBudget,
-            perTriggerLoadingConfig: perTriggerLoadingConfig
-        ),
-        customUserId: config["customUserId"] as? String,
-        customAPIEndpoint: config["customAPIEndpoint"] as? String,
-        customUserTraits: userTraitsMap != nil ? HeliumUserTraits(userTraitsMap!) : nil,
-        revenueCatAppUserId: config["revenueCatAppUserId"] as? String
-      )
+      if let customUserId = config["customUserId"] as? String {
+        Helium.identify.userId = customUserId
+      }
+      if let userTraitsMap {
+        Helium.identify.setUserTraits(HeliumUserTraits(userTraitsMap))
+      }
+      if let rcAppUserId = config["revenueCatAppUserId"] as? String {
+        Helium.identify.revenueCatAppUserId = rcAppUserId
+      }
+
+      Helium.config.purchaseDelegate = useDefaultDelegate ? defaultDelegate : internalDelegate
+      if let fallbackBundleURL {
+        Helium.config.customFallbacksURL = fallbackBundleURL
+      }
+      if let customAPIEndpoint = config["customAPIEndpoint"] as? String {
+        Helium.config.customAPIEndpoint = customAPIEndpoint
+      }
+
+      Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
+
+      // Set up log listener if not already registered
+      if NativeModuleManager.shared.logListenerToken == nil {
+        NativeModuleManager.shared.logListenerToken = HeliumLogger.addLogListener { event in
+          // Drop log events if no module is available - don't queue them.
+          // Logs could be high-volume and could evict critical events (purchase/restore).
+          guard NativeModuleManager.shared.currentModule != nil else { return }
+
+          let eventData: [String: Any] = [
+            "level": event.level.rawValue,
+            "category": event.category.rawValue,
+            "message": event.message,
+            "metadata": event.metadata
+          ]
+          NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumLogEvent", eventData: eventData)
+        }
+      }
     }
 
     // Function for JavaScript to provide purchase result
@@ -315,24 +331,28 @@ public class HeliumPaywallSdkModule: Module {
 
     Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?) in
         NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
-        Helium.shared.presentUpsell(
+        Helium.shared.presentPaywall(
             trigger: trigger,
+            config: PaywallPresentationConfig(
+                customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
+                dontShowIfAlreadyEntitled: dontShowIfAlreadyEntitled ?? false
+            ),
             eventHandlers: PaywallEventHandlers.withHandlers(
                 onAnyEvent: { event in
                     NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: event.toDictionary())
                 }
-            ),
-            customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
-            dontShowIfAlreadyEntitled: dontShowIfAlreadyEntitled ?? false
-        )
+            )
+        ) { paywallNotShownReason in
+            // nothing for now
+        }
     }
 
     Function("hideUpsell") {
-      let _ = Helium.shared.hideUpsell()
+      let _ = Helium.shared.hidePaywall()
     }
 
     Function("hideAllUpsells") {
-      Helium.shared.hideAllUpsells()
+      Helium.shared.hideAllPaywalls()
     }
 
     Function("getDownloadStatus") {
@@ -362,24 +382,24 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("setRevenueCatAppUserId") { (rcAppUserId: String) in
-        Helium.shared.setRevenueCatAppUserId(rcAppUserId)
+        Helium.identify.revenueCatAppUserId = rcAppUserId
     }
 
     Function("setCustomUserId") { (newUserId: String) in
-        Helium.shared.overrideUserId(newUserId: newUserId)
+        Helium.identify.userId = newUserId
     }
 
     AsyncFunction("hasEntitlementForPaywall") { (trigger: String) in
-      let hasEntitlement = await Helium.shared.hasEntitlementForPaywall(trigger: trigger)
+      let hasEntitlement = await Helium.entitlements.hasEntitlementForPaywall(trigger: trigger)
       return HasEntitlementResult(hasEntitlement: hasEntitlement)
     }
 
     AsyncFunction("hasAnyActiveSubscription") {
-      return await Helium.shared.hasAnyActiveSubscription()
+      return await Helium.entitlements.hasAnyActiveSubscription()
     }
 
     AsyncFunction("hasAnyEntitlement") {
-      return await Helium.shared.hasAnyEntitlement()
+      return await Helium.entitlements.hasAny()
     }
 
     Function("handleDeepLink") { (urlString: String) in
@@ -391,7 +411,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("getExperimentInfoForTrigger") { (trigger: String) -> [String: Any] in
-      guard let experimentInfo = Helium.shared.getExperimentInfoForTrigger(trigger) else {
+      guard let experimentInfo = Helium.experiments.infoForTrigger(trigger) else {
         return ["getExperimentInfoErrorMsg": "No experiment info found for trigger: \(trigger)"]
       }
 
@@ -407,11 +427,11 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("disableRestoreFailedDialog") {
-        Helium.restorePurchaseConfig.disableRestoreFailedDialog()
+        Helium.config.restorePurchasesDialog.disableRestoreFailedDialog()
     }
 
     Function("setCustomRestoreFailedStrings") { (customTitle: String?, customMessage: String?, customCloseButtonText: String?) in
-      Helium.restorePurchaseConfig.setCustomRestoreFailedStrings(
+      Helium.config.restorePurchasesDialog.setCustomRestoreFailedStrings(
         customTitle: customTitle,
         customMessage: customMessage,
         customCloseButtonText: customCloseButtonText
@@ -419,6 +439,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     Function("resetHelium") {
+      // Clean up log listener
+      NativeModuleManager.shared.logListenerToken?.remove()
+      NativeModuleManager.shared.logListenerToken = nil
       Helium.resetHelium()
     }
 
@@ -435,7 +458,7 @@ public class HeliumPaywallSdkModule: Module {
         print("[Helium] Invalid mode: \(mode), defaulting to system")
         heliumMode = .system
       }
-      Helium.shared.setLightDarkModeOverride(heliumMode)
+      Helium.config.lightDarkModeOverride = heliumMode
     }
 
     // Enables the module to be used as a native view. Definition components that are accepted as part of the

@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'expo-paywall-sdk-example'
+rootProject.name = 'Helium Expo Example'
 
 expoAutolinking.useExpoVersionCatalog()
 

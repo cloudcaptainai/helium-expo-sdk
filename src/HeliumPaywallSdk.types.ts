@@ -8,7 +8,20 @@ export type HeliumPaywallSdkModuleEvents = {
   onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
   paywallEventHandlers: (params: HeliumPaywallEvent) => void;
+  onHeliumLogEvent: (params: HeliumLogEvent) => void;
 };
+
+/** A log event emitted by the Helium SDK. */
+export interface HeliumLogEvent {
+  /** Numeric log level (1=error, 2=warn, 3=info, 4=debug, 5=trace). */
+  level: number;
+  /** The category/subsystem that generated this log (iOS) or tag (Android). */
+  category: string;
+  /** The log message (prefixed with "[Helium] "). */
+  message: string;
+  /** Key-value metadata associated with this log event (iOS only, empty on Android). */
+  metadata: Record<string, string>;
+}
 export type HeliumPaywallEvent = {
   type: 'paywallOpen' | 'paywallClose' | 'paywallDismissed' |
     'paywallOpenFailed' | 'paywallSkipped' | 'paywallButtonPressed' |
@@ -117,13 +130,6 @@ export function createCustomPurchaseConfig(callbacks: {
   };
 }
 
-export type TriggerLoadingConfig = {
-  /** Whether to show loading state for this trigger. Set to nil to use the global `useLoadingState` setting. */
-  useLoadingState?: boolean;
-  /** Maximum seconds to show loading for this trigger. Set to nil to use the global `loadingBudget` setting. */
-  loadingBudget?: number;
-};
-
 export type HeliumPaywallLoadingConfig = {
   /**
    * Whether to show a loading state while fetching paywall configuration.
@@ -137,13 +143,6 @@ export type HeliumPaywallLoadingConfig = {
    * Default: 7.0 seconds
    */
   loadingBudget?: number;
-  /**
-   * Optional per-trigger loading configuration overrides.
-   * Use this to customize loading behavior for specific triggers.
-   * Keys are trigger names, values are TriggerLoadingConfig instances.
-   * Example: Disable loading for "onboarding" trigger while keeping it for others.
-   */
-  perTriggerLoadingConfig?: Record<string, TriggerLoadingConfig>;
 };
 
 export interface HeliumConfig {

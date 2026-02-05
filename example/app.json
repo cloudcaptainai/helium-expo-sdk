@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "expo-paywall-sdk-example",
+    "name": "Helium Expo Example",
     "slug": "expo-paywall-sdk-example",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "expo.modules.paywallsdk.example"
+      "bundleIdentifier": "com.helium.example.ios",
+      "appleTeamId": "6NH2CQ3V8N"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.helium.expo.example"
+      "package": "com.tryhelium.android"
     },
     "web": {
       "favicon": "./assets/favicon.png"
