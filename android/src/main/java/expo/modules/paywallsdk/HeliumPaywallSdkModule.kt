@@ -259,7 +259,7 @@ class HeliumPaywallSdkModule : Module() {
         )
       } catch (e: Exception) {
         // Log error but don't throw - initialization errors will be handled by SDK
-        android.util.Log.e("HeliumPaywallSdk", "Failed to initialize: ${e.message}", e)
+        Helium.config.logger?.e("Failed to initialize: ${e.message}")
       }
     }
 
@@ -576,7 +576,7 @@ class HeliumPaywallSdkModule : Module() {
         destinationFile.writeText(fallbackBundleString)
       }
     } catch (e: Exception) {
-      android.util.Log.w("HeliumPaywallSdk", "Failed to write fallback bundle: ${e.message}")
+      Helium.config.logger?.e("Failed to write fallback bundle: ${e.message}")
     }
   }
 
@@ -714,6 +714,11 @@ class BridgingLogger : HeliumLogger {
   }
 
   private fun sendLogEvent(level: Int, message: String) {
+    // Drop log events if no module is available - don't queue them.
+    // Logs could be high-volume and could evict critical events (purchase/restore).
+    // Plus they're already going to logcat via stdoutLogger anyway.
+    if (NativeModuleManager.currentModule == null) return
+
     val eventData = mapOf(
       "level" to level,
       "category" to logTag,

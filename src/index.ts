@@ -307,7 +307,8 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
  * Log levels: 1=error, 2=warn, 3=info, 4=debug, 5=trace
  */
 function logHeliumEvent(event: HeliumLogEvent) {
-  const { level, message, metadata } = event;
+  const { level, message } = event;
+  const metadata = event.metadata ?? {};
   const hasMetadata = Object.keys(metadata).length > 0;
 
   switch (level) {

@@ -274,6 +274,10 @@ public class HeliumPaywallSdkModule: Module {
       // Set up log listener if not already registered
       if NativeModuleManager.shared.logListenerToken == nil {
         NativeModuleManager.shared.logListenerToken = HeliumLogger.addLogListener { event in
+          // Drop log events if no module is available - don't queue them.
+          // Logs could be high-volume and could evict critical events (purchase/restore).
+          guard NativeModuleManager.shared.currentModule != nil else { return }
+
           let eventData: [String: Any] = [
             "level": event.level.rawValue,
             "category": event.category.rawValue,
