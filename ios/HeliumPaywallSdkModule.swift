@@ -269,8 +269,6 @@ public class HeliumPaywallSdkModule: Module {
         Helium.config.customAPIEndpoint = customAPIEndpoint
       }
 
-      Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
-
       // Set up log listener if not already registered
       if NativeModuleManager.shared.logListenerToken == nil {
         NativeModuleManager.shared.logListenerToken = HeliumLogger.addLogListener { event in
@@ -287,6 +285,8 @@ public class HeliumPaywallSdkModule: Module {
           NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumLogEvent", eventData: eventData)
         }
       }
+
+      Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
     }
 
     // Function for JavaScript to provide purchase result

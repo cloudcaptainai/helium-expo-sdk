@@ -19,6 +19,7 @@ import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraitsArgument
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
+import com.tryhelium.paywall.core.HeliumWrapperSdkConfig
 import com.tryhelium.paywall.core.PaywallPresentationConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
@@ -223,7 +224,7 @@ class HeliumPaywallSdkModule : Module() {
       }
 
       val wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?: "unknown"
-      Helium.config.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
+      HeliumWrapperSdkConfig.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
 
       // Set up bridging logger to forward native SDK logs to JavaScript
       Helium.config.logger = BridgingLogger()
@@ -250,7 +251,21 @@ class HeliumPaywallSdkModule : Module() {
         Helium.config.heliumPaywallDelegate = delegate
         customAPIEndpoint?.let { Helium.config.customApiEndpoint = it }
 
-        setupFallbackBundle(context, fallbackBundleUrlString, fallbackBundleString)
+        // Pass fallback JSON to native SDK
+        val fallbackJsonString: String? = when {
+          fallbackBundleUrlString != null -> {
+            try {
+              val sourceFile = java.io.File(java.net.URI.create(fallbackBundleUrlString))
+              if (sourceFile.exists()) sourceFile.readText() else null
+            } catch (e: Exception) {
+              Helium.config.logger?.e("👷 Failed to read fallbacks: ${e.message}")
+              null
+            }
+          }
+          fallbackBundleString != null -> fallbackBundleString
+          else -> null
+        }
+        fallbackJsonString?.let { HeliumWrapperSdkConfig.setFallbacksJson(it) }
 
         Helium.initialize(
           context = context,
@@ -547,36 +562,6 @@ class HeliumPaywallSdkModule : Module() {
         HeliumUserTraitsArgument.Complex(properties)
       }
       else -> null
-    }
-  }
-
-  /**
-   * Sets up the fallback bundle by writing it to the helium_local directory where the SDK expects it.
-   * Accepts either a URL string pointing to an existing file, or a JSON string to write directly.
-   */
-  private fun setupFallbackBundle(
-    context: android.content.Context,
-    fallbackBundleUrlString: String?,
-    fallbackBundleString: String?
-  ) {
-    if (fallbackBundleUrlString == null && fallbackBundleString == null) return
-
-    try {
-      val heliumLocalDir = context.getDir("helium_local", android.content.Context.MODE_PRIVATE)
-      val destinationFile = java.io.File(heliumLocalDir, "helium-expo-fallbacks.json")
-
-      if (fallbackBundleUrlString != null) {
-        // Copy file from Expo's document directory to helium_local
-        val sourceFile = java.io.File(java.net.URI.create(fallbackBundleUrlString))
-        if (sourceFile.exists()) {
-          sourceFile.copyTo(destinationFile, overwrite = true)
-        }
-      } else if (fallbackBundleString != null) {
-        // Write fallback bundle string to file
-        destinationFile.writeText(fallbackBundleString)
-      }
-    } catch (e: Exception) {
-      Helium.config.logger?.e("Failed to write fallback bundle: ${e.message}")
     }
   }
 
