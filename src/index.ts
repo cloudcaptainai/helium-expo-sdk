@@ -134,9 +134,20 @@ export const initialize = async (config: HeliumConfig) => {
 const nativeInitializeAsync = async (config: HeliumConfig) => {
   let fallbackBundleUrlString;
   let fallbackBundleString;
-  if (config.fallbackBundle) {
+
+  // Use provided fallback bundle, or try to load default
+  let fallbackBundle = config.fallbackBundle;
+  if (!fallbackBundle) {
     try {
-      const jsonContent = JSON.stringify(config.fallbackBundle);
+      fallbackBundle = require('./assets/helium-fallbacks.json');
+    } catch {
+      // Default fallback file doesn't exist - that's fine, SDK works without fallbacks
+    }
+  }
+
+  if (fallbackBundle) {
+    try {
+      const jsonContent = JSON.stringify(fallbackBundle);
 
       // Feature detection: check which expo-file-system API is available
       // Expo 52/53 has documentDirectory + writeAsStringAsync
@@ -167,7 +178,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
       console.log(
         '[Helium] expo-file-system not available, passing fallback bundle as string.'
       );
-      fallbackBundleString = JSON.stringify(config.fallbackBundle);
+      fallbackBundleString = JSON.stringify(fallbackBundle);
     }
   }
 
