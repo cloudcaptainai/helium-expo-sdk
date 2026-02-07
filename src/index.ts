@@ -100,7 +100,13 @@ export const initialize = async (config: HeliumConfig) => {
             return;
           }
 
-          HeliumPaywallSdkModule.handlePurchaseResult(result.status, result.error);
+          HeliumPaywallSdkModule.handlePurchaseResult(
+            result.status,
+            result.error,
+            result.transactionId,
+            result.originalTransactionId,
+            result.productId ?? event.productId
+          );
         } else if (event.type === 'restore') {
           const success = await purchaseConfig.restorePurchases();
           HeliumPaywallSdkModule.handleRestoreResult(success);
