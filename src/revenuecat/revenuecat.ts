@@ -110,15 +110,17 @@ export class RevenueCatHeliumHandler {
     }
 
     try {
-      let customerInfo: CustomerInfo;
+      let purchaseResult;
       if (pkg) {
-        customerInfo = (await Purchases.purchasePackage(pkg)).customerInfo;
+        purchaseResult = await Purchases.purchasePackage(pkg);
       } else if (rcProduct) {
-        customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+        purchaseResult = await Purchases.purchaseStoreProduct(rcProduct);
       } else {
         return {status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}`};
       }
-      return this.evaluatePurchaseResult(customerInfo, productId);
+
+      const transactionId = purchaseResult.transaction?.transactionIdentifier;
+      return this.evaluatePurchaseResult(purchaseResult.customerInfo, productId, transactionId);
     } catch (error) {
       return this.handlePurchasesError(error);
     }
@@ -226,12 +228,12 @@ export class RevenueCatHeliumHandler {
   }
 
   // Helper function to process purchase result
-  private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string): HeliumPurchaseResult {
+  private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string, transactionId?: string): HeliumPurchaseResult {
     if (!this.isProductActive(customerInfo, productId)) {
       console.log('[Helium] Purchase succeeded but product not immediately active in customerInfo:', productId);
     }
 
-    return {status: 'purchased'};
+    return {status: 'purchased', transactionId, productId};
   }
 
   // Helper function to handle RevenueCat purchase errors

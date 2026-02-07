@@ -87,6 +87,9 @@ export type HeliumTransactionStatus = 'purchased' | 'failed' | 'cancelled' | 'pe
 export type HeliumPurchaseResult = {
   status: HeliumTransactionStatus;
   error?: string; // Optional error message
+  transactionId?: string;
+  originalTransactionId?: string;
+  productId?: string;
 };
 export type HeliumDownloadStatus = 'downloadSuccess' | 'downloadFailure' | 'inProgress' | 'notDownloadedYet';
 export type HeliumLightDarkMode = 'light' | 'dark' | 'system';

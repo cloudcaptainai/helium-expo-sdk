@@ -47,6 +47,9 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   handlePurchaseResult(
     statusString: HeliumTransactionStatus,
     errorMsg?: string,
+    transactionId?: string,
+    originalTransactionId?: string,
+    productId?: string,
   ): void;
 
   handleRestoreResult(success: boolean): void;
