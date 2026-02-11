@@ -47,6 +47,22 @@ private class NativeModuleManager {
     var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
     var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
 
+    // Transaction result tracking for HeliumDelegateReturnsTransaction
+    private var _latestTransactionResult: HeliumTransactionIdResult?
+    private let transactionResultLock = NSLock()
+    var latestTransactionResult: HeliumTransactionIdResult? {
+        get {
+            transactionResultLock.lock()
+            defer { transactionResultLock.unlock() }
+            return _latestTransactionResult
+        }
+        set {
+            transactionResultLock.lock()
+            defer { transactionResultLock.unlock() }
+            _latestTransactionResult = newValue
+        }
+    }
+
     // Log listener token - stored here so it survives module recreation
     var logListenerToken: HeliumLogListenerToken?
 
@@ -192,43 +208,10 @@ public class HeliumPaywallSdkModule: Module {
           NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumPaywallEvent", eventData: eventDict)
       }
 
-      // Create delegate with closures that send events to JavaScript
+      // Delegate that handles expo RevenueCat delegate or custom purchase implementations
       let internalDelegate = InternalDelegate(
         delegateType: delegateType,
-        eventHandler: delegateEventHandler,
-        purchaseHandler: { productId in
-          // First check singleton for orphaned continuation and clean it up
-          if let existingContinuation = NativeModuleManager.shared.activePurchaseContinuation {
-            existingContinuation.resume(returning: .cancelled)
-            NativeModuleManager.shared.clearPurchase()
-          }
-
-          return await withCheckedContinuation { continuation in
-            NativeModuleManager.shared.activePurchaseContinuation = continuation
-
-            // Send event to JavaScript
-            NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
-              "type": "purchase",
-              "productId": productId
-            ])
-          }
-        },
-        restoreHandler: {
-          // Check for orphaned continuation in singleton
-          if let existingContinuation = NativeModuleManager.shared.activeRestoreContinuation {
-            existingContinuation.resume(returning: false)
-            NativeModuleManager.shared.clearRestore()
-          }
-
-          return await withCheckedContinuation { continuation in
-            NativeModuleManager.shared.activeRestoreContinuation = continuation
-
-            // Send event to JavaScript
-            NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
-              "type": "restore"
-            ])
-          }
-        }
+        eventHandler: delegateEventHandler
       )
 
       let defaultDelegate = DefaultPurchaseDelegate(eventHandler: delegateEventHandler)
@@ -290,7 +273,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     // Function for JavaScript to provide purchase result
-    Function("handlePurchaseResult") { (statusString: String, errorMsg: String?) in
+    Function("handlePurchaseResult") { (statusString: String, errorMsg: String?, transactionId: String?, originalTransactionId: String?, productId: String?) in
       guard let continuation = NativeModuleManager.shared.activePurchaseContinuation else {
         print("WARNING: handlePurchaseResult called with no active continuation")
         return
@@ -301,7 +284,16 @@ public class HeliumPaywallSdkModule: Module {
       let status: HeliumPaywallTransactionStatus
 
       switch lowercasedStatus {
-      case "purchased": status = .purchased
+      case "purchased":
+        status = .purchased
+        // Store transaction result for HeliumDelegateReturnsTransaction
+        if let productId = productId, let transactionId = transactionId {
+          NativeModuleManager.shared.latestTransactionResult = HeliumTransactionIdResult(
+            productId: productId,
+            transactionId: transactionId,
+            originalTransactionId: originalTransactionId
+          )
+        }
       case "cancelled": status = .cancelled
       case "restored":  status = .restored
       case "pending":   status = .pending
@@ -512,36 +504,66 @@ public class HeliumPaywallSdkModule: Module {
     }
 }
 
-fileprivate class InternalDelegate: HeliumPaywallDelegate {
+private class InternalDelegate: HeliumPaywallDelegate, HeliumDelegateReturnsTransaction {
     private let _delegateType: String?
     public var delegateType: String { _delegateType ?? "custom" }
 
     private let eventHandler: (HeliumEvent) -> Void
-    private let purchaseHandler: (String) async -> HeliumPaywallTransactionStatus
-    private let restoreHandler: () async -> Bool
 
     init(
         delegateType: String?,
-        eventHandler: @escaping (HeliumEvent) -> Void,
-        purchaseHandler: @escaping (String) async -> HeliumPaywallTransactionStatus,
-        restoreHandler: @escaping () async -> Bool
+        eventHandler: @escaping (HeliumEvent) -> Void
     ) {
         self._delegateType = delegateType
         self.eventHandler = eventHandler
-        self.purchaseHandler = purchaseHandler
-        self.restoreHandler = restoreHandler
     }
 
+    // MARK: - HeliumPaywallDelegate
+
     public func makePurchase(productId: String) async -> HeliumPaywallTransactionStatus {
-        return await purchaseHandler(productId)
+        // Clear previous transaction result
+        NativeModuleManager.shared.latestTransactionResult = nil
+
+        // Clean up any orphaned continuation
+        if let existingContinuation = NativeModuleManager.shared.activePurchaseContinuation {
+            existingContinuation.resume(returning: .cancelled)
+            NativeModuleManager.shared.clearPurchase()
+        }
+
+        return await withCheckedContinuation { continuation in
+            NativeModuleManager.shared.activePurchaseContinuation = continuation
+
+            NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
+                "type": "purchase",
+                "productId": productId
+            ])
+        }
     }
 
     public func restorePurchases() async -> Bool {
-        return await restoreHandler()
+        // Clean up any orphaned continuation
+        if let existingContinuation = NativeModuleManager.shared.activeRestoreContinuation {
+            existingContinuation.resume(returning: false)
+            NativeModuleManager.shared.clearRestore()
+        }
+
+        return await withCheckedContinuation { continuation in
+            NativeModuleManager.shared.activeRestoreContinuation = continuation
+
+            NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
+                "type": "restore"
+            ])
+        }
     }
 
     func onPaywallEvent(_ event: any HeliumEvent) {
         eventHandler(event)
+    }
+
+    // MARK: - HeliumDelegateReturnsTransaction
+
+    func getLatestCompletedTransactionIdResult() -> HeliumTransactionIdResult? {
+        return NativeModuleManager.shared.latestTransactionResult
     }
 }
 

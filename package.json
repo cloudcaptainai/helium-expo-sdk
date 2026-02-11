@@ -1,6 +1,6 @@
 {
   "name": "expo-helium",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "description": "Helium paywalls expo sdk",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -39,13 +39,13 @@
     "expo-module-scripts": "^4.1.9",
     "expo": "~53.0.0",
     "react-native": "0.79.1",
-    "react-native-purchases": ">=5.1.0"
+    "react-native-purchases": ">=8.1.0"
   },
   "peerDependencies": {
     "expo": "*",
     "react": "*",
     "react-native": "*",
-    "react-native-purchases": ">=5.1.0"
+    "react-native-purchases": ">=8.1.0"
   },
   "peerDependenciesMeta": {
     "react-native-purchases": {
