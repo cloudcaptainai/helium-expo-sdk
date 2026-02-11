@@ -48,7 +48,20 @@ private class NativeModuleManager {
     var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
 
     // Transaction result tracking for HeliumDelegateReturnsTransaction
-    var latestTransactionResult: HeliumTransactionIdResult?
+    private var _latestTransactionResult: HeliumTransactionIdResult?
+    private let transactionResultLock = NSLock()
+    var latestTransactionResult: HeliumTransactionIdResult? {
+        get {
+            transactionResultLock.lock()
+            defer { transactionResultLock.unlock() }
+            return _latestTransactionResult
+        }
+        set {
+            transactionResultLock.lock()
+            defer { transactionResultLock.unlock() }
+            _latestTransactionResult = newValue
+        }
+    }
 
     // Log listener token - stored here so it survives module recreation
     var logListenerToken: HeliumLogListenerToken?
@@ -491,7 +504,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 }
 
-fileprivate class InternalDelegate: HeliumPaywallDelegate, HeliumDelegateReturnsTransaction {
+private class InternalDelegate: HeliumPaywallDelegate, HeliumDelegateReturnsTransaction {
     private let _delegateType: String?
     public var delegateType: String { _delegateType ?? "custom" }
 
