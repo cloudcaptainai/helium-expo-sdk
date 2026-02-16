@@ -279,7 +279,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Function for JavaScript to provide purchase result
-    Function("handlePurchaseResult") { statusString: String, errorMsg: String? ->
+    Function("handlePurchaseResult") { statusString: String, errorMsg: String?, transactionId: String?, originalTransactionId: String?, productId: String? ->
       val continuation = NativeModuleManager.purchaseContinuation ?: return@Function
 
       // Parse status string
