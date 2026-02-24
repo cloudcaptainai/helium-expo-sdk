@@ -40,12 +40,8 @@ function addHeliumLogEventListener(listener: (event: HeliumLogEvent) => void): E
 }
 
 let isInitialized = false;
-export const initialize = async (config: HeliumConfig) => {
-  if (isInitialized) {
-    return;
-  }
-  isInitialized = true;
 
+function setupEventListeners(config: HeliumConfig) {
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
   HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
@@ -131,13 +127,9 @@ export const initialize = async (config: HeliumConfig) => {
   addHeliumLogEventListener((event) => {
     logHeliumEvent(event);
   });
+}
 
-  await nativeInitializeAsync(config).catch(error => {
-    console.error('[Helium] Initialization failed:', error);
-  });
-};
-
-const nativeInitializeAsync = async (config: HeliumConfig) => {
+const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConfig> => {
   let fallbackBundleUrlString;
   let fallbackBundleString;
   if (config.fallbackBundle) {
@@ -177,9 +169,7 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     }
   }
 
-
-  // Create native config object
-  const nativeConfig: NativeHeliumConfig = {
+  return {
     apiKey: config.apiKey,
     customUserId: config.customUserId,
     customAPIEndpoint: config.customAPIEndpoint,
@@ -193,9 +183,37 @@ const nativeInitializeAsync = async (config: HeliumConfig) => {
     wrapperSdkVersion: SDK_VERSION,
     delegateType: config.purchaseConfig?._delegateType,
   };
+};
 
-  // Initialize the native module
-  HeliumPaywallSdkModule.initialize(nativeConfig);
+/**
+ * @internal Not part of the public API.
+ */
+export const _setupCore = async (config: HeliumConfig) => {
+  if (isInitialized) {
+    return;
+  }
+  isInitialized = true;
+  setupEventListeners(config);
+  try {
+    const nativeConfig = await buildNativeConfig(config);
+    HeliumPaywallSdkModule.setupCore(nativeConfig);
+  } catch (error) {
+    console.error('[Helium] Setup failed:', error);
+  }
+};
+
+export const initialize = async (config: HeliumConfig) => {
+  if (isInitialized) {
+    return;
+  }
+  isInitialized = true;
+  setupEventListeners(config);
+  try {
+    const nativeConfig = await buildNativeConfig(config);
+    HeliumPaywallSdkModule.initialize(nativeConfig);
+  } catch (error) {
+    console.error('[Helium] Initialization failed:', error);
+  }
 };
 
 let paywallEventHandlers: PaywallEventHandlers | undefined;

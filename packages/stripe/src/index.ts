@@ -1,0 +1,49 @@
+import { Platform } from 'react-native';
+import { _setupCore, initialize } from 'expo-helium';
+import HeliumStripeSdkModule from './HeliumStripeSdkModule';
+import type { StripeHeliumConfig } from './HeliumStripeSdk.types';
+
+export type { StripeHeliumConfig } from './HeliumStripeSdk.types';
+
+export async function initializeWithStripe(config: StripeHeliumConfig): Promise<void> {
+    if (Platform.OS !== 'ios') {
+        console.log('[HeliumStripe] Stripe One Tap is only available on iOS. Using standard initialization.');
+        return initialize(config);
+    }
+
+    await _setupCore(config);
+
+    HeliumStripeSdkModule.initializeStripe({
+        apiKey: config.apiKey,
+        stripePublishableKey: config.stripePublishableKey,
+        merchantIdentifier: config.merchantIdentifier,
+        merchantName: config.merchantName,
+        managementURL: config.managementURL,
+        countryCode: config.countryCode ?? 'US',
+        currencyCode: config.currencyCode ?? 'USD',
+    });
+}
+
+export function setUserIdAndSyncStripeIfNeeded(userId: string): void {
+    if (Platform.OS !== 'ios') {
+        console.log('[HeliumStripe] setUserIdAndSyncStripeIfNeeded is only available on iOS');
+        return;
+    }
+    HeliumStripeSdkModule.setUserIdAndSyncStripeIfNeeded(userId);
+}
+
+export function resetStripeEntitlements(clearUserId: boolean = false): void {
+    if (Platform.OS !== 'ios') {
+        console.log('[HeliumStripe] resetStripeEntitlements is only available on iOS');
+        return;
+    }
+    HeliumStripeSdkModule.resetStripeEntitlements(clearUserId);
+}
+
+export async function createStripePortalSession(returnUrl: string): Promise<string | undefined> {
+    if (Platform.OS !== 'ios') {
+        console.log('[HeliumStripe] createStripePortalSession is only available on iOS');
+        return undefined;
+    }
+    return HeliumStripeSdkModule.createStripePortalSession(returnUrl);
+}
