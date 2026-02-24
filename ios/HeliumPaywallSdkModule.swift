@@ -170,106 +170,12 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
-      NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
-      NativeModuleManager.shared.flushEvents(module: self) // flush any queued events now that JS listeners are ready
-
-      let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
-      let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
-      let fallbackBundleString = config["fallbackBundleString"] as? String
-
-      let paywallLoadingConfig = convertMarkersToBooleans(config["paywallLoadingConfig"] as? [String: Any])
-      let useLoadingState = paywallLoadingConfig?["useLoadingState"] as? Bool ?? true
-      let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval
-      if !useLoadingState {
-        // Setting <= 0 will disable loading state
-        Helium.config.defaultLoadingBudget = -1
-      } else {
-        Helium.config.defaultLoadingBudget = loadingBudget ?? 7.0
-      }
-
-      let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
-      let delegateType = config["delegateType"] as? String
-
-      let delegateEventHandler: (HeliumEvent) -> Void = { event in
-          var eventDict = event.toDictionary()
-          // Add deprecated fields for backwards compatibility
-          if let paywallName = eventDict["paywallName"] {
-              eventDict["paywallTemplateName"] = paywallName
-          }
-          if let error = eventDict["error"] {
-              eventDict["errorDescription"] = error
-          }
-          if let productId = eventDict["productId"] {
-              eventDict["productKey"] = productId
-          }
-          if let buttonName = eventDict["buttonName"] {
-              eventDict["ctaName"] = buttonName
-          }
-          NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumPaywallEvent", eventData: eventDict)
-      }
-
-      // Delegate that handles expo RevenueCat delegate or custom purchase implementations
-      let internalDelegate = InternalDelegate(
-        delegateType: delegateType,
-        eventHandler: delegateEventHandler
-      )
-
-      let defaultDelegate = DefaultPurchaseDelegate(eventHandler: delegateEventHandler)
-
-      // Handle fallback bundle - either as URL string or JSON string
-      var fallbackBundleURL: URL? = nil
-      if let urlString = fallbackBundleURLString {
-        fallbackBundleURL = URL(string: urlString)
-      } else if let jsonString = fallbackBundleString {
-        // write the string to a temp file
-        let tempURL = FileManager.default.temporaryDirectory
-          .appendingPathComponent("helium-expo-fallbacks.json")
-
-        if let data = jsonString.data(using: .utf8) {
-          try? data.write(to: tempURL)
-          fallbackBundleURL = tempURL
-        }
-      }
-
-      let wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?? "unknown"
-      HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: wrapperSdkVersion)
-
-      if let customUserId = config["customUserId"] as? String {
-        Helium.identify.userId = customUserId
-      }
-      if let userTraitsMap {
-        Helium.identify.setUserTraits(HeliumUserTraits(userTraitsMap))
-      }
-      if let rcAppUserId = config["revenueCatAppUserId"] as? String {
-        Helium.identify.revenueCatAppUserId = rcAppUserId
-      }
-
-      Helium.config.purchaseDelegate = useDefaultDelegate ? defaultDelegate : internalDelegate
-      if let fallbackBundleURL {
-        Helium.config.customFallbacksURL = fallbackBundleURL
-      }
-      if let customAPIEndpoint = config["customAPIEndpoint"] as? String {
-        Helium.config.customAPIEndpoint = customAPIEndpoint
-      }
-
-      // Set up log listener if not already registered
-      if NativeModuleManager.shared.logListenerToken == nil {
-        NativeModuleManager.shared.logListenerToken = HeliumLogger.addLogListener { event in
-          // Drop log events if no module is available - don't queue them.
-          // Logs could be high-volume and could evict critical events (purchase/restore).
-          guard NativeModuleManager.shared.currentModule != nil else { return }
-
-          let eventData: [String: Any] = [
-            "level": event.level.rawValue,
-            "category": event.category.rawValue,
-            "message": event.message,
-            "metadata": event.metadata
-          ]
-          NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumLogEvent", eventData: eventData)
-        }
-      }
-
+      self.performCoreSetup(config)
       Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
+    }
+
+    Function("setupCore") { (config: [String : Any]) in
+      self.performCoreSetup(config)
     }
 
     // Function for JavaScript to provide purchase result
@@ -466,6 +372,108 @@ public class HeliumPaywallSdkModule: Module {
       Events("onLoad")
     }
   }
+
+    private func performCoreSetup(_ config: [String: Any]) {
+      NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
+      NativeModuleManager.shared.flushEvents(module: self) // flush any queued events now that JS listeners are ready
+
+      let userTraitsMap = convertMarkersToBooleans(config["customUserTraits"] as? [String : Any])
+      let fallbackBundleURLString = config["fallbackBundleUrlString"] as? String
+      let fallbackBundleString = config["fallbackBundleString"] as? String
+
+      let paywallLoadingConfig = convertMarkersToBooleans(config["paywallLoadingConfig"] as? [String: Any])
+      let useLoadingState = paywallLoadingConfig?["useLoadingState"] as? Bool ?? true
+      let loadingBudget = paywallLoadingConfig?["loadingBudget"] as? TimeInterval
+      if !useLoadingState {
+        // Setting <= 0 will disable loading state
+        Helium.config.defaultLoadingBudget = -1
+      } else {
+        Helium.config.defaultLoadingBudget = loadingBudget ?? 7.0
+      }
+
+      let useDefaultDelegate = config["useDefaultDelegate"] as? Bool ?? false
+      let delegateType = config["delegateType"] as? String
+
+      let delegateEventHandler: (HeliumEvent) -> Void = { event in
+          var eventDict = event.toDictionary()
+          // Add deprecated fields for backwards compatibility
+          if let paywallName = eventDict["paywallName"] {
+              eventDict["paywallTemplateName"] = paywallName
+          }
+          if let error = eventDict["error"] {
+              eventDict["errorDescription"] = error
+          }
+          if let productId = eventDict["productId"] {
+              eventDict["productKey"] = productId
+          }
+          if let buttonName = eventDict["buttonName"] {
+              eventDict["ctaName"] = buttonName
+          }
+          NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumPaywallEvent", eventData: eventDict)
+      }
+
+      // Delegate that handles expo RevenueCat delegate or custom purchase implementations
+      let internalDelegate = InternalDelegate(
+        delegateType: delegateType,
+        eventHandler: delegateEventHandler
+      )
+
+      // just use default sk and
+      let defaultDelegate = DefaultPurchaseDelegate(eventHandler: delegateEventHandler)
+
+      // Handle fallback bundle - either as URL string or JSON string
+      var fallbackBundleURL: URL? = nil
+      if let urlString = fallbackBundleURLString {
+        fallbackBundleURL = URL(string: urlString)
+      } else if let jsonString = fallbackBundleString {
+        // write the string to a temp file
+        let tempURL = FileManager.default.temporaryDirectory
+          .appendingPathComponent("helium-expo-fallbacks.json")
+
+        if let data = jsonString.data(using: .utf8) {
+          try? data.write(to: tempURL)
+          fallbackBundleURL = tempURL
+        }
+      }
+
+      let wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?? "unknown"
+      HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: wrapperSdkVersion)
+
+      if let customUserId = config["customUserId"] as? String {
+        Helium.identify.userId = customUserId
+      }
+      if let userTraitsMap {
+        Helium.identify.setUserTraits(HeliumUserTraits(userTraitsMap))
+      }
+      if let rcAppUserId = config["revenueCatAppUserId"] as? String {
+        Helium.identify.revenueCatAppUserId = rcAppUserId
+      }
+
+      Helium.config.purchaseDelegate = useDefaultDelegate ? defaultDelegate : internalDelegate
+      if let fallbackBundleURL {
+        Helium.config.customFallbacksURL = fallbackBundleURL
+      }
+      if let customAPIEndpoint = config["customAPIEndpoint"] as? String {
+        Helium.config.customAPIEndpoint = customAPIEndpoint
+      }
+
+      // Set up log listener if not already registered
+      if NativeModuleManager.shared.logListenerToken == nil {
+        NativeModuleManager.shared.logListenerToken = HeliumLogger.addLogListener { event in
+          // Drop log events if no module is available - don't queue them.
+          // Logs could be high-volume and could evict critical events (purchase/restore).
+          guard NativeModuleManager.shared.currentModule != nil else { return }
+
+          let eventData: [String: Any] = [
+            "level": event.level.rawValue,
+            "category": event.category.rawValue,
+            "message": event.message,
+            "metadata": event.metadata
+          ]
+          NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumLogEvent", eventData: eventData)
+        }
+      }
+    }
 
     /// Recursively converts special marker strings back to boolean values to restore
     /// type information that was preserved when passing through native bridge

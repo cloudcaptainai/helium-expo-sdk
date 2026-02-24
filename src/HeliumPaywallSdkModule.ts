@@ -26,6 +26,8 @@ interface ExperimentInfoResult extends Partial<ExperimentInfo> {
 declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModuleEvents> {
   initialize(config: NativeHeliumConfig): void;
 
+  setupCore(config: NativeHeliumConfig): void;
+
   presentUpsell(
     triggerName: string,
     customPaywallTraits?: Record<string, any>,
