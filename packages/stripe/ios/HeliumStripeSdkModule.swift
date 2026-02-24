@@ -22,18 +22,10 @@ public class HeliumStripeSdkModule: Module {
             let countryCode = config["countryCode"] as? String ?? "US"
             let currencyCode = config["currencyCode"] as? String ?? "USD"
 
-            let backupDelegate: HeliumPaywallDelegate
-            if let delegate = Helium.config.purchaseDelegate {
-                backupDelegate = delegate
-            } else {
-                print("[HeliumStripe] WARNING: purchaseDelegate was nil, using StoreKitDelegate as backup")
-                backupDelegate = StoreKitDelegate()
-            }
-
             Helium.shared.initializeWithStripeOneTap(
                 apiKey: apiKey,
                 stripePublishableKey: stripePublishableKey,
-                backupPurchaseDelegate: backupDelegate,
+                backupPurchaseDelegate: Helium.config.purchaseDelegate,
                 merchantIdentifier: merchantIdentifier,
                 merchantName: merchantName,
                 managementURL: managementURL,
