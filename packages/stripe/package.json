@@ -12,7 +12,7 @@
   },
   "peerDependencies": {
     "expo": "*",
-    "expo-helium": ">=3.2.6",
+    "expo-helium": ">=3.2.7",
     "react": "*",
     "react-native": "*"
   },

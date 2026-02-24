@@ -8,21 +8,27 @@ public class HeliumStripeSdkModule: Module {
         Name("HeliumStripeSdk")
 
         Function("initializeStripe") { (config: [String: Any]) in
-            let apiKey = config["apiKey"] as! String
-            let stripePublishableKey = config["stripePublishableKey"] as! String
-            let merchantIdentifier = config["merchantIdentifier"] as! String
-            let merchantName = config["merchantName"] as! String
-            let managementURLString = config["managementURL"] as! String
-            let countryCode = config["countryCode"] as? String ?? "US"
-            let currencyCode = config["currencyCode"] as? String ?? "USD"
-
-            guard let managementURL = URL(string: managementURLString) else {
-                print("[HeliumStripe] Invalid managementURL")
+            guard let apiKey = config["apiKey"] as? String,
+                  let stripePublishableKey = config["stripePublishableKey"] as? String,
+                  let merchantIdentifier = config["merchantIdentifier"] as? String,
+                  let merchantName = config["merchantName"] as? String,
+                  let managementURLString = config["managementURL"] as? String,
+                  let managementURL = URL(string: managementURLString) else {
+                print("[HeliumStripe] Missing or invalid Stripe config, using standard initialization instead")
+                Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
                 return
             }
 
-            // Grab delegate set by core's setupCore() as the backup
-            let backupDelegate = Helium.config.purchaseDelegate!
+            let countryCode = config["countryCode"] as? String ?? "US"
+            let currencyCode = config["currencyCode"] as? String ?? "USD"
+
+            let backupDelegate: HeliumPaywallDelegate
+            if let delegate = Helium.config.purchaseDelegate {
+                backupDelegate = delegate
+            } else {
+                print("[HeliumStripe] WARNING: purchaseDelegate was nil, using StoreKitDelegate as backup")
+                backupDelegate = StoreKitDelegate()
+            }
 
             Helium.shared.initializeWithStripeOneTap(
                 apiKey: apiKey,

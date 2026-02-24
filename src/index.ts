@@ -129,7 +129,7 @@ function setupEventListeners(config: HeliumConfig) {
   });
 }
 
-export const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConfig> => {
+const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConfig> => {
   let fallbackBundleUrlString;
   let fallbackBundleString;
   if (config.fallbackBundle) {
@@ -185,14 +185,21 @@ export const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHel
   };
 };
 
-export const setupCore = async (config: HeliumConfig) => {
+/**
+ * @internal Not part of the public API.
+ */
+export const _setupCore = async (config: HeliumConfig) => {
   if (isInitialized) {
     return;
   }
   isInitialized = true;
   setupEventListeners(config);
-  const nativeConfig = await buildNativeConfig(config);
-  HeliumPaywallSdkModule.setupCore(nativeConfig);
+  try {
+    const nativeConfig = await buildNativeConfig(config);
+    HeliumPaywallSdkModule.setupCore(nativeConfig);
+  } catch (error) {
+    console.error('[Helium] Setup failed:', error);
+  }
 };
 
 export const initialize = async (config: HeliumConfig) => {
@@ -201,8 +208,12 @@ export const initialize = async (config: HeliumConfig) => {
   }
   isInitialized = true;
   setupEventListeners(config);
-  const nativeConfig = await buildNativeConfig(config);
-  HeliumPaywallSdkModule.initialize(nativeConfig);
+  try {
+    const nativeConfig = await buildNativeConfig(config);
+    HeliumPaywallSdkModule.initialize(nativeConfig);
+  } catch (error) {
+    console.error('[Helium] Initialization failed:', error);
+  }
 };
 
 let paywallEventHandlers: PaywallEventHandlers | undefined;

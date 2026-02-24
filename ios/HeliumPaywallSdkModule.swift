@@ -170,12 +170,12 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
-      self.performCoreSetup(config)
+      performCoreSetup(config)
       Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
     }
 
     Function("setupCore") { (config: [String : Any]) in
-      self.performCoreSetup(config)
+      performCoreSetup(config)
     }
 
     // Function for JavaScript to provide purchase result
@@ -418,7 +418,6 @@ public class HeliumPaywallSdkModule: Module {
         eventHandler: delegateEventHandler
       )
 
-      // just use default sk and
       let defaultDelegate = DefaultPurchaseDelegate(eventHandler: delegateEventHandler)
 
       // Handle fallback bundle - either as URL string or JSON string

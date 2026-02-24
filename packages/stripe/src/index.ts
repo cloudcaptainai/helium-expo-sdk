@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { setupCore } from 'expo-helium';
+import { _setupCore, initialize } from 'expo-helium';
 import HeliumStripeSdkModule from './HeliumStripeSdkModule';
 import type { StripeHeliumConfig } from './HeliumStripeSdk.types';
 
@@ -7,15 +7,12 @@ export type { StripeHeliumConfig } from './HeliumStripeSdk.types';
 
 export async function initializeWithStripe(config: StripeHeliumConfig): Promise<void> {
     if (Platform.OS !== 'ios') {
-        console.log('[HeliumStripe] Stripe One Tap is only available on iOS. Falling back to standard initialization.');
-        const { initialize } = require('expo-helium');
+        console.log('[HeliumStripe] Stripe One Tap is only available on iOS. Using standard initialization.');
         return initialize(config);
     }
 
-    // Step 1: Set up core (JS listeners + native delegate/config, no Helium.shared.initialize())
-    await setupCore(config);
+    await _setupCore(config);
 
-    // Step 2: Stripe setup + Helium init (wraps core's delegate as backup)
     HeliumStripeSdkModule.initializeStripe({
         apiKey: config.apiKey,
         stripePublishableKey: config.stripePublishableKey,
@@ -43,10 +40,10 @@ export function resetStripeEntitlements(clearUserId: boolean = false): void {
     HeliumStripeSdkModule.resetStripeEntitlements(clearUserId);
 }
 
-export async function createStripePortalSession(returnUrl: string): Promise<string> {
+export async function createStripePortalSession(returnUrl: string): Promise<string | undefined> {
     if (Platform.OS !== 'ios') {
         console.log('[HeliumStripe] createStripePortalSession is only available on iOS');
-        throw new Error('[HeliumStripe] Stripe portal sessions are only available on iOS');
+        return undefined;
     }
     return HeliumStripeSdkModule.createStripePortalSession(returnUrl);
 }

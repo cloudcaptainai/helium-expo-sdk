@@ -1,10 +1,10 @@
-import type { HeliumConfig } from 'expo-helium';
+import type { HeliumConfig } from "expo-helium";
 
 export interface StripeHeliumConfig extends HeliumConfig {
-    stripePublishableKey: string;
-    merchantIdentifier: string;
-    merchantName: string;
-    managementURL: string;
-    countryCode?: string;  // default "US"
-    currencyCode?: string; // default "USD"
+  stripePublishableKey: string;
+  merchantIdentifier: string;
+  merchantName: string;
+  managementURL: string;
+  countryCode?: string; // default "US"
+  currencyCode?: string; // default "USD"
 }
