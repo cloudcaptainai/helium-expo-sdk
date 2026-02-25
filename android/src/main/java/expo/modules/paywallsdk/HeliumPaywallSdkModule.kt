@@ -472,10 +472,17 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Reset Helium SDK
-    Function("resetHelium") {
-      // Reset logger back to default stdout logger
-      Helium.config.logger = HeliumLogger.Stdout
-      Helium.resetHelium()
+    AsyncFunction("resetHelium") Coroutine { clearUserTraits: Boolean, clearHeliumEventListeners: Boolean, clearExperimentAllocations: Boolean ->
+      suspendCancellableCoroutine { continuation ->
+        Helium.resetHelium(
+          clearUserTraits = clearUserTraits,
+          clearHeliumEventListeners = clearHeliumEventListeners,
+          clearExperimentAllocations = clearExperimentAllocations,
+          onComplete = {
+            continuation.resume(Unit)
+          }
+        )
+      }
     }
 
     // Set light/dark mode override

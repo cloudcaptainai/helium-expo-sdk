@@ -336,11 +336,17 @@ public class HeliumPaywallSdkModule: Module {
       )
     }
 
-    Function("resetHelium") {
-      // Clean up log listener
-      NativeModuleManager.shared.logListenerToken?.remove()
-      NativeModuleManager.shared.logListenerToken = nil
-      Helium.resetHelium()
+    AsyncFunction("resetHelium") { (clearUserTraits: Bool, clearHeliumEventListeners: Bool, clearExperimentAllocations: Bool) in
+      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        Helium.resetHelium(
+          clearUserTraits: clearUserTraits,
+          clearHeliumEventListeners: clearHeliumEventListeners,
+          clearExperimentAllocations: clearExperimentAllocations,
+          onComplete: {
+            continuation.resume()
+          }
+        )
+      }
     }
 
     Function("setLightDarkModeOverride") { (mode: String) in

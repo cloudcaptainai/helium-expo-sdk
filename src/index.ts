@@ -4,6 +4,7 @@ import {
   HeliumLogEvent,
   HeliumPaywallEvent,
   NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
+  ResetHeliumOptions,
 } from "./HeliumPaywallSdk.types";
 import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
@@ -386,14 +387,20 @@ export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
 /**
  * Reset Helium entirely so you can call initialize again. Only for advanced use cases.
  */
-export const resetHelium = () => {
+export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> => {
   paywallEventHandlers = undefined;
   presentOnFallback = undefined;
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
   HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
   HeliumPaywallSdkModule.removeAllListeners('onHeliumLogEvent');
-  HeliumPaywallSdkModule.resetHelium();
+
+  await HeliumPaywallSdkModule.resetHelium(
+    options?.clearUserTraits ?? true,
+    true, // always clear for now, these listeners are not yet exposed to RN
+    options?.clearExperimentAllocations ?? false,
+  );
+
   isInitialized = false;
 };
 

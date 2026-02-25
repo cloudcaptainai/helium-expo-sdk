@@ -70,7 +70,11 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   hasAnyEntitlement(): Promise<boolean>;
 
-  resetHelium(): void;
+  resetHelium(
+    clearUserTraits: boolean,
+    clearHeliumEventListeners: boolean,
+    clearExperimentAllocations: boolean,
+  ): Promise<void>;
 
   setCustomRestoreFailedStrings(
     customTitle?: string,
