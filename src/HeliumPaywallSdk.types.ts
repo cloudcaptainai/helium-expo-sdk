@@ -268,6 +268,13 @@ export interface CustomPaywallActionEvent {
   isSecondTry: boolean;
 }
 
+export interface ResetHeliumOptions {
+  /** Whether to clear custom user traits. Defaults to `true`. */
+  clearUserTraits?: boolean;
+  /** Whether to clear experiment allocations. Defaults to `false`. */
+  clearExperimentAllocations?: boolean;
+}
+
 export const HELIUM_CTA_NAMES = {
   SCHEDULE_CALL: 'schedule_call',
   SUBSCRIBE_BUTTON: 'subscribe_button',

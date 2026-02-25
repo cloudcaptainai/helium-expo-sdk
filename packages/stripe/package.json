@@ -1,6 +1,6 @@
 {
   "name": "expo-helium-stripe",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Helium Stripe One Tap Purchase add-on for Expo",
   "author": "github.com/appmonetization",
   "license": "MIT",
@@ -15,7 +15,7 @@
   },
   "peerDependencies": {
     "expo": "*",
-    "expo-helium": ">=3.2.7",
+    "expo-helium": ">=3.2.8",
     "react": "*",
     "react-native": "*"
   },

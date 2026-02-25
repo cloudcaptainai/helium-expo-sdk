@@ -46,5 +46,9 @@ public class HeliumStripeSdkModule: Module {
             let url = try await Helium.shared.createStripePortalSession(returnUrl: returnUrl)
             return url.absoluteString
         }
+
+        AsyncFunction("hasActiveStripeEntitlement") {
+            return await Helium.shared.hasActiveStripeEntitlement()
+        }
     }
 }

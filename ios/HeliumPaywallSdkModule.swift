@@ -336,11 +336,20 @@ public class HeliumPaywallSdkModule: Module {
       )
     }
 
-    Function("resetHelium") {
-      // Clean up log listener
+    AsyncFunction("resetHelium") { (clearUserTraits: Bool, clearHeliumEventListeners: Bool, clearExperimentAllocations: Bool) in
+      // Clean up log listener so performCoreSetup can re-register on next initialize()
       NativeModuleManager.shared.logListenerToken?.remove()
       NativeModuleManager.shared.logListenerToken = nil
-      Helium.resetHelium()
+      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        Helium.resetHelium(
+          clearUserTraits: clearUserTraits,
+          clearHeliumEventListeners: clearHeliumEventListeners,
+          clearExperimentAllocations: clearExperimentAllocations,
+          onComplete: {
+            continuation.resume()
+          }
+        )
+      }
     }
 
     Function("setLightDarkModeOverride") { (mode: String) in
