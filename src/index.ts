@@ -395,13 +395,15 @@ export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> =
   HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
   HeliumPaywallSdkModule.removeAllListeners('onHeliumLogEvent');
 
-  await HeliumPaywallSdkModule.resetHelium(
-    options?.clearUserTraits ?? true,
-    true, // always clear for now, these listeners are not yet exposed to RN
-    options?.clearExperimentAllocations ?? false,
-  );
-
-  isInitialized = false;
+  try {
+    await HeliumPaywallSdkModule.resetHelium(
+      options?.clearUserTraits ?? true,
+      true, // always clear for now, these listeners are not yet exposed to RN
+      options?.clearExperimentAllocations ?? false,
+    );
+  } finally {
+    isInitialized = false;
+  }
 };
 
 /**
