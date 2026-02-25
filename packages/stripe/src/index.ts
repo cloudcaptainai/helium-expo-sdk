@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { _setupCore, initialize } from 'expo-helium';
+import { _setupCore, initialize, setCustomUserId } from 'expo-helium';
 import HeliumStripeSdkModule from './HeliumStripeSdkModule';
 import type { StripeHeliumConfig } from './HeliumStripeSdk.types';
 
@@ -26,7 +26,7 @@ export async function initializeWithStripe(config: StripeHeliumConfig): Promise<
 
 export function setUserIdAndSyncStripeIfNeeded(userId: string): void {
     if (Platform.OS !== 'ios') {
-        console.log('[HeliumStripe] setUserIdAndSyncStripeIfNeeded is only available on iOS');
+        setCustomUserId(userId);
         return;
     }
     HeliumStripeSdkModule.setUserIdAndSyncStripeIfNeeded(userId);
