@@ -481,7 +481,9 @@ class HeliumPaywallSdkModule : Module() {
           clearHeliumEventListeners = clearHeliumEventListeners,
           clearExperimentAllocations = clearExperimentAllocations,
           onComplete = {
-            continuation.resume(Unit)
+            if (continuation.isActive) {
+              continuation.resume(Unit)
+            }
           }
         )
       }

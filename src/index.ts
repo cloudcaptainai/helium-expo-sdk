@@ -401,6 +401,11 @@ export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> =
       true, // always clear for now, these listeners are not yet exposed to RN
       options?.clearExperimentAllocations ?? false,
     );
+  } catch (e) {
+    // Native reset likely completed; the async bridge response may have been
+    // lost (e.g. coroutine cancellation during module teardown). JS state is
+    // cleaned up below regardless.
+    console.warn('[Helium] resetHelium did not receive native completion:', e);
   } finally {
     isInitialized = false;
   }
