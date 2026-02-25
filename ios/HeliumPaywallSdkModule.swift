@@ -337,6 +337,9 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     AsyncFunction("resetHelium") { (clearUserTraits: Bool, clearHeliumEventListeners: Bool, clearExperimentAllocations: Bool) in
+      // Clean up log listener so performCoreSetup can re-register on next initialize()
+      NativeModuleManager.shared.logListenerToken?.remove()
+      NativeModuleManager.shared.logListenerToken = nil
       await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
         Helium.resetHelium(
           clearUserTraits: clearUserTraits,
