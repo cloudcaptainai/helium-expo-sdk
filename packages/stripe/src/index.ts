@@ -47,3 +47,11 @@ export async function createStripePortalSession(returnUrl: string): Promise<stri
     }
     return HeliumStripeSdkModule.createStripePortalSession(returnUrl);
 }
+
+export async function hasActiveStripeEntitlement(): Promise<boolean> {
+    if (Platform.OS !== 'ios') {
+        console.log('[HeliumStripe] hasActiveStripeEntitlement is only available on iOS');
+        return false;
+    }
+    return HeliumStripeSdkModule.hasActiveStripeEntitlement();
+}

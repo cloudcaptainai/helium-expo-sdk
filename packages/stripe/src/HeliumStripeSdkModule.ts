@@ -5,6 +5,7 @@ declare class HeliumStripeSdkModule extends NativeModule {
     setUserIdAndSyncStripeIfNeeded(userId: string): void;
     resetStripeEntitlements(clearUserId: boolean): void;
     createStripePortalSession(returnUrl: string): Promise<string>;
+    hasActiveStripeEntitlement(): Promise<boolean>;
 }
 
 export default requireNativeModule<HeliumStripeSdkModule>("HeliumStripeSdk");
