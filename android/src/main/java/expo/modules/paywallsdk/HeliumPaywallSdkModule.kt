@@ -483,7 +483,7 @@ class HeliumPaywallSdkModule : Module() {
       // Reset logger so initialize() can set up a fresh BridgingLogger
       Helium.config.logger = HeliumLogger.Stdout
       try {
-        suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine<Unit> { continuation ->
           Helium.resetHelium(
             clearUserTraits = clearUserTraits,
             clearHeliumEventListeners = clearHeliumEventListeners,
