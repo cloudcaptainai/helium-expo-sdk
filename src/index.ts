@@ -323,12 +323,10 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
         paywallEventHandlers = undefined;
       }
       presentOnPaywallUnavailable = undefined;
-      presentOnEntitled = undefined;
       break;
     case 'paywallSkipped':
       paywallEventHandlers = undefined;
       presentOnPaywallUnavailable = undefined;
-      presentOnEntitled = undefined;
       break;
     case 'paywallOpenFailed':
       paywallEventHandlers = undefined;
@@ -340,7 +338,6 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
         presentOnPaywallUnavailable?.();
       }
       presentOnPaywallUnavailable = undefined;
-      presentOnEntitled = undefined;
       break;
   }
 }
