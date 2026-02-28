@@ -29,7 +29,7 @@ export type HeliumPaywallEvent = {
     'purchaseCancelled' | 'purchaseFailed' | 'purchaseRestored' |
     'purchaseRestoreFailed' | 'purchasePending' | 'initializeStart' |
     'paywallsDownloadSuccess' | 'paywallsDownloadError' | 'paywallWebViewRendered' |
-    'customPaywallAction' | 'userAllocated';
+    'customPaywallAction' | 'userAllocated' | 'purchaseAlreadyEntitled';
   triggerName?: string;
   paywallName?: string;
   /**
@@ -192,12 +192,19 @@ export interface NativeHeliumConfig {
 
 export type PresentUpsellParams = {
   triggerName: string;
-  /** Optional. This will be called when paywall fails to show due to an unsuccessful paywall download or if an invalid trigger is provided. */
-  onFallback?: () => void;
   eventHandlers?: PaywallEventHandlers;
   customPaywallTraits?: Record<string, any>;
   /** Optional. If true, the paywall will not be shown if the user already has an entitlement for a product in the paywall. */
   dontShowIfAlreadyEntitled?: boolean;
+  /** Optional. Called upon purchase success or purchase restore.
+   * If you set `dontShowIfAlreadyEntitled` to true, this handler will also be called when paywall not shown
+   * to users who already have entitlement for a product in the paywall.
+   */
+  onEntitled?: () => void;
+  /** Optional. Called if desired paywall and fallback paywall did not show for any reason.
+   * This is uncommon, but best practice to handle it just in case.
+   * See https://docs.tryhelium.com/guides/fallback-bundle */
+  onPaywallUnavailable?: () => void;
 };
 
 export interface PaywallInfo {

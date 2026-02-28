@@ -218,23 +218,23 @@ export const initialize = async (config: HeliumConfig) => {
 };
 
 let paywallEventHandlers: PaywallEventHandlers | undefined;
-let presentOnFallback: (() => void) | undefined;
+let presentOnPaywallUnavailable: (() => void) | undefined;
 export const presentUpsell = ({
                                 triggerName,
-                                onFallback,
+                                onPaywallUnavailable,
                                 eventHandlers,
                                 customPaywallTraits,
                                 dontShowIfAlreadyEntitled,
                               }: PresentUpsellParams) => {
   try {
     paywallEventHandlers = eventHandlers;
-    presentOnFallback = onFallback;
+    presentOnPaywallUnavailable = onPaywallUnavailable;
     HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits), dontShowIfAlreadyEntitled);
   } catch (error) {
     console.log('[Helium] presentUpsell error', error);
     paywallEventHandlers = undefined;
-    presentOnFallback = undefined;
-    onFallback?.();
+    presentOnPaywallUnavailable = undefined;
+    onPaywallUnavailable?.();
     HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
   }
 };
@@ -307,11 +307,11 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
       if (!event.isSecondTry) {
         paywallEventHandlers = undefined;
       }
-      presentOnFallback = undefined;
+      presentOnPaywallUnavailable = undefined;
       break;
     case 'paywallSkipped':
       paywallEventHandlers = undefined;
-      presentOnFallback = undefined;
+      presentOnPaywallUnavailable = undefined;
       break;
     case 'paywallOpenFailed':
       paywallEventHandlers = undefined;
@@ -320,9 +320,9 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
         && unavailableReason !== "alreadyPresented"
         && unavailableReason !== "secondTryNoMatch") {
         console.log('[Helium] paywall open failed', unavailableReason);
-        presentOnFallback?.();
+        presentOnPaywallUnavailable?.();
       }
-      presentOnFallback = undefined;
+      presentOnPaywallUnavailable = undefined;
       break;
   }
 }
@@ -389,7 +389,7 @@ export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
  */
 export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> => {
   paywallEventHandlers = undefined;
-  presentOnFallback = undefined;
+  presentOnPaywallUnavailable = undefined;
   HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
   HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
   HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
