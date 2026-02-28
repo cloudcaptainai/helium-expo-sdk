@@ -9,6 +9,7 @@ export type HeliumPaywallSdkModuleEvents = {
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
   paywallEventHandlers: (params: HeliumPaywallEvent) => void;
   onHeliumLogEvent: (params: HeliumLogEvent) => void;
+  onEntitledEvent: () => void;
 };
 
 /** A log event emitted by the Helium SDK. */

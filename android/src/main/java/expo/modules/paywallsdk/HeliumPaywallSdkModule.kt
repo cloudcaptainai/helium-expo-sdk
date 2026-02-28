@@ -165,7 +165,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Defines event names that the module can send to JavaScript
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent")
 
     // Lifecycle event to cache Activity reference for hot reload resilience
     OnActivityEntersForeground {
@@ -346,6 +346,13 @@ class HeliumPaywallSdkModule : Module() {
           customPaywallTraits = convertedTraits,
           dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false
         ),
+        onEntitled = {
+          NativeModuleManager.safeSendEvent(
+            "onEntitledEvent",
+            emptyMap(),
+            this@HeliumPaywallSdkModule
+          )
+        },
         eventListener = eventHandlers,
         onPaywallNotShown = { _ ->
           // nothing for now
