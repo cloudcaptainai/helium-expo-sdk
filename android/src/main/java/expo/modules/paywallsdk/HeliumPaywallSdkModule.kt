@@ -475,17 +475,21 @@ class HeliumPaywallSdkModule : Module() {
     AsyncFunction("resetHelium") Coroutine { clearUserTraits: Boolean, clearHeliumEventListeners: Boolean, clearExperimentAllocations: Boolean ->
       // Reset logger so initialize() can set up a fresh BridgingLogger
       Helium.config.logger = HeliumLogger.Stdout
-      suspendCancellableCoroutine { continuation ->
-        Helium.resetHelium(
-          clearUserTraits = clearUserTraits,
-          clearHeliumEventListeners = clearHeliumEventListeners,
-          clearExperimentAllocations = clearExperimentAllocations,
-          onComplete = {
-            if (continuation.isActive) {
-              continuation.resume(Unit)
+      try {
+        suspendCancellableCoroutine { continuation ->
+          Helium.resetHelium(
+            clearUserTraits = clearUserTraits,
+            clearHeliumEventListeners = clearHeliumEventListeners,
+            clearExperimentAllocations = clearExperimentAllocations,
+            onComplete = {
+              if (continuation.isActive) {
+                continuation.resume(Unit)
+              }
             }
-          }
-        )
+          )
+        }
+      } catch (e: Exception) {
+        android.util.Log.e("HeliumPaywallSdk", "resetHelium failed: ${e.message}")
       }
     }
 

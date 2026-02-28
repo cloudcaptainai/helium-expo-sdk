@@ -340,7 +340,7 @@ public class HeliumPaywallSdkModule: Module {
       // Clean up log listener so performCoreSetup can re-register on next initialize()
       NativeModuleManager.shared.logListenerToken?.remove()
       NativeModuleManager.shared.logListenerToken = nil
-      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+      await withUnsafeContinuation { (continuation: UnsafeContinuation<Void, Never>) in
         Helium.resetHelium(
           clearUserTraits: clearUserTraits,
           clearHeliumEventListeners: clearHeliumEventListeners,
