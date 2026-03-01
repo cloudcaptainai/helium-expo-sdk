@@ -166,7 +166,7 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -239,7 +239,10 @@ public class HeliumPaywallSdkModule: Module {
                 onAnyEvent: { event in
                     NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: event.toDictionary())
                 }
-            )
+            ),
+            onEntitled: {
+                NativeModuleManager.shared.safeSendEvent(eventName: "onEntitledEvent", eventData: [:])
+            }
         ) { paywallNotShownReason in
             // nothing for now
         }
@@ -340,7 +343,7 @@ public class HeliumPaywallSdkModule: Module {
       // Clean up log listener so performCoreSetup can re-register on next initialize()
       NativeModuleManager.shared.logListenerToken?.remove()
       NativeModuleManager.shared.logListenerToken = nil
-      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+      await withUnsafeContinuation { (continuation: UnsafeContinuation<Void, Never>) in
         Helium.resetHelium(
           clearUserTraits: clearUserTraits,
           clearHeliumEventListeners: clearHeliumEventListeners,

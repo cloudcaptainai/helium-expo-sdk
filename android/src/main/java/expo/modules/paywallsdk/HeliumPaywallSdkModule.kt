@@ -165,7 +165,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Defines event names that the module can send to JavaScript
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent")
 
     // Lifecycle event to cache Activity reference for hot reload resilience
     OnActivityEntersForeground {
@@ -346,6 +346,13 @@ class HeliumPaywallSdkModule : Module() {
           customPaywallTraits = convertedTraits,
           dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false
         ),
+        onEntitled = {
+          NativeModuleManager.safeSendEvent(
+            "onEntitledEvent",
+            emptyMap(),
+            this@HeliumPaywallSdkModule
+          )
+        },
         eventListener = eventHandlers,
         onPaywallNotShown = { _ ->
           // nothing for now
@@ -475,17 +482,23 @@ class HeliumPaywallSdkModule : Module() {
     AsyncFunction("resetHelium") Coroutine { clearUserTraits: Boolean, clearHeliumEventListeners: Boolean, clearExperimentAllocations: Boolean ->
       // Reset logger so initialize() can set up a fresh BridgingLogger
       Helium.config.logger = HeliumLogger.Stdout
-      suspendCancellableCoroutine { continuation ->
-        Helium.resetHelium(
-          clearUserTraits = clearUserTraits,
-          clearHeliumEventListeners = clearHeliumEventListeners,
-          clearExperimentAllocations = clearExperimentAllocations,
-          onComplete = {
-            if (continuation.isActive) {
-              continuation.resume(Unit)
+      try {
+        suspendCancellableCoroutine<Unit> { continuation ->
+          Helium.resetHelium(
+            clearUserTraits = clearUserTraits,
+            clearHeliumEventListeners = clearHeliumEventListeners,
+            clearExperimentAllocations = clearExperimentAllocations,
+            onComplete = {
+              if (continuation.isActive) {
+                continuation.resume(Unit)
+              }
             }
-          }
-        )
+          )
+        }
+      } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        android.util.Log.e("HeliumPaywallSdk", "resetHelium failed: ${e.message}")
       }
     }
 

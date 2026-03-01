@@ -28,9 +28,24 @@ export default function App() {
             onPress={async () => {
               presentUpsell({
                 triggerName: 'trigger-name-here',
-                onFallback: () => {
-                  console.log('fallback!!!')
-                }
+                eventHandlers: {
+                  onOpen: async (e) => {
+                    console.log('eventHandler open', e.type);
+                  },
+                  onClose: async (e) => {
+                    console.log('eventHandler close', e.type);
+                  },
+                  onOpenFailed: async (e) => {
+                    console.log('eventHandler openFail', e.type);
+                  }
+                },
+                // dontShowIfAlreadyEntitled: true,
+                onEntitled: () => {
+                  console.log('onEntitled called!')
+                },
+                onPaywallUnavailable: () => {
+                  console.log('onPaywallUnavailable called!')
+                },
               });
             }}
           />
