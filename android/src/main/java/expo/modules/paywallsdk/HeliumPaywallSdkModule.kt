@@ -495,6 +495,8 @@ class HeliumPaywallSdkModule : Module() {
             }
           )
         }
+      } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
       } catch (e: Exception) {
         android.util.Log.e("HeliumPaywallSdk", "resetHelium failed: ${e.message}")
       }
