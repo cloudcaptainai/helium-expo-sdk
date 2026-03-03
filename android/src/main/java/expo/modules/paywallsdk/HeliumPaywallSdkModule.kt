@@ -331,12 +331,7 @@ class HeliumPaywallSdkModule : Module() {
       }
 
       val eventHandlers = PaywallEventHandlers(
-        onOpen = { event -> sendPaywallEvent(event) },
-        onClose = { event -> sendPaywallEvent(event) },
-        onDismissed = { event -> sendPaywallEvent(event) },
-        onPurchaseSucceeded = { event -> sendPaywallEvent(event) },
-        onOpenFailed = { event -> sendPaywallEvent(event) },
-        onCustomPaywallAction = { event -> sendPaywallEvent(event) }
+        onAnyEvent = { event -> sendPaywallEvent(event) },
       )
 
       Helium.presentPaywall(
