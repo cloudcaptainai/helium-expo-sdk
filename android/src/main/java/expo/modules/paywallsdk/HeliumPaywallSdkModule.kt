@@ -737,6 +737,10 @@ class BridgingLogger : HeliumLogger {
  * Top-level function to avoid capturing module references in long-lived closures.
  */
 private fun applyEventFieldAliases(eventMap: MutableMap<String, Any?>) {
-  eventMap["actionName"]?.let { eventMap["customPaywallActionName"] = it }
-  eventMap["params"]?.let { eventMap["customPaywallActionParams"] = it }
+  if (eventMap["customPaywallActionName"] == null) {
+    eventMap["actionName"]?.let { eventMap["customPaywallActionName"] = it }
+  }
+  if (eventMap["customPaywallActionParams"] == null) {
+    eventMap["params"]?.let { eventMap["customPaywallActionParams"] = it }
+  }
 }

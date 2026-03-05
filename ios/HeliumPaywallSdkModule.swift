@@ -605,10 +605,10 @@ fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
 /// Modifies native event dictionary fields to match expected TypeScript types.
 /// Free function to avoid capturing `self` in long-lived closures.
 private func applyEventFieldAliases(_ eventDict: inout [String: Any]) {
-    if let actionName = eventDict["actionName"] {
+    if eventDict["customPaywallActionName"] == nil, let actionName = eventDict["actionName"] {
         eventDict["customPaywallActionName"] = actionName
     }
-    if let params = eventDict["params"] {
+    if eventDict["customPaywallActionParams"] == nil, let params = eventDict["params"] {
         eventDict["customPaywallActionParams"] = params
     }
 }
