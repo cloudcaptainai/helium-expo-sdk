@@ -237,7 +237,9 @@ public class HeliumPaywallSdkModule: Module {
             ),
             eventHandlers: PaywallEventHandlers.withHandlers(
                 onAnyEvent: { event in
-                    NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: event.toDictionary())
+                    var eventDict = event.toDictionary()
+                    applyEventFieldAliases(&eventDict)
+                    NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: eventDict)
                 }
             ),
             onEntitled: {
@@ -421,6 +423,7 @@ public class HeliumPaywallSdkModule: Module {
           if let buttonName = eventDict["buttonName"] {
               eventDict["ctaName"] = buttonName
           }
+          applyEventFieldAliases(&eventDict)
           NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumPaywallEvent", eventData: eventDict)
       }
 
@@ -596,5 +599,16 @@ fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
 
     override func onPaywallEvent(_ event: any HeliumEvent) {
         eventHandler(event)
+    }
+}
+
+/// Modifies native event dictionary fields to match expected TypeScript types.
+/// Free function to avoid capturing `self` in long-lived closures.
+private func applyEventFieldAliases(_ eventDict: inout [String: Any]) {
+    if eventDict["customPaywallActionName"] == nil, let actionName = eventDict["actionName"] {
+        eventDict["customPaywallActionName"] = actionName
+    }
+    if eventDict["customPaywallActionParams"] == nil, let params = eventDict["params"] {
+        eventDict["customPaywallActionParams"] = params
     }
 }
