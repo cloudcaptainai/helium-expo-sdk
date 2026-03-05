@@ -237,7 +237,15 @@ public class HeliumPaywallSdkModule: Module {
             ),
             eventHandlers: PaywallEventHandlers.withHandlers(
                 onAnyEvent: { event in
-                    NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: event.toDictionary())
+                    var eventDict = event.toDictionary()
+                    // Add custom paywall action prefix
+                    if let customPaywallActionName = eventDict["actionName"] {
+                        eventDict["customPaywallActionName"] = customPaywallActionName
+                    }
+                    if let customPaywallActionParams = eventDict["params"] {
+                        eventDict["customPaywallActionParams"] = customPaywallActionParams
+                    }
+                    NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: eventDict)
                 }
             ),
             onEntitled: {
@@ -420,6 +428,13 @@ public class HeliumPaywallSdkModule: Module {
           }
           if let buttonName = eventDict["buttonName"] {
               eventDict["ctaName"] = buttonName
+          }
+          // Add custom paywall action prefix
+          if let customPaywallActionName = eventDict["actionName"] {
+              eventDict["customPaywallActionName"] = customPaywallActionName
+          }
+          if let customPaywallActionParams = eventDict["params"] {
+              eventDict["customPaywallActionParams"] = customPaywallActionParams
           }
           NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumPaywallEvent", eventData: eventDict)
       }
