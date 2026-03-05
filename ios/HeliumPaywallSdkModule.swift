@@ -238,13 +238,7 @@ public class HeliumPaywallSdkModule: Module {
             eventHandlers: PaywallEventHandlers.withHandlers(
                 onAnyEvent: { event in
                     var eventDict = event.toDictionary()
-                    // Add custom paywall action prefix
-                    if let customPaywallActionName = eventDict["actionName"] {
-                        eventDict["customPaywallActionName"] = customPaywallActionName
-                    }
-                    if let customPaywallActionParams = eventDict["params"] {
-                        eventDict["customPaywallActionParams"] = customPaywallActionParams
-                    }
+                    applyEventFieldAliases(&eventDict)
                     NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: eventDict)
                 }
             ),
@@ -429,13 +423,7 @@ public class HeliumPaywallSdkModule: Module {
           if let buttonName = eventDict["buttonName"] {
               eventDict["ctaName"] = buttonName
           }
-          // Add custom paywall action prefix
-          if let customPaywallActionName = eventDict["actionName"] {
-              eventDict["customPaywallActionName"] = customPaywallActionName
-          }
-          if let customPaywallActionParams = eventDict["params"] {
-              eventDict["customPaywallActionParams"] = customPaywallActionParams
-          }
+          applyEventFieldAliases(&eventDict)
           NativeModuleManager.shared.safeSendEvent(eventName: "onHeliumPaywallEvent", eventData: eventDict)
       }
 
@@ -611,5 +599,16 @@ fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
 
     override func onPaywallEvent(_ event: any HeliumEvent) {
         eventHandler(event)
+    }
+}
+
+/// Modifies native event dictionary fields to match expected TypeScript types.
+/// Free function to avoid capturing `self` in long-lived closures.
+private func applyEventFieldAliases(_ eventDict: inout [String: Any]) {
+    if let actionName = eventDict["actionName"] {
+        eventDict["customPaywallActionName"] = actionName
+    }
+    if let params = eventDict["params"] {
+        eventDict["customPaywallActionParams"] = params
     }
 }

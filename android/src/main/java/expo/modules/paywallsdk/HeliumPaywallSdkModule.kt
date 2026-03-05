@@ -219,6 +219,7 @@ class HeliumPaywallSdkModule : Module() {
         eventMap["error"]?.let { eventMap["errorDescription"] = it }
         eventMap["productId"]?.let { eventMap["productKey"] = it }
         eventMap["buttonName"]?.let { eventMap["ctaName"] = it }
+        applyEventFieldAliases(eventMap)
 
         NativeModuleManager.safeSendEvent("onHeliumPaywallEvent", eventMap)
       }
@@ -320,18 +321,16 @@ class HeliumPaywallSdkModule : Module() {
       // Convert custom paywall traits
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
 
-      // Helper to send event to JavaScript
-      val sendPaywallEvent: (HeliumEvent) -> Unit = { event ->
-        val eventMap = HeliumEventDictionaryMapper.toDictionary(event).toMutableMap()
-        NativeModuleManager.safeSendEvent(
-          "paywallEventHandlers",
-          eventMap,
-          this@HeliumPaywallSdkModule
-        )
-      }
-
       val eventHandlers = PaywallEventHandlers(
-        onAnyEvent = { event -> sendPaywallEvent(event) },
+        onAnyEvent = { event ->
+          val eventMap = HeliumEventDictionaryMapper.toDictionary(event).toMutableMap()
+          applyEventFieldAliases(eventMap)
+          NativeModuleManager.safeSendEvent(
+            "paywallEventHandlers",
+            eventMap,
+            this@HeliumPaywallSdkModule
+          )
+        },
       )
 
       Helium.presentPaywall(
@@ -731,4 +730,13 @@ class BridgingLogger : HeliumLogger {
     )
     NativeModuleManager.safeSendEvent("onHeliumLogEvent", eventData)
   }
+}
+
+/**
+ * Modifies native event map fields to match expected TypeScript types.
+ * Top-level function to avoid capturing module references in long-lived closures.
+ */
+private fun applyEventFieldAliases(eventMap: MutableMap<String, Any?>) {
+  eventMap["actionName"]?.let { eventMap["customPaywallActionName"] = it }
+  eventMap["params"]?.let { eventMap["customPaywallActionParams"] = it }
 }
