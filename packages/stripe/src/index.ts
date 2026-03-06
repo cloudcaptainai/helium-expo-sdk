@@ -45,7 +45,12 @@ export async function createStripePortalSession(returnUrl: string): Promise<stri
         console.log('[HeliumStripe] createStripePortalSession is only available on iOS');
         return undefined;
     }
-    return HeliumStripeSdkModule.createStripePortalSession(returnUrl);
+    try {
+        return await HeliumStripeSdkModule.createStripePortalSession(returnUrl);
+    } catch (error) {
+        console.log('[HeliumStripe] could not create Stripe portal session');
+        return undefined;
+    }
 }
 
 export async function hasActiveStripeEntitlement(): Promise<boolean> {
