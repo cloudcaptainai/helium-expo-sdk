@@ -295,9 +295,17 @@ export class RevenueCatHeliumHandler {
         await Purchases.getCustomerInfo();
       }
 
-      // Phase 2: every 5s for up to ~55s more (11 attempts)
-      for (let i = 0; i < 11 && !synced; i++) {
+      // Phase 2: every 5s for 3 attempts
+      for (let i = 0; i < 3 && !synced; i++) {
         await this.delay(5000);
+        if (synced) break;
+        await Purchases.invalidateCustomerInfoCache();
+        await Purchases.getCustomerInfo();
+      }
+
+      // Phase 3: every 15s for 2 attempts
+      for (let i = 0; i < 2 && !synced; i++) {
+        await this.delay(15000);
         if (synced) break;
         await Purchases.invalidateCustomerInfoCache();
         await Purchases.getCustomerInfo();
