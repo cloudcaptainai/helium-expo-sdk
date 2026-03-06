@@ -3,8 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "expo-paywall-sdk": ["../src/index"],
-      "expo-paywall-sdk/*": ["../src/*"]
+      "expo-helium": ["../src/index"],
+      "expo-helium/*": ["../src/*"]
     }
   }
 }

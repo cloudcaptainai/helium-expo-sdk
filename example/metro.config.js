@@ -19,7 +19,7 @@ config.resolver.nodeModulesPaths = [
 ];
 
 config.resolver.extraNodeModules = {
-  'expo-paywall-sdk': '..',
+  'expo-helium': '..',
 };
 
 config.watchFolders = [path.resolve(__dirname, '..')];
