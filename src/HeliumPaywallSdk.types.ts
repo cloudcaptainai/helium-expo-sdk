@@ -68,6 +68,8 @@ export type HeliumPaywallEvent = {
   paywallUnavailableReason?: string;
   customPaywallActionName?: string;
   customPaywallActionParams?: Record<string, any>;
+  /** Transaction ID for a successful purchase. */
+  canonicalJoinTransactionId?: string;
 };
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
@@ -116,6 +118,9 @@ export interface HeliumPurchaseConfig {
 
   /** @internal Used to identify the purchase delegate type for analytics. */
   _delegateType?: string;
+
+  /** Called by Helium SDK on every paywall event. */
+  onHeliumEvent?: (event: HeliumPaywallEvent) => void;
 }
 
 // Helper function for creating Custom Purchase Config

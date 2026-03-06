@@ -57,6 +57,7 @@ function setupEventListeners(config: HeliumConfig) {
   addHeliumPaywallEventListener((event) => {
     handlePaywallEvent(event);
     config.onHeliumPaywallEvent?.(event);
+    config.purchaseConfig?.onHeliumEvent?.(event);
   });
 
   // Set up delegate action listener for purchase and restore operations
@@ -441,8 +442,12 @@ export const setCustomRestoreFailedStrings = HeliumPaywallSdkModule.setCustomRes
 export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreFailedDialog;
 
 /**
- * Override the light/dark mode for Helium paywalls
+ * Override the light/dark mode for Helium paywalls.
  * @param mode The mode to set: 'light', 'dark', or 'system' (follows device setting)
+ *
+ * Note: If your app's `app.json` (or `app.config.js`) has `"userInterfaceStyle": "light"` (or `"dark"`),
+ * the OS-level appearance is locked and 'system' will not reflect the device's actual
+ * dark mode setting. Set `"userInterfaceStyle": "automatic"` for 'system' to work correctly.
  */
 export const setLightDarkModeOverride = HeliumPaywallSdkModule.setLightDarkModeOverride;
 

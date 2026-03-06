@@ -7,7 +7,7 @@ import type {
 } from 'react-native-purchases';
 import Purchases, {PRODUCT_CATEGORY, PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import {Platform} from 'react-native';
-import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
+import {HeliumPaywallEvent, HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
 // Rename the factory function
@@ -21,6 +21,7 @@ export function createRevenueCatPurchaseConfig(config?: {
     makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
     makePurchaseAndroid: rcHandler.makePurchaseAndroid.bind(rcHandler),
     restorePurchases: rcHandler.restorePurchases.bind(rcHandler),
+    onHeliumEvent: rcHandler.onHeliumEvent.bind(rcHandler),
     _delegateType: 'h_revenuecat',
   };
 }
@@ -259,5 +260,54 @@ export class RevenueCatHeliumHandler {
     } catch (error) {
       return false;
     }
+  }
+
+  onHeliumEvent(event: HeliumPaywallEvent): void {
+    if (event.type === 'purchaseSucceeded' && this.isStripePurchase(event)) {
+      void this.syncRevenueCatAfterStripePurchase();
+    }
+  }
+
+  private isStripePurchase(event: HeliumPaywallEvent): boolean {
+    if (event.canonicalJoinTransactionId?.startsWith('si_')) {
+      return true;
+    }
+    if (event.productId && /^prod_\w+:price_\w+$/.test(event.productId)) {
+      return true;
+    }
+    return false;
+  }
+
+  private async syncRevenueCatAfterStripePurchase(): Promise<void> {
+    let synced = false;
+
+    const listener = (_info: CustomerInfo) => {
+      synced = true;
+    };
+    Purchases.addCustomerInfoUpdateListener(listener);
+
+    try {
+      // Phase 1: every 1s for 5 attempts
+      for (let i = 0; i < 5 && !synced; i++) {
+        await this.delay(1000);
+        if (synced) break;
+        await Purchases.invalidateCustomerInfoCache();
+        await Purchases.getCustomerInfo();
+      }
+
+      // Phase 2: every 5s for up to ~55s more (11 attempts)
+      for (let i = 0; i < 11 && !synced; i++) {
+        await this.delay(5000);
+        if (synced) break;
+        await Purchases.invalidateCustomerInfoCache();
+        await Purchases.getCustomerInfo();
+      }
+    } finally {
+      Purchases.removeCustomerInfoUpdateListener(listener);
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
