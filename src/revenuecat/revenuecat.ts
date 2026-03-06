@@ -7,7 +7,7 @@ import type {
 } from 'react-native-purchases';
 import Purchases, {PRODUCT_CATEGORY, PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
 import {Platform} from 'react-native';
-import {HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
+import {HeliumPaywallEvent, HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
 // Rename the factory function
@@ -15,12 +15,15 @@ export function createRevenueCatPurchaseConfig(config?: {
   apiKey?: string;
   apiKeyIOS?: string;
   apiKeyAndroid?: string;
+  /** Set to true to disable automatic RevenueCat entitlement syncing after Stripe purchases. */
+  disableStripePurchaseSync?: boolean;
 }): HeliumPurchaseConfig {
   const rcHandler = new RevenueCatHeliumHandler(config);
   return {
     makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
     makePurchaseAndroid: rcHandler.makePurchaseAndroid.bind(rcHandler),
     restorePurchases: rcHandler.restorePurchases.bind(rcHandler),
+    onHeliumEvent: rcHandler.onHeliumEvent.bind(rcHandler),
     _delegateType: 'h_revenuecat',
   };
 }
@@ -29,10 +32,12 @@ export class RevenueCatHeliumHandler {
   private productIdToPackageMapping: Record<string, PurchasesPackage> = {};
   private isMappingInitialized: boolean = false;
   private initializationPromise: Promise<void> | null = null;
+  private stripePurchaseSyncDisabled: boolean = false;
+  private isSyncingStripePurchase: boolean = false;
 
   private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
 
-  constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string }) {
+  constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string; disableStripePurchaseSync?: boolean }) {
     // Determine which API key to use based on platform
     let effectiveApiKey: string | undefined;
     if (Platform.OS === 'ios' && config?.apiKeyIOS) {
@@ -46,6 +51,7 @@ export class RevenueCatHeliumHandler {
     if (effectiveApiKey) {
       Purchases.configure({apiKey: effectiveApiKey});
     }
+    this.stripePurchaseSyncDisabled = config?.disableStripePurchaseSync ?? false;
     void this.initializePackageMapping();
   }
 
@@ -259,5 +265,68 @@ export class RevenueCatHeliumHandler {
     } catch (error) {
       return false;
     }
+  }
+
+  onHeliumEvent(event: HeliumPaywallEvent): void {
+    if (!this.stripePurchaseSyncDisabled && event.type === 'purchaseSucceeded' && this.isStripePurchase(event)) {
+      void this.syncRevenueCatAfterStripePurchase();
+    }
+  }
+
+  private isStripePurchase(event: HeliumPaywallEvent): boolean {
+    if (event.canonicalJoinTransactionId?.startsWith('si_')) {
+      return true;
+    }
+    if (event.productId && /^prod_\w+:price_\w+$/.test(event.productId)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * After a Stripe purchase completes, the RevenueCat SDK on-device has no way to
+   * know that a new entitlement exists until its backend processes the Stripe webhook.
+   * Without this, RevenueCat customer info would remain stale until the next app launch
+   * or natural refresh. This method polls RevenueCat with progressive backoff to force
+   * a customer info refresh, stopping early if the update listener fires (~50s max).
+   */
+  private async syncRevenueCatAfterStripePurchase(): Promise<void> {
+    if (this.isSyncingStripePurchase) {
+      return;
+    }
+    this.isSyncingStripePurchase = true;
+
+    let synced = false;
+
+    const listener = (_info: CustomerInfo) => {
+      synced = true;
+    };
+    Purchases.addCustomerInfoUpdateListener(listener);
+
+    const pollPhase = async (attempts: number, intervalMs: number) => {
+      for (let i = 0; i < attempts && !synced; i++) {
+        await this.delay(intervalMs);
+        if (synced) break;
+        try {
+          await Purchases.invalidateCustomerInfoCache();
+          await Purchases.getCustomerInfo();
+        } catch {
+          /* catch anything unexpected like a network failure */
+        }
+      }
+    };
+
+    try {
+      await pollPhase(5, 1000);   // Phase 1: every 1s for 5 attempts
+      await pollPhase(3, 5000);   // Phase 2: every 5s for 3 attempts
+      await pollPhase(2, 15000);  // Phase 3: every 15s for 2 attempts
+    } finally {
+      Purchases.removeCustomerInfoUpdateListener(listener);
+      this.isSyncingStripePurchase = false;
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

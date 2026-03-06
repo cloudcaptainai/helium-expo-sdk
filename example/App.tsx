@@ -1,8 +1,8 @@
 
-import {HeliumPaywallEvent, initialize, presentUpsell} from 'expo-paywall-sdk';
+import {HeliumPaywallEvent, initialize, presentUpsell} from 'expo-helium';
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import {useEffect} from "react";
-import {createCustomPurchaseConfig} from "expo-paywall-sdk";
+import {createCustomPurchaseConfig} from "expo-helium";
 
 export default function App() {
   const asyncHeliumInit = async () => {
