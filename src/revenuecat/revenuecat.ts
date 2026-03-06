@@ -297,33 +297,24 @@ export class RevenueCatHeliumHandler {
     };
     Purchases.addCustomerInfoUpdateListener(listener);
 
-    try {
-      // Phase 1: every 1s for 5 attempts
-      for (let i = 0; i < 5 && !synced; i++) {
-        await this.delay(1000);
+    const pollPhase = async (attempts: number, intervalMs: number) => {
+      for (let i = 0; i < attempts && !synced; i++) {
+        await this.delay(intervalMs);
         if (synced) break;
-        await Purchases.invalidateCustomerInfoCache();
-        await Purchases.getCustomerInfo();
+        try {
+          await Purchases.invalidateCustomerInfoCache();
+          await Purchases.getCustomerInfo();
+        } catch {
+          /* catch anything unexpected like a network failure */
+        }
       }
+    };
 
-      // Phase 2: every 5s for 3 attempts
-      for (let i = 0; i < 3 && !synced; i++) {
-        await this.delay(5000);
-        if (synced) break;
-        await Purchases.invalidateCustomerInfoCache();
-        await Purchases.getCustomerInfo();
-      }
+    await pollPhase(5, 1000);   // Phase 1: every 1s for 5 attempts
+    await pollPhase(3, 5000);   // Phase 2: every 5s for 3 attempts
+    await pollPhase(2, 15000);  // Phase 3: every 15s for 2 attempts
 
-      // Phase 3: every 15s for 2 attempts
-      for (let i = 0; i < 2 && !synced; i++) {
-        await this.delay(15000);
-        if (synced) break;
-        await Purchases.invalidateCustomerInfoCache();
-        await Purchases.getCustomerInfo();
-      }
-    } finally {
-      Purchases.removeCustomerInfoUpdateListener(listener);
-    }
+    Purchases.removeCustomerInfoUpdateListener(listener);
   }
 
   private delay(ms: number): Promise<void> {
