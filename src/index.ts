@@ -56,8 +56,8 @@ function setupEventListeners(config: HeliumConfig) {
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
     handlePaywallEvent(event);
-    config.onHeliumPaywallEvent?.(event);
-    config.purchaseConfig?.onHeliumEvent?.(event);
+    try { config.purchaseConfig?.onHeliumEvent?.(event); } catch {}
+    try { config.onHeliumPaywallEvent?.(event); } catch {}
   });
 
   // Set up delegate action listener for purchase and restore operations

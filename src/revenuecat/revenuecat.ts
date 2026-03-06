@@ -33,6 +33,7 @@ export class RevenueCatHeliumHandler {
   private isMappingInitialized: boolean = false;
   private initializationPromise: Promise<void> | null = null;
   private stripePurchaseSyncDisabled: boolean = false;
+  private isSyncingStripePurchase: boolean = false;
 
   private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
 
@@ -290,6 +291,11 @@ export class RevenueCatHeliumHandler {
    * a customer info refresh, stopping early if the update listener fires (~50s max).
    */
   private async syncRevenueCatAfterStripePurchase(): Promise<void> {
+    if (this.isSyncingStripePurchase) {
+      return;
+    }
+    this.isSyncingStripePurchase = true;
+
     let synced = false;
 
     const listener = (_info: CustomerInfo) => {
@@ -310,11 +316,14 @@ export class RevenueCatHeliumHandler {
       }
     };
 
-    await pollPhase(5, 1000);   // Phase 1: every 1s for 5 attempts
-    await pollPhase(3, 5000);   // Phase 2: every 5s for 3 attempts
-    await pollPhase(2, 15000);  // Phase 3: every 15s for 2 attempts
-
-    Purchases.removeCustomerInfoUpdateListener(listener);
+    try {
+      await pollPhase(5, 1000);   // Phase 1: every 1s for 5 attempts
+      await pollPhase(3, 5000);   // Phase 2: every 5s for 3 attempts
+      await pollPhase(2, 15000);  // Phase 3: every 15s for 2 attempts
+    } finally {
+      Purchases.removeCustomerInfoUpdateListener(listener);
+      this.isSyncingStripePurchase = false;
+    }
   }
 
   private delay(ms: number): Promise<void> {
