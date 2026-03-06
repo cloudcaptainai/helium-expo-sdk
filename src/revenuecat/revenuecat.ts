@@ -15,6 +15,8 @@ export function createRevenueCatPurchaseConfig(config?: {
   apiKey?: string;
   apiKeyIOS?: string;
   apiKeyAndroid?: string;
+  /** Set to true to disable automatic RevenueCat entitlement syncing after Stripe purchases. */
+  disableStripePurchaseSync?: boolean;
 }): HeliumPurchaseConfig {
   const rcHandler = new RevenueCatHeliumHandler(config);
   return {
@@ -30,10 +32,11 @@ export class RevenueCatHeliumHandler {
   private productIdToPackageMapping: Record<string, PurchasesPackage> = {};
   private isMappingInitialized: boolean = false;
   private initializationPromise: Promise<void> | null = null;
+  private stripePurchaseSyncDisabled: boolean = false;
 
   private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
 
-  constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string }) {
+  constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string; disableStripePurchaseSync?: boolean }) {
     // Determine which API key to use based on platform
     let effectiveApiKey: string | undefined;
     if (Platform.OS === 'ios' && config?.apiKeyIOS) {
@@ -47,6 +50,7 @@ export class RevenueCatHeliumHandler {
     if (effectiveApiKey) {
       Purchases.configure({apiKey: effectiveApiKey});
     }
+    this.stripePurchaseSyncDisabled = config?.disableStripePurchaseSync ?? false;
     void this.initializePackageMapping();
   }
 
@@ -263,7 +267,7 @@ export class RevenueCatHeliumHandler {
   }
 
   onHeliumEvent(event: HeliumPaywallEvent): void {
-    if (event.type === 'purchaseSucceeded' && this.isStripePurchase(event)) {
+    if (!this.stripePurchaseSyncDisabled && event.type === 'purchaseSucceeded' && this.isStripePurchase(event)) {
       void this.syncRevenueCatAfterStripePurchase();
     }
   }
@@ -278,6 +282,13 @@ export class RevenueCatHeliumHandler {
     return false;
   }
 
+  /**
+   * After a Stripe purchase completes, the RevenueCat SDK on-device has no way to
+   * know that a new entitlement exists until its backend processes the Stripe webhook.
+   * Without this, RevenueCat customer info would remain stale until the next app launch
+   * or natural refresh. This method polls RevenueCat with progressive backoff to force
+   * a customer info refresh, stopping early if the update listener fires (~50s max).
+   */
   private async syncRevenueCatAfterStripePurchase(): Promise<void> {
     let synced = false;
 
