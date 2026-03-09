@@ -6,7 +6,7 @@ Expo module SDK for Helium paywalls. Bridges native iOS (Swift) and Android (Kot
 
 ## Key principles
 
-- **Never crash.** This SDK is distributed to apps with millions of users. Prefer defensive error handling (try/catch) over letting exceptions propagate. A swallowed error is always better than a crash.
+- **Never crash the host app.** This SDK is distributed to apps with millions of users. Wrap bridge boundaries and event handlers in try/catch to prevent SDK errors from propagating. For critical flows consider surfacing failures to callers rather than silently swallowing them.
 - **Avoid using "fallback" in code and comments** unless referring to the Helium fallback paywall flow. This term has a specific meaning in this SDK.
 
 ## Key architecture rule
@@ -22,7 +22,7 @@ Relevant files for bridge changes:
 
 ## Packages
 
-- `packages/stripe/` — Helium Stripe integration (iOS-only native module, guards on `Platform.OS`)
+- `packages/stripe/` — Helium Stripe integration
 - `packages/revenuecat/` — RevenueCat integration
 
 ## Commands
