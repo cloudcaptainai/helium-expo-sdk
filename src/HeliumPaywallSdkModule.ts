@@ -32,6 +32,7 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
     triggerName: string,
     customPaywallTraits?: Record<string, any>,
     dontShowIfAlreadyEntitled?: boolean,
+    androidDisableSystemBackNavigation?: boolean,
   ): void;
 
   hideUpsell(): void;
