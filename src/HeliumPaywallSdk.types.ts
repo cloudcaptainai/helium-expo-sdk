@@ -211,6 +211,8 @@ export type PresentUpsellParams = {
    * This is uncommon, but best practice to handle it just in case.
    * See https://docs.tryhelium.com/guides/fallback-bundle */
   onPaywallUnavailable?: () => void;
+  /** Optional. Android only. If true, disables the system back button/gesture while the paywall is displayed. Defaults to false. */
+  androidDisableSystemBackNavigation?: boolean;
 };
 
 export interface PaywallInfo {

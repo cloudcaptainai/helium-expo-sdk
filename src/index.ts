@@ -239,12 +239,13 @@ export const presentUpsell = ({
                                 dontShowIfAlreadyEntitled,
                                 onEntitled,
                                 onPaywallUnavailable,
+                                androidDisableSystemBackNavigation,
                               }: PresentUpsellParams) => {
   try {
     paywallEventHandlers = eventHandlers;
     presentOnPaywallUnavailable = onPaywallUnavailable;
     presentOnEntitled = onEntitled;
-    HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits), dontShowIfAlreadyEntitled);
+    HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits), dontShowIfAlreadyEntitled, androidDisableSystemBackNavigation);
   } catch (error) {
     console.log('[Helium] presentUpsell error', error);
     paywallEventHandlers = undefined;

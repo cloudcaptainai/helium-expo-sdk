@@ -315,7 +315,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Present a paywall with the given trigger
-    Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any?>?, dontShowIfAlreadyEntitled: Boolean? ->
+    Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any?>?, dontShowIfAlreadyEntitled: Boolean?, disableSystemBackNavigation: Boolean? ->
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
 
       // Convert custom paywall traits
@@ -338,7 +338,8 @@ class HeliumPaywallSdkModule : Module() {
         config = PaywallPresentationConfig(
           fromActivityContext = activity,
           customPaywallTraits = convertedTraits,
-          dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false
+          dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false,
+          disableSystemBackNavigation = disableSystemBackNavigation ?: false
         ),
         onEntitled = {
           NativeModuleManager.safeSendEvent(

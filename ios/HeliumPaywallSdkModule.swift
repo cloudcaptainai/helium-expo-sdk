@@ -227,7 +227,7 @@ public class HeliumPaywallSdkModule: Module {
       continuation.resume(returning: success)
     }
 
-    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?) in
+    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?, _disableSystemBackNavigation: Bool?) in
         NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
         Helium.shared.presentPaywall(
             trigger: trigger,
