@@ -15,6 +15,7 @@ Expo module SDK for Helium paywalls. Bridges native iOS (Swift) and Android (Kot
 
 Relevant files for bridge changes:
 - `src/index.ts` — JS bridge calls
+- `src/HeliumPaywallSdkModule.ts` — TypeScript declaration of native module interface
 - `src/HeliumPaywallSdk.types.ts` — TypeScript types
 - `ios/HeliumPaywallSdkModule.swift` — iOS native module
 - `android/src/main/java/expo/modules/paywallsdk/HeliumPaywallSdkModule.kt` — Android native module

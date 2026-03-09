@@ -237,9 +237,9 @@ export const presentUpsell = ({
                                 eventHandlers,
                                 customPaywallTraits,
                                 dontShowIfAlreadyEntitled,
+                                androidDisableSystemBackNavigation,
                                 onEntitled,
                                 onPaywallUnavailable,
-                                androidDisableSystemBackNavigation,
                               }: PresentUpsellParams) => {
   try {
     paywallEventHandlers = eventHandlers;

@@ -202,6 +202,8 @@ export type PresentUpsellParams = {
   customPaywallTraits?: Record<string, any>;
   /** Optional. If true, the paywall will not be shown if the user already has an entitlement for a product in the paywall. */
   dontShowIfAlreadyEntitled?: boolean;
+  /** Optional. Android only. If true, disables the system back button/gesture while the paywall is displayed. Defaults to false. */
+  androidDisableSystemBackNavigation?: boolean;
   /** Optional. Called upon purchase success or purchase restore.
    * If you set `dontShowIfAlreadyEntitled` to true, this handler will also be called when paywall not shown
    * to users who already have entitlement for a product in the paywall.
@@ -211,8 +213,6 @@ export type PresentUpsellParams = {
    * This is uncommon, but best practice to handle it just in case.
    * See https://docs.tryhelium.com/guides/fallback-bundle */
   onPaywallUnavailable?: () => void;
-  /** Optional. Android only. If true, disables the system back button/gesture while the paywall is displayed. Defaults to false. */
-  androidDisableSystemBackNavigation?: boolean;
 };
 
 export interface PaywallInfo {
