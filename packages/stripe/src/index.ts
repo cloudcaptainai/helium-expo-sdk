@@ -20,15 +20,19 @@ export async function initializeWithStripe(config: StripeHeliumConfig): Promise<
 
     await _setupCore(config);
 
-    HeliumStripeSdkModule.initializeStripe({
-        apiKey: config.apiKey,
-        stripePublishableKey: config.stripePublishableKey,
-        merchantIdentifier: config.merchantIdentifier,
-        merchantName: config.merchantName,
-        managementURL: config.managementURL,
-        countryCode: config.countryCode ?? 'US',
-        currencyCode: config.currencyCode ?? 'USD',
-    });
+    try {
+        HeliumStripeSdkModule.initializeStripe({
+            apiKey: config.apiKey,
+            stripePublishableKey: config.stripePublishableKey,
+            merchantIdentifier: config.merchantIdentifier,
+            merchantName: config.merchantName,
+            managementURL: config.managementURL,
+            countryCode: config.countryCode ?? 'US',
+            currencyCode: config.currencyCode ?? 'USD',
+        });
+    } catch (error) {
+        console.warn('[HeliumStripe] Failed to initialize Stripe One Tap.', error);
+    }
 }
 
 export function setUserIdAndSyncStripeIfNeeded(userId: string): void {
