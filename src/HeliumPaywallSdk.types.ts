@@ -179,6 +179,8 @@ export interface HeliumConfig {
   customAPIEndpoint?: string;
   customUserTraits?: Record<string, any>;
   revenueCatAppUserId?: string;
+  /** Android only. Product IDs that should be treated as consumables. Ignored on iOS. */
+  consumableIds?: string[];
 }
 
 export interface NativeHeliumConfig {
@@ -194,6 +196,7 @@ export interface NativeHeliumConfig {
   environment?: string;
   wrapperSdkVersion?: string;
   delegateType?: string;
+  consumableIds?: string[];
 }
 
 export type PresentUpsellParams = {

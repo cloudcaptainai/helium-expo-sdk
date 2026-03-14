@@ -250,6 +250,9 @@ class HeliumPaywallSdkModule : Module() {
         revenueCatAppUserId?.let { Helium.identity.revenueCatAppUserId = it }
 
         Helium.config.heliumPaywallDelegate = delegate
+        @Suppress("UNCHECKED_CAST")
+        val consumableIds = (config["consumableIds"] as? List<String>)?.toSet()
+        consumableIds?.let { Helium.config.consumableIds = it }
         customAPIEndpoint?.let { Helium.config.customApiEndpoint = it }
 
         // Pass fallback JSON to native SDK
