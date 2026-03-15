@@ -467,6 +467,10 @@ public class HeliumPaywallSdkModule: Module {
       if let fallbackBundleURL {
         Helium.config.customFallbacksURL = fallbackBundleURL
       }
+      if config["androidConsumableProductIds"] != nil {
+        print("[Helium] androidConsumableProductIds is only used on Android and will be ignored on iOS.")
+      }
+
       if let customAPIEndpoint = config["customAPIEndpoint"] as? String {
         Helium.config.customAPIEndpoint = customAPIEndpoint
       }

@@ -179,6 +179,13 @@ export interface HeliumConfig {
   customAPIEndpoint?: string;
   customUserTraits?: Record<string, any>;
   revenueCatAppUserId?: string;
+  /**
+   * Set consumable product IDs for Android.
+   * These IDs will be used to identify consumable products in the Play Store
+   * and this is only respected if no custom purchaseConfig is supplied.
+   * This is only relevant on Android and is a no-op on other platforms.
+   */
+  androidConsumableProductIds?: string[];
 }
 
 export interface NativeHeliumConfig {
@@ -194,6 +201,7 @@ export interface NativeHeliumConfig {
   environment?: string;
   wrapperSdkVersion?: string;
   delegateType?: string;
+  androidConsumableProductIds?: string[];
 }
 
 export type PresentUpsellParams = {
