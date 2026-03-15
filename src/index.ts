@@ -195,7 +195,7 @@ const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConf
     environment: config.environment,
     wrapperSdkVersion: SDK_VERSION,
     delegateType: config.purchaseConfig?._delegateType,
-    consumableIds: config.consumableIds,
+    androidConsumableProductIds: config.androidConsumableProductIds,
   };
 };
 
