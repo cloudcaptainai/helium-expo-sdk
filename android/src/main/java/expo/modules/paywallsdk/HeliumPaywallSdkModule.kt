@@ -23,6 +23,7 @@ import com.tryhelium.paywall.core.HeliumWrapperSdkConfig
 import com.tryhelium.paywall.core.PaywallPresentationConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
+import com.tryhelium.paywall.core.logger.HeliumLogLevel
 import com.tryhelium.paywall.core.logger.HeliumLogger
 import com.android.billingclient.api.ProductDetails
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -688,6 +689,7 @@ class DefaultPaywallDelegate(
  */
 class BridgingLogger : HeliumLogger {
   override val logTag: String = "Helium"
+  override var logLevel: HeliumLogLevel = HeliumLogLevel.ERROR
 
   // Also log to stdout so logcat still works
   private val stdoutLogger = HeliumLogger.Stdout

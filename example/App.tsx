@@ -1,10 +1,12 @@
 
 import {HeliumPaywallEvent, initialize, presentUpsell} from 'expo-helium';
-import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import {useEffect} from "react";
+import { Button, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
 import {createCustomPurchaseConfig} from "expo-helium";
 
 export default function App() {
+  const isDark = useColorScheme() === 'dark';
+
   const asyncHeliumInit = async () => {
     await initialize({
       apiKey: 'api-key-here',
@@ -19,9 +21,9 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.container}>
-        <Text style={styles.header}>Helium Example</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
+      <ScrollView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
+        <Text style={[styles.header, { color: isDark ? '#fff' : '#000' }]}>Helium Example</Text>
         <Group name="Paywall actions">
           <Button
             title="Show paywall!"
@@ -56,9 +58,10 @@ export default function App() {
 }
 
 function Group(props: { name: string; children: React.ReactNode }) {
+  const isDark = useColorScheme() === 'dark';
   return (
-    <View style={styles.group}>
-      <Text style={styles.groupHeader}>{props.name}</Text>
+    <View style={[styles.group, { backgroundColor: isDark ? '#222' : '#fff' }]}>
+      <Text style={[styles.groupHeader, { color: isDark ? '#fff' : '#000' }]}>{props.name}</Text>
       {props.children}
     </View>
   );
