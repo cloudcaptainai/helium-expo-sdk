@@ -254,7 +254,7 @@ class HeliumPaywallSdkModule : Module() {
         val consumableIds = (config["androidConsumableProductIds"] as? List<*>)
           ?.mapNotNull { it as? String }
           ?.map { it.trim() }
-+         ?.filter { it.isNotEmpty() }
+          ?.filter { it.isNotEmpty() }
           ?.toSet()
         consumableIds?.let { Helium.config.consumableIds = it }
         customAPIEndpoint?.let { Helium.config.customApiEndpoint = it }
