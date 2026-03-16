@@ -695,7 +695,7 @@ class DefaultPaywallDelegate(
  */
 class BridgingLogger : HeliumLogger {
   override val logTag: String = "Helium"
-  override var logLevel: HeliumLogLevel = HeliumLogLevel.ERROR
+  override var logLevel: HeliumLogLevel = HeliumLogLevel.VERBOSE
 
   // Also log to stdout so logcat still works
   private val stdoutLogger = HeliumLogger.Stdout
