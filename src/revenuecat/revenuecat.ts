@@ -75,11 +75,11 @@ export class RevenueCatHeliumHandler {
     try {
       rcProduct = await this.getProduct(productId);
     } catch {
-      return {status: 'failed', error: `[RC] Failed to retrieve product: ${productId}`};
+      return {status: 'failed', error: `[RevenueCat] Failed to retrieve product: ${productId}`};
     }
 
     if (!rcProduct) {
-      return {status: 'failed', error: `[RC] Product not found: ${productId}`};
+      return {status: 'failed', error: `[RevenueCat] iOS product not found: ${productId}`};
     }
 
     try {
@@ -137,11 +137,11 @@ export class RevenueCatHeliumHandler {
           rcProduct = products[0];
         }
       }
-      if (!rcProduct) {
-        return {status: 'failed', error: `[RC] Android product not found: ${productId}`};
-      }
     } catch {
-      return {status: 'failed', error: `[RC] Failed to retrieve Android product: ${productId}`};
+      return {status: 'failed', error: `[RevenueCat] Failed to retrieve Android product: ${productId}`};
+    }
+    if (!rcProduct) {
+      return {status: 'failed', error: `[RevenueCat] Android product not found: ${productId}`};
     }
 
     try {
@@ -224,8 +224,8 @@ export class RevenueCatHeliumHandler {
     const errorDesc = purchasesError?.message || 'purchase failed.';
     const underlying = purchasesError?.underlyingErrorMessage;
     const errorMsg = underlying
-      ? `[RC] ${errorDesc} code: ${purchasesError?.code} | ${underlying}`
-      : `[RC] ${errorDesc} code: ${purchasesError?.code}`;
+      ? `[RevenueCat] ${errorDesc} code: ${purchasesError?.code} | ${underlying}`
+      : `[RevenueCat] ${errorDesc} code: ${purchasesError?.code}`;
     return {status: 'failed', error: errorMsg};
   }
 
