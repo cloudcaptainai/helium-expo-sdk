@@ -2,7 +2,6 @@ import type {
   CustomerInfo,
   PurchasesEntitlementInfo,
   PurchasesError,
-  PurchasesPackage,
   SubscriptionOption
 } from 'react-native-purchases';
 import Purchases, {PRODUCT_CATEGORY, PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
@@ -10,7 +9,6 @@ import {Platform} from 'react-native';
 import {HeliumPaywallEvent, HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
-// Rename the factory function
 export function createRevenueCatPurchaseConfig(config?: {
   apiKey?: string;
   apiKeyIOS?: string;
@@ -29,13 +27,8 @@ export function createRevenueCatPurchaseConfig(config?: {
 }
 
 export class RevenueCatHeliumHandler {
-  private productIdToPackageMapping: Record<string, PurchasesPackage> = {};
-  private isMappingInitialized: boolean = false;
-  private initializationPromise: Promise<void> | null = null;
   private stripePurchaseSyncDisabled: boolean = false;
   private isSyncingStripePurchase: boolean = false;
-
-  private rcProductToPackageMapping: Record<string, PurchasesStoreProduct> = {};
 
   constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string; disableStripePurchaseSync?: boolean }) {
     // Determine which API key to use based on platform
@@ -52,79 +45,45 @@ export class RevenueCatHeliumHandler {
       Purchases.configure({apiKey: effectiveApiKey});
     }
     this.stripePurchaseSyncDisabled = config?.disableStripePurchaseSync ?? false;
-    void this.initializePackageMapping();
+    // Keep this value as up-to-date as possible
+    void this.syncRevenueCatAppUserId();
   }
 
-  private async initializePackageMapping(): Promise<void> {
-    if (this.initializationPromise) {
-      return this.initializationPromise;
-    }
-    this.initializationPromise = (async () => {
-      try {
-        // Keep this value as up-to-date as possible
-        setRevenueCatAppUserId(await Purchases.getAppUserID());
-
-        const offerings = await Purchases.getOfferings();
-        const allOfferings = offerings.all;
-        for (const offering of Object.values(allOfferings)) {
-          offering.availablePackages.forEach((pkg: PurchasesPackage) => {
-            if (pkg.product?.identifier) {
-              this.productIdToPackageMapping[pkg.product.identifier] = pkg;
-            }
-          });
-        }
-        this.isMappingInitialized = true;
-      } catch (error) {
-        this.isMappingInitialized = false;
-      } finally {
-        this.initializationPromise = null;
-      }
-    })();
-    return this.initializationPromise;
-  }
-
-  private async ensureMappingInitialized(): Promise<void> {
-    if (!this.isMappingInitialized && !this.initializationPromise) {
-      await this.initializePackageMapping();
-    } else if (this.initializationPromise) {
-      await this.initializationPromise;
+  private async syncRevenueCatAppUserId(): Promise<void> {
+    try {
+      const id = await Purchases.getAppUserID();
+      setRevenueCatAppUserId(id);
+    } catch {
+      console.log('[Helium] Could not sync RevenueCat app user ID.');
     }
   }
 
   async makePurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
     // Keep this value as up-to-date as possible
-    setRevenueCatAppUserId(await Purchases.getAppUserID());
+    await this.syncRevenueCatAppUserId();
+    const result = await this.attemptPurchaseIOS(productId);
 
-    await this.ensureMappingInitialized();
-    const pkg: PurchasesPackage | undefined = this.productIdToPackageMapping[productId];
+    if (this.isRetryableResult(result)) {
+      await this.delay(1000);
+      return this.attemptPurchaseIOS(productId);
+    }
+    return result;
+  }
+
+  private async attemptPurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
     let rcProduct: PurchasesStoreProduct | undefined;
-    if (!pkg) {
-      // Use cached if available
-      rcProduct = this.rcProductToPackageMapping[productId];
-      if (!rcProduct) {
-        // Try to retrieve now
-        try {
-          const rcProducts = await Purchases.getProducts([productId]);
-          rcProduct = rcProducts.length > 0 ? rcProducts[0] : undefined;
-        } catch {
-          // 'failed' status will be returned
-        }
-        if (rcProduct) {
-          this.rcProductToPackageMapping[productId] = rcProduct;
-        }
-      }
+    try {
+      rcProduct = await this.getProduct(productId);
+    } catch {
+      return {status: 'failed', error: `[RC] Failed to retrieve product: ${productId}`};
+    }
+
+    if (!rcProduct) {
+      return {status: 'failed', error: `[RC] Product not found: ${productId}`};
     }
 
     try {
-      let purchaseResult;
-      if (pkg) {
-        purchaseResult = await Purchases.purchasePackage(pkg);
-      } else if (rcProduct) {
-        purchaseResult = await Purchases.purchaseStoreProduct(rcProduct);
-      } else {
-        return {status: 'failed', error: `RevenueCat Product/Package not found for ID: ${productId}`};
-      }
-
+      const purchaseResult = await Purchases.purchaseStoreProduct(rcProduct);
       const transactionId = purchaseResult.transaction?.transactionIdentifier;
       return this.evaluatePurchaseResult(purchaseResult.customerInfo, productId, transactionId);
     } catch (error) {
@@ -132,11 +91,19 @@ export class RevenueCatHeliumHandler {
     }
   }
 
-  // Android-specific purchase logic (completely separated from iOS)
   async makePurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
     // Keep this value as up-to-date as possible
-    setRevenueCatAppUserId(await Purchases.getAppUserID());
+    await this.syncRevenueCatAppUserId();
+    const result = await this.attemptPurchaseAndroid(productId, basePlanId, offerId);
 
+    if (this.isRetryableResult(result)) {
+      await this.delay(1000);
+      return this.attemptPurchaseAndroid(productId, basePlanId, offerId);
+    }
+    return result;
+  }
+
+  private async attemptPurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
     // Handle subscription with base plan or offer
     if (basePlanId || offerId) {
       const subscriptionOption = await this.findAndroidSubscriptionOption(
@@ -255,7 +222,11 @@ export class RevenueCatHeliumHandler {
     }
 
     const errorDesc = purchasesError?.message || 'purchase failed.';
-    return {status: 'failed', error: `[RC] ${errorDesc} code: ${purchasesError?.code}`};
+    const underlying = purchasesError?.underlyingErrorMessage;
+    const errorMsg = underlying
+      ? `[RC] ${errorDesc} code: ${purchasesError?.code} | ${underlying}`
+      : `[RC] ${errorDesc} code: ${purchasesError?.code}`;
+    return {status: 'failed', error: errorMsg};
   }
 
   async restorePurchases(): Promise<boolean> {
@@ -265,6 +236,15 @@ export class RevenueCatHeliumHandler {
     } catch (error) {
       return false;
     }
+  }
+
+  private async getProduct(productId: string): Promise<PurchasesStoreProduct | undefined> {
+    const products = await Purchases.getProducts([productId]);
+    return products.length > 0 ? products[0] : undefined;
+  }
+
+  private isRetryableResult(result: HeliumPurchaseResult): boolean {
+    return result.status === 'failed';
   }
 
   onHeliumEvent(event: HeliumPaywallEvent): void {
