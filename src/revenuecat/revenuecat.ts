@@ -34,6 +34,7 @@ export function createRevenueCatPurchaseConfig(config?: RevenueCatConfig): Heliu
 export class RevenueCatHeliumHandler {
   private stripePurchaseSyncDisabled: boolean = false;
   private isSyncingStripePurchase: boolean = false;
+  private setUpPromise: Promise<void>;
 
   constructor(config?: RevenueCatConfig) {
     this.stripePurchaseSyncDisabled = config?.disableStripePurchaseSync ?? false;
@@ -48,15 +49,19 @@ export class RevenueCatHeliumHandler {
       effectiveApiKey = config?.apiKey;
     }
 
-    void this.setUp(effectiveApiKey);
+    this.setUpPromise = this.setUp(effectiveApiKey);
   }
 
   private async setUp(apiKey?: string): Promise<void> {
     if (apiKey) {
-      if (await Purchases.isConfigured()) {
-        console.log('[Helium] RevenueCat is already configured, ignoring provided RevenueCat api key.');
-      } else {
-        Purchases.configure({apiKey: apiKey});
+      try {
+        if (await Purchases.isConfigured()) {
+          console.log('[Helium] RevenueCat is already configured, ignoring provided RevenueCat api key.');
+        } else {
+          Purchases.configure({apiKey: apiKey});
+        }
+      } catch {
+        console.log('[Helium] Failed to configure RevenueCat.');
       }
     }
     // Keep this value as up-to-date as possible
@@ -73,6 +78,7 @@ export class RevenueCatHeliumHandler {
   }
 
   async makePurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
+    await this.setUpPromise;
     // Keep this value as up-to-date as possible
     await this.syncRevenueCatAppUserId();
     const result = await this.attemptPurchaseIOS(productId);
@@ -106,6 +112,7 @@ export class RevenueCatHeliumHandler {
   }
 
   async makePurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
+    await this.setUpPromise;
     // Keep this value as up-to-date as possible
     await this.syncRevenueCatAppUserId();
     const result = await this.attemptPurchaseAndroid(productId, basePlanId, offerId);
