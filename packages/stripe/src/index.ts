@@ -12,7 +12,7 @@ export async function initializeWithStripe(config: StripeHeliumConfig): Promise<
     }
 
     const requiredFields = ['stripePublishableKey', 'merchantIdentifier', 'merchantName', 'managementURL'] as const;
-    const missingFields = requiredFields.filter((field) => !config[field]);
+    const missingFields = requiredFields.filter((field) => !config[field]?.trim());
     if (missingFields.length > 0) {
         console.warn(`[HeliumStripe] Missing required Stripe config fields: ${missingFields.join(', ')}. Using standard initialization.`);
         return initialize(config);
