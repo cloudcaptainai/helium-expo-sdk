@@ -1,1 +1,2 @@
-export { createRevenueCatPurchaseConfig } from "./revenuecat";
+export { createRevenueCatConfig } from "./revenuecat";
+export type { RevenueCatConfig } from "./revenuecat";

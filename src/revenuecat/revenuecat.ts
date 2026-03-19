@@ -9,13 +9,18 @@ import {Platform} from 'react-native';
 import {HeliumPaywallEvent, HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
-export function createRevenueCatPurchaseConfig(config?: {
+export interface RevenueCatConfig {
+  /** RevenueCat API key (cross-platform). Only needed if RevenueCat is not already configured externally (e.g. via Purchases.configure). */
   apiKey?: string;
+  /** iOS-specific RevenueCat API key. Takes precedence over `apiKey` on iOS. Only needed if RevenueCat is not already configured externally. */
   apiKeyIOS?: string;
+  /** Android-specific RevenueCat API key. Takes precedence over `apiKey` on Android. Only needed if RevenueCat is not already configured externally. */
   apiKeyAndroid?: string;
   /** Set to true to disable automatic RevenueCat entitlement syncing after Stripe purchases. */
   disableStripePurchaseSync?: boolean;
-}): HeliumPurchaseConfig {
+}
+
+export function createRevenueCatPurchaseConfig(config?: RevenueCatConfig): HeliumPurchaseConfig {
   const rcHandler = new RevenueCatHeliumHandler(config);
   return {
     makePurchaseIOS: rcHandler.makePurchaseIOS.bind(rcHandler),
@@ -30,7 +35,9 @@ export class RevenueCatHeliumHandler {
   private stripePurchaseSyncDisabled: boolean = false;
   private isSyncingStripePurchase: boolean = false;
 
-  constructor(config?: { apiKey?: string; apiKeyIOS?: string; apiKeyAndroid?: string; disableStripePurchaseSync?: boolean }) {
+  constructor(config?: RevenueCatConfig) {
+    this.stripePurchaseSyncDisabled = config?.disableStripePurchaseSync ?? false;
+
     // Determine which API key to use based on platform
     let effectiveApiKey: string | undefined;
     if (Platform.OS === 'ios' && config?.apiKeyIOS) {
@@ -41,12 +48,19 @@ export class RevenueCatHeliumHandler {
       effectiveApiKey = config?.apiKey;
     }
 
-    if (effectiveApiKey) {
-      Purchases.configure({apiKey: effectiveApiKey});
+    void this.setUp(effectiveApiKey);
+  }
+
+  private async setUp(apiKey?: string): Promise<void> {
+    if (apiKey) {
+      if (await Purchases.isConfigured()) {
+        console.log('[Helium] RevenueCat is already configured, ignoring provided RevenueCat api key.');
+      } else {
+        Purchases.configure({apiKey: apiKey});
+      }
     }
-    this.stripePurchaseSyncDisabled = config?.disableStripePurchaseSync ?? false;
     // Keep this value as up-to-date as possible
-    void this.syncRevenueCatAppUserId();
+    await this.syncRevenueCatAppUserId();
   }
 
   private async syncRevenueCatAppUserId(): Promise<void> {
