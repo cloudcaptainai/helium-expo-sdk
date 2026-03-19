@@ -257,6 +257,10 @@ export class RevenueCatHeliumHandler {
     return products.length > 0 ? products[0] : undefined;
   }
 
+  // Intentionally broad: retry ALL failures, not just known-transient ones.
+  // Most store errors (code 2, 10) are transient. The cost of one extra attempt
+  // (~1s delay) is low; the cost of not retrying a recoverable failure is a lost purchase.
+  // Restricting to specific RC error codes can miss new transient types.
   private isRetryableResult(result: HeliumPurchaseResult): boolean {
     return result.status === 'failed';
   }
