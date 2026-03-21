@@ -31,6 +31,16 @@ export function createRevenueCatPurchaseConfig(config?: RevenueCatConfig): Heliu
   };
 }
 
+// RC error codes worth retrying — transient failures that may resolve on a second attempt.
+const RETRYABLE_RC_CODES = new Set([
+  PURCHASES_ERROR_CODE.STORE_PROBLEM_ERROR,              // 2
+  PURCHASES_ERROR_CODE.NETWORK_ERROR,                    // 4
+  PURCHASES_ERROR_CODE.MISSING_RECEIPT_FILE_ERROR,       // 8
+  PURCHASES_ERROR_CODE.UNKNOWN_BACKEND_ERROR,            // 14
+]);
+
+type PurchaseAttemptResult = HeliumPurchaseResult & { shouldRetry?: boolean };
+
 export class RevenueCatHeliumHandler {
   private stripePurchaseSyncDisabled: boolean = false;
   private isSyncingStripePurchase: boolean = false;
@@ -90,16 +100,16 @@ export class RevenueCatHeliumHandler {
     return result;
   }
 
-  private async attemptPurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
+  private async attemptPurchaseIOS(productId: string): Promise<PurchaseAttemptResult> {
     let rcProduct: PurchasesStoreProduct | undefined;
     try {
       rcProduct = await this.getProduct(productId);
     } catch {
-      return {status: 'failed', error: `[RevenueCat] Failed to retrieve product: ${productId}`};
+      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] Failed to retrieve product: ${productId}`};
     }
 
     if (!rcProduct) {
-      return {status: 'failed', error: `[RevenueCat] iOS product not found: ${productId}`};
+      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] iOS product not found: ${productId}`};
     }
 
     try {
@@ -124,7 +134,7 @@ export class RevenueCatHeliumHandler {
     return result;
   }
 
-  private async attemptPurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
+  private async attemptPurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<PurchaseAttemptResult> {
     // Handle subscription with base plan or offer
     if (basePlanId || offerId) {
       const subscriptionOption = await this.findAndroidSubscriptionOption(
@@ -159,10 +169,10 @@ export class RevenueCatHeliumHandler {
         }
       }
     } catch {
-      return {status: 'failed', error: `[RevenueCat] Failed to retrieve Android product: ${productId}`};
+      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] Failed to retrieve Android product: ${productId}`};
     }
     if (!rcProduct) {
-      return {status: 'failed', error: `[RevenueCat] Android product not found: ${productId}`};
+      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] Android product not found: ${productId}`};
     }
 
     try {
@@ -231,7 +241,7 @@ export class RevenueCatHeliumHandler {
   }
 
   // Helper function to handle RevenueCat purchase errors
-  private handlePurchasesError(error: unknown): HeliumPurchaseResult {
+  private handlePurchasesError(error: unknown): PurchaseAttemptResult {
     const purchasesError = error as PurchasesError;
 
     if (purchasesError?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
@@ -247,7 +257,7 @@ export class RevenueCatHeliumHandler {
     const errorMsg = underlying
       ? `[RevenueCat] ${errorDesc} code: ${purchasesError?.code} | ${underlying}`
       : `[RevenueCat] ${errorDesc} code: ${purchasesError?.code}`;
-    return {status: 'failed', error: errorMsg};
+    return {status: 'failed', shouldRetry: RETRYABLE_RC_CODES.has(purchasesError?.code), error: errorMsg};
   }
 
   async restorePurchases(): Promise<boolean> {
@@ -264,12 +274,8 @@ export class RevenueCatHeliumHandler {
     return products.length > 0 ? products[0] : undefined;
   }
 
-  // Intentionally broad: retry ALL failures, not just known-transient ones.
-  // Most store errors (code 2, 10) are transient. The cost of one extra attempt
-  // (~1s delay) is low; the cost of not retrying a recoverable failure is a lost purchase.
-  // Restricting to specific RC error codes can miss new transient types.
-  private isRetryableResult(result: HeliumPurchaseResult): boolean {
-    return result.status === 'failed';
+  private isRetryableResult(result: PurchaseAttemptResult): boolean {
+    return result.status === 'failed' && !!result.shouldRetry;
   }
 
   onHeliumEvent(event: HeliumPaywallEvent): void {
