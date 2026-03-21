@@ -308,8 +308,12 @@ export class RevenueCatHeliumHandler {
     this.isSyncingStripePurchase = true;
 
     let synced = false;
+    let hasInvalidatedCache = false;
 
     const listener = (_info: CustomerInfo) => {
+      // Ignore emissions until we've invalidated the customer info cache,
+      // to ensure react to fresh updates triggered by our polling.
+      if (!hasInvalidatedCache) return;
       synced = true;
     };
     Purchases.addCustomerInfoUpdateListener(listener);
@@ -319,6 +323,7 @@ export class RevenueCatHeliumHandler {
         await this.delay(intervalMs);
         if (synced) break;
         try {
+          hasInvalidatedCache = true;
           await Purchases.invalidateCustomerInfoCache();
           await Purchases.getCustomerInfo();
         } catch {
