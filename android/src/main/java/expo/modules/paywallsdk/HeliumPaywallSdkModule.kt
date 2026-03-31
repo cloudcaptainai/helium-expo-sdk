@@ -16,7 +16,7 @@ import com.tryhelium.paywall.core.event.HeliumEvent
 import com.tryhelium.paywall.core.event.HeliumEventDictionaryMapper
 import com.tryhelium.paywall.core.event.PaywallEventHandlers
 import com.tryhelium.paywall.core.HeliumUserTraits
-import com.tryhelium.paywall.core.HeliumUserTraitsArgument
+import com.tryhelium.paywall.core.HeliumUserTraits.Companion.create
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
 import com.tryhelium.paywall.core.HeliumWrapperSdkConfig
@@ -185,7 +185,7 @@ class HeliumPaywallSdkModule : Module() {
       val useDefaultDelegate = config["useDefaultDelegate"] as? Boolean ?: false
 
       @Suppress("UNCHECKED_CAST")
-      val customUserTraitsMap = config["customUserTraits"] as? Map<String, Any?>
+      val customUserTraitsMap = config["customUserTraits"] as? Map<String, Any>
       val customUserTraits = convertToHeliumUserTraits(customUserTraitsMap)
 
       // Extract fallback bundle fields from top-level config
@@ -193,7 +193,7 @@ class HeliumPaywallSdkModule : Module() {
       val fallbackBundleString = config["fallbackBundleString"] as? String
 
       @Suppress("UNCHECKED_CAST")
-      val paywallLoadingConfigMap = convertMarkersToBooleans(config["paywallLoadingConfig"] as? Map<String, Any?>)
+      val paywallLoadingConfigMap = convertMarkersToBooleans(config["paywallLoadingConfig"] as? Map<String, Any>)
       val useLoadingState = paywallLoadingConfigMap?.get("useLoadingState") as? Boolean ?: true
       val loadingBudgetSeconds = (paywallLoadingConfigMap?.get("loadingBudget") as? Number)?.toDouble()
       val loadingBudgetMs = loadingBudgetSeconds?.let { (it * 1000).toLong() } ?: DEFAULT_LOADING_BUDGET_MS
@@ -322,7 +322,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Present a paywall with the given trigger
-    Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any?>?, dontShowIfAlreadyEntitled: Boolean?, disableSystemBackNavigation: Boolean? ->
+    Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any>?, dontShowIfAlreadyEntitled: Boolean?, disableSystemBackNavigation: Boolean? ->
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
 
       // Convert custom paywall traits
@@ -515,7 +515,7 @@ class HeliumPaywallSdkModule : Module() {
           HeliumLightDarkMode.SYSTEM
         }
       }
-      Helium.shared.setLightDarkModeOverride(heliumMode)
+      Helium.config.lightDarkModeOverride = heliumMode
     }
 
     // Enables the module to be used as a native view
@@ -539,56 +539,31 @@ class HeliumPaywallSdkModule : Module() {
    * - "__helium_rn_bool_false__" -> false
    * - All other values remain unchanged
    */
-  private fun convertMarkersToBooleans(input: Map<String, Any?>?): Map<String, Any?>? {
+  private fun convertMarkersToBooleans(input: Map<String, Any>?): Map<String, Any>? {
     if (input == null) return null
     return input.mapValues { (_, value) ->
       convertValueMarkersToBooleans(value)
     }
   }
 
-  private fun convertValueMarkersToBooleans(value: Any?): Any? {
+  private fun convertValueMarkersToBooleans(value: Any): Any {
     return when (value) {
       "__helium_rn_bool_true__" -> true
       "__helium_rn_bool_false__" -> false
       is String -> value
       is Map<*, *> -> {
         @Suppress("UNCHECKED_CAST")
-        convertMarkersToBooleans(value as? Map<String, Any?>)
+        convertMarkersToBooleans(value as? Map<String, Any>) ?: emptyMap<String, Any>()
       }
-      is List<*> -> value.map { convertValueMarkersToBooleans(it) }
+      is List<*> -> value.filterNotNull().map { convertValueMarkersToBooleans(it) }
       else -> value
     }
   }
 
-  private fun convertToHeliumUserTraits(input: Map<String, Any?>?): HeliumUserTraits? {
+  private fun convertToHeliumUserTraits(input: Map<String, Any>?): HeliumUserTraits? {
     if (input == null) return null
     val convertedInput = convertMarkersToBooleans(input) ?: return null
-    val traits = convertedInput.mapValues { (_, value) ->
-      convertToHeliumUserTraitsArgument(value)
-    }.filterValues { it != null }.mapValues { it.value!! }
-    return HeliumUserTraits(traits)
-  }
-
-  private fun convertToHeliumUserTraitsArgument(value: Any?): HeliumUserTraitsArgument? {
-    return when (value) {
-      is String -> HeliumUserTraitsArgument.StringParam(value)
-      is Int -> HeliumUserTraitsArgument.IntParam(value)
-      is Long -> HeliumUserTraitsArgument.LongParam(value)
-      is Double -> HeliumUserTraitsArgument.DoubleParam(value)
-      is Boolean -> HeliumUserTraitsArgument.BooleanParam(value)
-      is List<*> -> {
-        val items = value.mapNotNull { convertToHeliumUserTraitsArgument(it) }
-        HeliumUserTraitsArgument.Array(items)
-      }
-      is Map<*, *> -> {
-        @Suppress("UNCHECKED_CAST")
-        val properties = (value as? Map<String, Any?>)?.mapValues { (_, v) ->
-          convertToHeliumUserTraitsArgument(v)
-        }?.filterValues { it != null }?.mapValues { it.value!! } ?: emptyMap()
-        HeliumUserTraitsArgument.Complex(properties)
-      }
-      else -> null
-    }
+    return convertedInput.create()
   }
 
 }
