@@ -229,10 +229,14 @@ public class HeliumPaywallSdkModule: Module {
 
     Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?, _disableSystemBackNavigation: Bool?) in
         NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
+        var paywallTraits: HeliumUserTraits? = nil
+        if let paywallTraitsMap = convertMarkersToBooleans(customPaywallTraits) {
+            paywallTraits = HeliumUserTraits(paywallTraitsMap)
+        }
         Helium.shared.presentPaywall(
             trigger: trigger,
             config: PaywallPresentationConfig(
-                customPaywallTraits: convertMarkersToBooleans(customPaywallTraits),
+                customPaywallTraits: paywallTraits,
                 dontShowIfAlreadyEntitled: dontShowIfAlreadyEntitled ?? false
             ),
             eventHandlers: PaywallEventHandlers.withHandlers(
