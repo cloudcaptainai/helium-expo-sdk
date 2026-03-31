@@ -517,6 +517,8 @@ function convertBooleansToMarkers(input: Record<string, any> | undefined): Recor
 
   const result: Record<string, any> = {};
   for (const [key, value] of Object.entries(input)) {
+    // Strip null/undefined values — native SDKs ignore them and it complicates bridging code
+    if (value == null) continue;
     result[key] = convertValueBooleansToMarkers(value);
   }
   return result;
