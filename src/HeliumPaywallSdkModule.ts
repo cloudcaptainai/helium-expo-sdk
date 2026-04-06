@@ -65,6 +65,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   setCustomUserId(newUserId: string): void;
 
+  setThirdPartyAnalyticsAnonymousId(anonymousId: string | null): void;
+
   hasEntitlementForPaywall(trigger: string): Promise<HasEntitlementResult>;
 
   hasAnyActiveSubscription(): Promise<boolean>;

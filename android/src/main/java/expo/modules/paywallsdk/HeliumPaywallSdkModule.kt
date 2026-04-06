@@ -420,6 +420,10 @@ class HeliumPaywallSdkModule : Module() {
       Helium.identity.userId = newUserId
     }
 
+    Function("setThirdPartyAnalyticsAnonymousId") { anonymousId: String? ->
+      Helium.identity.thirdPartyAnalyticsAnonymousId = anonymousId
+    }
+
     // Check if user has entitlement for a specific paywall
     AsyncFunction("hasEntitlementForPaywall") Coroutine { trigger: String ->
       val result = Helium.entitlements.hasEntitlementForPaywall(trigger)

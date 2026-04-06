@@ -383,6 +383,12 @@ export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUse
 export const setCustomUserId = HeliumPaywallSdkModule.setCustomUserId;
 
 /**
+ * Set or clear a third-party analytics anonymous ID for the current user. Pass null to clear.
+ */
+export const setThirdPartyAnalyticsAnonymousId =
+  HeliumPaywallSdkModule.setThirdPartyAnalyticsAnonymousId;
+
+/**
  * Checks if the user has an active entitlement for any product attached to the paywall that will show for provided trigger.
  * @param trigger The trigger name to check entitlement for
  * @returns Promise resolving to true if entitled, false if not, or undefined if not known (i.e. the paywall is not downloaded yet)
