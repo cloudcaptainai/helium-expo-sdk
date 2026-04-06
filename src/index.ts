@@ -393,8 +393,13 @@ export const setCustomUserId = HeliumPaywallSdkModule.setCustomUserId;
  *
  * Set this before calling `initialize()` for best results. Can also be updated after initialization.
  */
-export const setThirdPartyAnalyticsAnonymousId =
-  HeliumPaywallSdkModule.setThirdPartyAnalyticsAnonymousId;
+export const setThirdPartyAnalyticsAnonymousId = (anonymousId: string | null): void => {
+  try {
+    HeliumPaywallSdkModule.setThirdPartyAnalyticsAnonymousId(anonymousId);
+  } catch (e) {
+    console.error('[Helium] Failed to set third-party analytics anonymous ID', e);
+  }
+};
 
 /**
  * Checks if the user has an active entitlement for any product attached to the paywall that will show for provided trigger.
