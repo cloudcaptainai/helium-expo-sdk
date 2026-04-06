@@ -383,7 +383,15 @@ export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUse
 export const setCustomUserId = HeliumPaywallSdkModule.setCustomUserId;
 
 /**
- * Set or clear a third-party analytics anonymous ID for the current user. Pass null to clear.
+ * An optional anonymous ID from your third-party analytics provider, sent alongside
+ * every Helium analytics event so you can correlate Helium data with your own analytics
+ * before you have set a custom user ID. Pass `null` to clear.
+ *
+ * - Amplitude: pass device ID
+ * - Mixpanel: pass anonymous ID
+ * - PostHog: pass anonymous ID
+ *
+ * Set this before calling `initialize()` for best results. Can also be updated after initialization.
  */
 export const setThirdPartyAnalyticsAnonymousId =
   HeliumPaywallSdkModule.setThirdPartyAnalyticsAnonymousId;
