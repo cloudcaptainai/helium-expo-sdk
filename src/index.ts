@@ -383,6 +383,25 @@ export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUse
 export const setCustomUserId = HeliumPaywallSdkModule.setCustomUserId;
 
 /**
+ * An optional anonymous ID from your third-party analytics provider, sent alongside
+ * every Helium analytics event so you can correlate Helium data with your own analytics
+ * before you have set a custom user ID. Pass `null` to clear.
+ *
+ * - Amplitude: pass device ID
+ * - Mixpanel: pass anonymous ID
+ * - PostHog: pass anonymous ID
+ *
+ * Set this before calling `initialize()` for best results. Can also be updated after initialization.
+ */
+export const setThirdPartyAnalyticsAnonymousId = (anonymousId: string | null): void => {
+  try {
+    HeliumPaywallSdkModule.setThirdPartyAnalyticsAnonymousId(anonymousId);
+  } catch (e) {
+    console.error('[Helium] Failed to set third-party analytics anonymous ID', e);
+  }
+};
+
+/**
  * Checks if the user has an active entitlement for any product attached to the paywall that will show for provided trigger.
  * @param trigger The trigger name to check entitlement for
  * @returns Promise resolving to true if entitled, false if not, or undefined if not known (i.e. the paywall is not downloaded yet)

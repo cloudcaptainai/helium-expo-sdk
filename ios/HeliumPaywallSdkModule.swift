@@ -296,6 +296,10 @@ public class HeliumPaywallSdkModule: Module {
         Helium.identify.userId = newUserId
     }
 
+    Function("setThirdPartyAnalyticsAnonymousId") { (anonymousId: String?) in
+        Helium.identify.thirdPartyAnalyticsAnonymousId = anonymousId
+    }
+
     AsyncFunction("hasEntitlementForPaywall") { (trigger: String) in
       let hasEntitlement = await Helium.entitlements.hasEntitlementForPaywall(trigger: trigger)
       return HasEntitlementResult(hasEntitlement: hasEntitlement)
