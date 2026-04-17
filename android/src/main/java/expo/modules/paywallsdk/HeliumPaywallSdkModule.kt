@@ -30,8 +30,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.ref.WeakReference
 import java.net.URL
 import kotlin.coroutines.resume
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.isAccessible
 
 // Record data classes for type-safe return values
 class PaywallInfoResult : Record {
@@ -76,6 +74,12 @@ private object NativeModuleManager {
 
   fun clearRestore() {
     restoreContinuation = null
+  }
+
+  fun clearPendingEvents() {
+    synchronized(pendingEvents) {
+      pendingEvents.clear()
+    }
   }
 
   // Queue an event for later delivery when module becomes available
@@ -175,10 +179,15 @@ class HeliumPaywallSdkModule : Module() {
 
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
+      val apiKey = config["apiKey"] as? String
+      if (apiKey.isNullOrEmpty()) {
+        android.util.Log.e("HeliumPaywallSdk", "initialize called with missing/empty apiKey; aborting.")
+        return@Function
+      }
+
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
       NativeModuleManager.flushEvents(this@HeliumPaywallSdkModule)
 
-      val apiKey = config["apiKey"] as? String ?: ""
       val customUserId = config["customUserId"] as? String
       val customAPIEndpoint = config["customAPIEndpoint"] as? String
       val revenueCatAppUserId = config["revenueCatAppUserId"] as? String
@@ -201,7 +210,7 @@ class HeliumPaywallSdkModule : Module() {
         // Setting <= 0 will disable loading state
         Helium.config.defaultLoadingBudgetInMs = -1
       } else {
-        Helium.config.defaultLoadingBudgetInMs = loadingBudgetMs ?: DEFAULT_LOADING_BUDGET_MS
+        Helium.config.defaultLoadingBudgetInMs = loadingBudgetMs
       }
 
       // Parse environment parameter, defaulting to PRODUCTION
@@ -324,6 +333,7 @@ class HeliumPaywallSdkModule : Module() {
     // Present a paywall with the given trigger
     Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any>?, dontShowIfAlreadyEntitled: Boolean?, disableSystemBackNavigation: Boolean? ->
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
+      NativeModuleManager.flushEvents(this@HeliumPaywallSdkModule)
 
       // Convert custom paywall traits
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
@@ -488,6 +498,7 @@ class HeliumPaywallSdkModule : Module() {
     AsyncFunction("resetHelium") Coroutine { clearUserTraits: Boolean, clearHeliumEventListeners: Boolean, clearExperimentAllocations: Boolean ->
       // Reset logger so initialize() can set up a fresh BridgingLogger
       Helium.config.logger = HeliumLogger.Stdout
+      NativeModuleManager.clearPendingEvents()
       try {
         suspendCancellableCoroutine<Unit> { continuation ->
           Helium.resetHelium(

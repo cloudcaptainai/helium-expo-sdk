@@ -301,4 +301,4 @@ export interface ResetHeliumOptions {
 export const HELIUM_CTA_NAMES = {
   SCHEDULE_CALL: 'schedule_call',
   SUBSCRIBE_BUTTON: 'subscribe_button',
-}
+} as const;
