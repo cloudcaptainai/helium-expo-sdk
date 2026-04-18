@@ -43,9 +43,12 @@ private class NativeModuleManager {
     // Always keep reference to the current module
     var currentModule: HeliumPaywallSdkModule?
 
-    // Store active operations
-    var activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
-    var activeRestoreContinuation: CheckedContinuation<Bool, Never>?
+    // Guards the active purchase/restore continuations against cross-thread races between
+    // the Expo module thread (handlePurchaseResult) and the Swift-concurrency executor
+    // (makePurchase). Without it, both sides can double-resume and CheckedContinuation traps.
+    private let continuationLock = NSLock()
+    private var _activePurchaseContinuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>?
+    private var _activeRestoreContinuation: CheckedContinuation<Bool, Never>?
 
     // Transaction result tracking for HeliumDelegateReturnsTransaction
     private var _latestTransactionResult: HeliumTransactionIdResult?
@@ -77,12 +80,36 @@ private class NativeModuleManager {
 
     private init() {}
 
-    func clearPurchase() {
-        activePurchaseContinuation = nil
+    func setPurchaseContinuation(_ continuation: CheckedContinuation<HeliumPaywallTransactionStatus, Never>) {
+        continuationLock.lock()
+        let orphan = _activePurchaseContinuation
+        _activePurchaseContinuation = continuation
+        continuationLock.unlock()
+        orphan?.resume(returning: .cancelled)
     }
 
-    func clearRestore() {
-        activeRestoreContinuation = nil
+    func takePurchaseContinuation() -> CheckedContinuation<HeliumPaywallTransactionStatus, Never>? {
+        continuationLock.lock()
+        defer { continuationLock.unlock() }
+        let continuation = _activePurchaseContinuation
+        _activePurchaseContinuation = nil
+        return continuation
+    }
+
+    func setRestoreContinuation(_ continuation: CheckedContinuation<Bool, Never>) {
+        continuationLock.lock()
+        let orphan = _activeRestoreContinuation
+        _activeRestoreContinuation = continuation
+        continuationLock.unlock()
+        orphan?.resume(returning: false)
+    }
+
+    func takeRestoreContinuation() -> CheckedContinuation<Bool, Never>? {
+        continuationLock.lock()
+        defer { continuationLock.unlock() }
+        let continuation = _activeRestoreContinuation
+        _activeRestoreContinuation = nil
+        return continuation
     }
 
     func clearPendingEvents() {
@@ -190,7 +217,7 @@ public class HeliumPaywallSdkModule: Module {
 
     // Function for JavaScript to provide purchase result
     Function("handlePurchaseResult") { (statusString: String, errorMsg: String?, transactionId: String?, originalTransactionId: String?, productId: String?) in
-      guard let continuation = NativeModuleManager.shared.activePurchaseContinuation else {
+      guard let continuation = NativeModuleManager.shared.takePurchaseContinuation() else {
         print("WARNING: handlePurchaseResult called with no active continuation")
         return
       }
@@ -217,22 +244,16 @@ public class HeliumPaywallSdkModule: Module {
       default:          status = .failed(PurchaseError.unknownStatus(status: lowercasedStatus))
       }
 
-      // Clear singleton state
-      NativeModuleManager.shared.clearPurchase()
-
       // Resume the continuation with the status
       continuation.resume(returning: status)
     }
 
     // Function for JavaScript to provide restore result
     Function("handleRestoreResult") { (success: Bool) in
-      guard let continuation = NativeModuleManager.shared.activeRestoreContinuation else {
+      guard let continuation = NativeModuleManager.shared.takeRestoreContinuation() else {
         print("WARNING: handleRestoreResult called with no active continuation")
         return
       }
-
-      // Clear singleton state
-      NativeModuleManager.shared.clearRestore()
 
       continuation.resume(returning: success)
     }
@@ -570,14 +591,8 @@ private class InternalDelegate: HeliumPaywallDelegate, HeliumDelegateReturnsTran
         // Clear previous transaction result
         NativeModuleManager.shared.latestTransactionResult = nil
 
-        // Clean up any orphaned continuation
-        if let existingContinuation = NativeModuleManager.shared.activePurchaseContinuation {
-            existingContinuation.resume(returning: .cancelled)
-            NativeModuleManager.shared.clearPurchase()
-        }
-
         return await withCheckedContinuation { continuation in
-            NativeModuleManager.shared.activePurchaseContinuation = continuation
+            NativeModuleManager.shared.setPurchaseContinuation(continuation)
 
             NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
                 "type": "purchase",
@@ -587,14 +602,8 @@ private class InternalDelegate: HeliumPaywallDelegate, HeliumDelegateReturnsTran
     }
 
     public func restorePurchases() async -> Bool {
-        // Clean up any orphaned continuation
-        if let existingContinuation = NativeModuleManager.shared.activeRestoreContinuation {
-            existingContinuation.resume(returning: false)
-            NativeModuleManager.shared.clearRestore()
-        }
-
         return await withCheckedContinuation { continuation in
-            NativeModuleManager.shared.activeRestoreContinuation = continuation
+            NativeModuleManager.shared.setRestoreContinuation(continuation)
 
             NativeModuleManager.shared.safeSendEvent(eventName: "onDelegateActionEvent", eventData: [
                 "type": "restore"

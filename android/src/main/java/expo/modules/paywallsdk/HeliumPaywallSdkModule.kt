@@ -53,12 +53,17 @@ private object NativeModuleManager {
   private const val MAX_QUEUED_EVENTS = 30
   private const val EVENT_EXPIRATION_MS = 30_000L
 
-  // Always keep reference to the current module
+  // Written on the RN module thread; read from background threads (Helium log listener,
+  // SDK coroutine dispatcher). @Volatile ensures cross-thread visibility of the reference.
+  @Volatile
   var currentModule: HeliumPaywallSdkModule? = null
 
-  // Store active operations
-  var purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
-  var restoreContinuation: ((Boolean) -> Unit)? = null
+  // Guards the active purchase/restore continuations against cross-thread races between
+  // the Expo module thread (handlePurchaseResult) and the Helium SDK coroutine dispatcher
+  // (makePurchase).
+  private val continuationLock = Any()
+  private var _purchaseContinuation: ((HeliumPaywallTransactionStatus) -> Unit)? = null
+  private var _restoreContinuation: ((Boolean) -> Unit)? = null
 
   // Event queue for when no module is available in the registry
   private data class PendingEvent(
@@ -68,12 +73,52 @@ private object NativeModuleManager {
   )
   private val pendingEvents = mutableListOf<PendingEvent>()
 
-  fun clearPurchase() {
-    purchaseContinuation = null
+  fun setPurchaseContinuation(continuation: (HeliumPaywallTransactionStatus) -> Unit) {
+    val orphan = synchronized(continuationLock) {
+      val existing = _purchaseContinuation
+      _purchaseContinuation = continuation
+      existing
+    }
+    orphan?.invoke(HeliumPaywallTransactionStatus.Cancelled)
   }
 
-  fun clearRestore() {
-    restoreContinuation = null
+  fun takePurchaseContinuation(): ((HeliumPaywallTransactionStatus) -> Unit)? = synchronized(continuationLock) {
+    val c = _purchaseContinuation
+    _purchaseContinuation = null
+    c
+  }
+
+  // Cancellation handler clears only its own continuation — a later setPurchaseContinuation
+  // could already have replaced the stored value, and we must not wipe that newer one.
+  fun clearPurchaseContinuationIf(expected: (HeliumPaywallTransactionStatus) -> Unit) {
+    synchronized(continuationLock) {
+      if (_purchaseContinuation === expected) {
+        _purchaseContinuation = null
+      }
+    }
+  }
+
+  fun setRestoreContinuation(continuation: (Boolean) -> Unit) {
+    val orphan = synchronized(continuationLock) {
+      val existing = _restoreContinuation
+      _restoreContinuation = continuation
+      existing
+    }
+    orphan?.invoke(false)
+  }
+
+  fun takeRestoreContinuation(): ((Boolean) -> Unit)? = synchronized(continuationLock) {
+    val c = _restoreContinuation
+    _restoreContinuation = null
+    c
+  }
+
+  fun clearRestoreContinuationIf(expected: (Boolean) -> Unit) {
+    synchronized(continuationLock) {
+      if (_restoreContinuation === expected) {
+        _restoreContinuation = null
+      }
+    }
   }
 
   fun clearPendingEvents() {
@@ -297,7 +342,11 @@ class HeliumPaywallSdkModule : Module() {
 
     // Function for JavaScript to provide purchase result
     Function("handlePurchaseResult") { statusString: String, errorMsg: String?, transactionId: String?, originalTransactionId: String?, productId: String? ->
-      val continuation = NativeModuleManager.purchaseContinuation ?: return@Function
+      val continuation = NativeModuleManager.takePurchaseContinuation()
+      if (continuation == null) {
+        android.util.Log.w("HeliumPaywallSdk", "handlePurchaseResult called with no active continuation")
+        return@Function
+      }
 
       // Parse status string
       val lowercasedStatus = statusString.lowercase()
@@ -314,19 +363,17 @@ class HeliumPaywallSdkModule : Module() {
         )
       }
 
-      // Clear the singleton state
-      NativeModuleManager.clearPurchase()
-
       // Resume the continuation with the status
       continuation(status)
     }
 
     // Function for JavaScript to provide restore result
     Function("handleRestoreResult") { success: Boolean ->
-      val continuation = NativeModuleManager.restoreContinuation ?: return@Function
-
-      // Clear the singleton state
-      NativeModuleManager.clearRestore()
+      val continuation = NativeModuleManager.takeRestoreContinuation()
+      if (continuation == null) {
+        android.util.Log.w("HeliumPaywallSdk", "handleRestoreResult called with no active continuation")
+        return@Function
+      }
       continuation(success)
     }
 
@@ -604,19 +651,13 @@ class CustomPaywallDelegate(
     offerId: String?
   ): HeliumPaywallTransactionStatus {
     return suspendCancellableCoroutine { continuation ->
-      // First check singleton for orphaned continuation and clean it up
-      NativeModuleManager.purchaseContinuation?.let { existingContinuation ->
-        existingContinuation(HeliumPaywallTransactionStatus.Cancelled)
-        NativeModuleManager.clearPurchase()
-      }
-
-      NativeModuleManager.purchaseContinuation = { status ->
+      val resumeCallback: (HeliumPaywallTransactionStatus) -> Unit = { status ->
         continuation.resume(status)
       }
+      NativeModuleManager.setPurchaseContinuation(resumeCallback)
 
-      // Clean up on cancellation to prevent memory leaks and crashes
       continuation.invokeOnCancellation {
-        NativeModuleManager.clearPurchase()
+        NativeModuleManager.clearPurchaseContinuationIf(resumeCallback)
       }
 
       // Send event to JavaScript with separate parameters
@@ -637,19 +678,13 @@ class CustomPaywallDelegate(
 
   override suspend fun restorePurchases(): Boolean {
     return suspendCancellableCoroutine { continuation ->
-      // Check singleton for orphaned continuation and clean it up
-      NativeModuleManager.restoreContinuation?.let { existingContinuation ->
-        existingContinuation(false)
-        NativeModuleManager.clearRestore()
-      }
-
-      NativeModuleManager.restoreContinuation = { success ->
+      val resumeCallback: (Boolean) -> Unit = { success ->
         continuation.resume(success)
       }
+      NativeModuleManager.setRestoreContinuation(resumeCallback)
 
-      // Clean up on cancellation to prevent memory leaks and crashes
       continuation.invokeOnCancellation {
-        NativeModuleManager.clearRestore()
+        NativeModuleManager.clearRestoreContinuationIf(resumeCallback)
       }
 
       // Send event to JavaScript
