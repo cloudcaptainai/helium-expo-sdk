@@ -46,12 +46,26 @@ function addEntitledEventListener(listener: () => void): EventSubscription {
 
 let isInitialized = false;
 
+const HELIUM_EVENT_NAMES = [
+  'onHeliumPaywallEvent',
+  'onDelegateActionEvent',
+  'paywallEventHandlers',
+  'onHeliumLogEvent',
+  'onEntitledEvent',
+] as const;
+
+const removeAllHeliumListeners = () => {
+  for (const name of HELIUM_EVENT_NAMES) {
+    try {
+      HeliumPaywallSdkModule.removeAllListeners(name);
+    } catch (e) {
+      console.warn(`[Helium] Failed to remove listeners for ${name}:`, e);
+    }
+  }
+};
+
 function setupEventListeners(config: HeliumConfig) {
-  HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
-  HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
-  HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
-  HeliumPaywallSdkModule.removeAllListeners('onHeliumLogEvent');
-  HeliumPaywallSdkModule.removeAllListeners('onEntitledEvent');
+  removeAllHeliumListeners();
 
   // Set up listener for paywall events
   addHeliumPaywallEventListener((event) => {
@@ -116,9 +130,10 @@ function setupEventListeners(config: HeliumConfig) {
         }
       } catch (error) {
         // Send failure result based on action type
+        const errorMsg = error instanceof Error ? error.message : String(error);
         if (event.type === 'purchase') {
           console.log('[Helium] Unexpected error: ', error);
-          HeliumPaywallSdkModule.handlePurchaseResult('failed');
+          HeliumPaywallSdkModule.handlePurchaseResult('failed', errorMsg);
         } else if (event.type === 'restore') {
           HeliumPaywallSdkModule.handleRestoreResult(false);
         }
@@ -207,25 +222,33 @@ export const _setupCore = async (config: HeliumConfig) => {
     return;
   }
   isInitialized = true;
-  setupEventListeners(config);
   try {
+    setupEventListeners(config);
     const nativeConfig = await buildNativeConfig(config);
     HeliumPaywallSdkModule.setupCore(nativeConfig);
   } catch (error) {
+    isInitialized = false;
+    removeAllHeliumListeners();
     console.error('[Helium] Setup failed:', error);
   }
 };
 
 export const initialize = async (config: HeliumConfig) => {
+  if (!config.apiKey) {
+    console.error('[Helium] initialize called without an apiKey; aborting.');
+    return;
+  }
   if (isInitialized) {
     return;
   }
   isInitialized = true;
-  setupEventListeners(config);
   try {
+    setupEventListeners(config);
     const nativeConfig = await buildNativeConfig(config);
     HeliumPaywallSdkModule.initialize(nativeConfig);
   } catch (error) {
+    isInitialized = false;
+    removeAllHeliumListeners();
     console.error('[Helium] Initialization failed:', error);
   }
 };
@@ -428,11 +451,7 @@ export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> =
   paywallEventHandlers = undefined;
   presentOnPaywallUnavailable = undefined;
   presentOnEntitled = undefined;
-  HeliumPaywallSdkModule.removeAllListeners('onHeliumPaywallEvent');
-  HeliumPaywallSdkModule.removeAllListeners('onDelegateActionEvent');
-  HeliumPaywallSdkModule.removeAllListeners('paywallEventHandlers');
-  HeliumPaywallSdkModule.removeAllListeners('onHeliumLogEvent');
-  HeliumPaywallSdkModule.removeAllListeners('onEntitledEvent');
+  removeAllHeliumListeners();
 
   try {
     await HeliumPaywallSdkModule.resetHelium(

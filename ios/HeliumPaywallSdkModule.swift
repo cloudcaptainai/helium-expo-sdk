@@ -10,7 +10,7 @@ enum PurchaseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .unknownStatus(status):
-            return "Purchased not successful due to unknown status - \(status)."
+            return "Purchase not successful due to unknown status - \(status)."
         case let .purchaseFailed(errorMsg):
             return errorMsg
         }
@@ -83,6 +83,12 @@ private class NativeModuleManager {
 
     func clearRestore() {
         activeRestoreContinuation = nil
+    }
+
+    func clearPendingEvents() {
+        eventLock.lock()
+        pendingEvents.removeAll()
+        eventLock.unlock()
     }
 
     // Queue an event for later delivery when module becomes available
@@ -170,8 +176,12 @@ public class HeliumPaywallSdkModule: Module {
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
+      guard let apiKey = config["apiKey"] as? String, !apiKey.isEmpty else {
+        print("[Helium] initialize called with missing/empty apiKey; aborting.")
+        return
+      }
       performCoreSetup(config)
-      Helium.shared.initialize(apiKey: config["apiKey"] as? String ?? "")
+      Helium.shared.initialize(apiKey: apiKey)
     }
 
     Function("setupCore") { (config: [String : Any]) in
@@ -229,6 +239,7 @@ public class HeliumPaywallSdkModule: Module {
 
     Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?, _disableSystemBackNavigation: Bool?) in
         NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
+        NativeModuleManager.shared.flushEvents(module: self)
         var paywallTraits: HeliumUserTraits? = nil
         if let paywallTraitsMap = convertMarkersToBooleans(customPaywallTraits) {
             paywallTraits = HeliumUserTraits(paywallTraitsMap)
@@ -353,6 +364,7 @@ public class HeliumPaywallSdkModule: Module {
       // Clean up log listener so performCoreSetup can re-register on next initialize()
       NativeModuleManager.shared.logListenerToken?.remove()
       NativeModuleManager.shared.logListenerToken = nil
+      NativeModuleManager.shared.clearPendingEvents()
       await withUnsafeContinuation { (continuation: UnsafeContinuation<Void, Never>) in
         Helium.resetHelium(
           clearUserTraits: clearUserTraits,
