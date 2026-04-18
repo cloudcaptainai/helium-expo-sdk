@@ -56,7 +56,11 @@ const HELIUM_EVENT_NAMES = [
 
 const removeAllHeliumListeners = () => {
   for (const name of HELIUM_EVENT_NAMES) {
-    HeliumPaywallSdkModule.removeAllListeners(name);
+    try {
+      HeliumPaywallSdkModule.removeAllListeners(name);
+    } catch (e) {
+      console.warn(`[Helium] Failed to remove listeners for ${name}:`, e);
+    }
   }
 };
 
