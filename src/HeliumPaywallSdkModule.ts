@@ -7,6 +7,7 @@ import {
   HeliumPaywallSdkModuleEvents,
   HeliumTransactionStatus,
   NativeHeliumConfig,
+  WebCheckoutProcessor,
 } from "./HeliumPaywallSdk.types";
 
 interface PaywallInfoResult {
@@ -94,7 +95,7 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   enableExternalWebCheckout(
     successURL: string,
     cancelURL: string,
-    paymentProcessors?: string[],
+    paymentProcessors?: WebCheckoutProcessor[],
   ): void;
 
   disableExternalWebCheckout(): void;

@@ -566,6 +566,46 @@ class HeliumPaywallSdkModule : Module() {
       }
     }
 
+    // iOS-only for now. No-op on Android.
+    Function("enableExternalWebCheckout") { _: String, _: String, _: List<String>? ->
+    }
+
+    // iOS-only for now. No-op on Android.
+    Function("disableExternalWebCheckout") {
+    }
+
+    // iOS-only for now. No-op on Android.
+    Function("setAllowWebCheckoutWithoutUserId") { _: Boolean ->
+    }
+
+    // iOS-only for now. No-op on Android.
+    AsyncFunction("hasActiveStripeEntitlement") Coroutine { ->
+      return@Coroutine false
+    }
+
+    // iOS-only for now. No-op on Android.
+    AsyncFunction("hasActivePaddleEntitlement") Coroutine { ->
+      return@Coroutine false
+    }
+
+    // iOS-only for now. No-op on Android.
+    AsyncFunction("createStripePortalSession") Coroutine { _: String ->
+      return@Coroutine ""
+    }
+
+    // iOS-only for now. No-op on Android.
+    Function("resetStripeEntitlements") {
+    }
+
+    // iOS-only for now. No-op on Android.
+    AsyncFunction("createPaddlePortalSession") Coroutine { ->
+      return@Coroutine ""
+    }
+
+    // iOS-only for now. No-op on Android.
+    Function("resetPaddleEntitlements") {
+    }
+
     // Set light/dark mode override
     Function("setLightDarkModeOverride") { mode: String ->
       val heliumMode: HeliumLightDarkMode = when (mode.lowercase()) {

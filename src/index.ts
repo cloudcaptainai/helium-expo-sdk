@@ -451,8 +451,7 @@ export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
 export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> => {
   paywallEventHandlers = undefined;
   presentOnPaywallUnavailable = undefined;
-  presentOnEntitled = undefined; //oof if you call while another paywall open these can get replaced...
-  //should either return early in presentupsell or be more robust and make these live per-presentation
+  presentOnEntitled = undefined;
   removeAllHeliumListeners();
 
   try {
@@ -519,6 +518,10 @@ export const enableExternalWebCheckout = ({
 }): void => {
   if (Platform.OS !== 'ios') {
     console.log('[Helium] enableExternalWebCheckout is only available on iOS');
+    return;
+  }
+  if (paymentProcessors && paymentProcessors.length === 0) {
+    console.error("[Helium] enableExternalWebCheckout: paymentProcessors must not be empty. Omit it to enable all, or pass ['paddle'] or ['stripe'].");
     return;
   }
   try {
