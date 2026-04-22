@@ -566,21 +566,6 @@ class HeliumPaywallSdkModule : Module() {
       }
     }
 
-    // iOS-only. No-op on Android.
-    Function("enableExternalWebCheckout") { _: String, _: String, _: List<String>? ->
-      // External Web Checkout is iOS-only for now.
-    }
-
-    // iOS-only. No-op on Android.
-    Function("disableExternalWebCheckout") {
-      // External Web Checkout is iOS-only for now.
-    }
-
-    // iOS-only. No-op on Android.
-    Function("setAllowWebCheckoutWithoutUserId") { _: Boolean ->
-      // External Web Checkout is iOS-only for now.
-    }
-
     // Set light/dark mode override
     Function("setLightDarkModeOverride") { mode: String ->
       val heliumMode: HeliumLightDarkMode = when (mode.lowercase()) {

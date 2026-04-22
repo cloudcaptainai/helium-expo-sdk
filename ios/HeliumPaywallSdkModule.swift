@@ -445,6 +445,32 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.allowWebCheckoutWithoutUserId = allow
     }
 
+    AsyncFunction("hasActiveStripeEntitlement") {
+      return await Helium.entitlements.hasActiveStripeEntitlement()
+    }
+
+    AsyncFunction("hasActivePaddleEntitlement") {
+      return await Helium.entitlements.hasActivePaddleEntitlement()
+    }
+
+    AsyncFunction("createStripePortalSession") { (returnUrl: String) -> String in
+      let url = try await Helium.shared.createStripePortalSession(returnUrl: returnUrl)
+      return url.absoluteString
+    }
+
+    Function("resetStripeEntitlements") {
+      Helium.shared.resetStripeEntitlements()
+    }
+
+    AsyncFunction("createPaddlePortalSession") { () -> String in
+      let url = try await Helium.shared.createPaddlePortalSession()
+      return url.absoluteString
+    }
+
+    Function("resetPaddleEntitlements") {
+      Helium.shared.resetPaddleEntitlements()
+    }
+
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
     // view definition: Prop, Events.
     View(HeliumPaywallSdkView.self) {

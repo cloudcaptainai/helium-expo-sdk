@@ -517,6 +517,10 @@ export const enableExternalWebCheckout = ({
   cancelURL: string;
   paymentProcessors?: WebCheckoutProcessor[];
 }): void => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] enableExternalWebCheckout is only available on iOS');
+    return;
+  }
   try {
     HeliumPaywallSdkModule.enableExternalWebCheckout(successURL, cancelURL, paymentProcessors);
   } catch (e) {
@@ -532,6 +536,10 @@ export const enableExternalWebCheckout = ({
  * their entitlements but is not guaranteed to do so.
  */
 export const disableExternalWebCheckout = (): void => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] disableExternalWebCheckout is only available on iOS');
+    return;
+  }
   try {
     HeliumPaywallSdkModule.disableExternalWebCheckout();
   } catch (e) {
@@ -556,10 +564,121 @@ export const disableExternalWebCheckout = (): void => {
  * Defaults to `false`.
  */
 export const setAllowWebCheckoutWithoutUserId = (allow: boolean): void => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] setAllowWebCheckoutWithoutUserId is only available on iOS');
+    return;
+  }
   try {
     HeliumPaywallSdkModule.setAllowWebCheckoutWithoutUserId(allow);
   } catch (e) {
     console.error('[Helium] setAllowWebCheckoutWithoutUserId error', e);
+  }
+};
+
+/**
+ * iOS only. Returns `true` if the user has any active Stripe entitlement.
+ */
+export const hasActiveStripeEntitlement = async (): Promise<boolean> => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] hasActiveStripeEntitlement is only available on iOS');
+    return false;
+  }
+  try {
+    return await HeliumPaywallSdkModule.hasActiveStripeEntitlement();
+  } catch (e) {
+    console.error('[Helium] hasActiveStripeEntitlement error', e);
+    return false;
+  }
+};
+
+/**
+ * iOS only. Returns `true` if the user has any active Paddle entitlement.
+ */
+export const hasActivePaddleEntitlement = async (): Promise<boolean> => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] hasActivePaddleEntitlement is only available on iOS');
+    return false;
+  }
+  try {
+    return await HeliumPaywallSdkModule.hasActivePaddleEntitlement();
+  } catch (e) {
+    console.error('[Helium] hasActivePaddleEntitlement error', e);
+    return false;
+  }
+};
+
+/**
+ * iOS only. Creates a Stripe Customer Portal session and returns the portal URL.
+ * The host app can open this URL in a browser or in-app webview to let the user
+ * manage their subscriptions, payment methods, and invoices.
+ *
+ * @param returnUrl The URL Stripe redirects to after the user finishes in the portal.
+ * @returns The portal session URL, or `undefined` if the session could not be created.
+ */
+export const createStripePortalSession = async (returnUrl: string): Promise<string | undefined> => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] createStripePortalSession is only available on iOS');
+    return undefined;
+  }
+  try {
+    return await HeliumPaywallSdkModule.createStripePortalSession(returnUrl);
+  } catch (e) {
+    console.error('[Helium] createStripePortalSession error', e);
+    return undefined;
+  }
+};
+
+/**
+ * iOS only. Resets Stripe entitlements and clears the user ID.
+ * If your app can support multiple Stripe users on the same device, call this to effectively
+ * "log out" a Stripe user.
+ */
+export const resetStripeEntitlements = (): void => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] resetStripeEntitlements is only available on iOS');
+    return;
+  }
+  try {
+    HeliumPaywallSdkModule.resetStripeEntitlements();
+  } catch (e) {
+    console.error('[Helium] resetStripeEntitlements error', e);
+  }
+};
+
+/**
+ * iOS only. Creates a Paddle Customer Portal session for the current user and returns the
+ * portal URL. The host app can open this URL in a browser or in-app webview to let the user
+ * manage their subscriptions.
+ *
+ * @returns The portal session URL, or `undefined` if the session could not be created.
+ */
+export const createPaddlePortalSession = async (): Promise<string | undefined> => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] createPaddlePortalSession is only available on iOS');
+    return undefined;
+  }
+  try {
+    return await HeliumPaywallSdkModule.createPaddlePortalSession();
+  } catch (e) {
+    console.error('[Helium] createPaddlePortalSession error', e);
+    return undefined;
+  }
+};
+
+/**
+ * iOS only. Resets Paddle entitlements and clears the user ID.
+ * If your app can support multiple Paddle users on the same device, call this to effectively
+ * "log out" a Paddle user.
+ */
+export const resetPaddleEntitlements = (): void => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] resetPaddleEntitlements is only available on iOS');
+    return;
+  }
+  try {
+    HeliumPaywallSdkModule.resetPaddleEntitlements();
+  } catch (e) {
+    console.error('[Helium] resetPaddleEntitlements error', e);
   }
 };
 

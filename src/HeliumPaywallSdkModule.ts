@@ -100,6 +100,18 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   disableExternalWebCheckout(): void;
 
   setAllowWebCheckoutWithoutUserId(allow: boolean): void;
+
+  hasActiveStripeEntitlement(): Promise<boolean>;
+
+  hasActivePaddleEntitlement(): Promise<boolean>;
+
+  createStripePortalSession(returnUrl: string): Promise<string>;
+
+  resetStripeEntitlements(): void;
+
+  createPaddlePortalSession(): Promise<string>;
+
+  resetPaddleEntitlements(): void;
 }
 
 // This call loads the native module object from the JSI.
