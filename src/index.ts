@@ -5,6 +5,7 @@ import {
   HeliumPaywallEvent,
   NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
   ResetHeliumOptions,
+  WebCheckoutProcessor,
 } from "./HeliumPaywallSdk.types";
 import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
@@ -450,7 +451,8 @@ export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
 export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> => {
   paywallEventHandlers = undefined;
   presentOnPaywallUnavailable = undefined;
-  presentOnEntitled = undefined;
+  presentOnEntitled = undefined; //oof if you call while another paywall open these can get replaced...
+  //should either return early in presentupsell or be more robust and make these live per-presentation
   removeAllHeliumListeners();
 
   try {
@@ -490,6 +492,76 @@ export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreF
  * dark mode setting. Set `"userInterfaceStyle": "automatic"` for 'system' to work correctly.
  */
 export const setLightDarkModeOverride = HeliumPaywallSdkModule.setLightDarkModeOverride;
+
+/**
+ * iOS only. Enables External Web Checkout Flow for any Paddle or Stripe products in your paywalls.
+ * If not enabled, paywalls with Paddle/Stripe products will not show. Your fallback paywall/s,
+ * if provided, will show instead.
+ *
+ * You must provide redirect URLs so Helium knows where to send the user after checkout completes
+ * or is cancelled.
+ *
+ * @param successURL The URL to redirect to after a successful payment.
+ *   Include `{CHECKOUT_SESSION_ID}` in the URL to receive the session ID.
+ * @param cancelURL The URL the provider redirects to when the user cancels checkout.
+ * @param paymentProcessors Which payment processors to enable. Defaults to both Paddle and Stripe.
+ *   Pass `['paddle']` or `['stripe']` if your app only uses one to skip the unused processor's
+ *   entitlement network calls.
+ */
+export const enableExternalWebCheckout = ({
+                                            successURL,
+                                            cancelURL,
+                                            paymentProcessors,
+                                          }: {
+  successURL: string;
+  cancelURL: string;
+  paymentProcessors?: WebCheckoutProcessor[];
+}): void => {
+  try {
+    HeliumPaywallSdkModule.enableExternalWebCheckout(successURL, cancelURL, paymentProcessors);
+  } catch (e) {
+    console.error('[Helium] enableExternalWebCheckout error', e);
+  }
+};
+
+/**
+ * iOS only. Disables External Web Checkout Flow. Paywalls with Paddle or Stripe products
+ * will not show. Your fallback paywall/s, if provided, will show instead.
+ *
+ * NOTE - if you have existing Paddle/Stripe customers, Helium will attempt to continue respecting
+ * their entitlements but is not guaranteed to do so.
+ */
+export const disableExternalWebCheckout = (): void => {
+  try {
+    HeliumPaywallSdkModule.disableExternalWebCheckout();
+  } catch (e) {
+    console.error('[Helium] disableExternalWebCheckout error', e);
+  }
+};
+
+/**
+ * iOS only. Allows Web Checkout paywalls (Paddle/Stripe) to show even when no custom user ID
+ * has been set via `setCustomUserId`.
+ *
+ * By default, paywalls with Paddle or Stripe products will not show if user ID is not set.
+ * Your fallback paywall/s, if provided, will show instead.
+ * Set this to `true` if your app supports purchase-before-signup flows. Once `setCustomUserId`
+ * is called later, Helium will automatically link the Paddle/Stripe customer to that user ID.
+ *
+ * Warning: Use with caution. If the user purchases via web checkout and your app never sets a
+ * `customUserId` (or uninstalls the app before doing so), the purchase may be unrecoverable for
+ * that user. Only enable this if your app has a clear path for the user to set a custom user ID
+ * post-purchase.
+ *
+ * Defaults to `false`.
+ */
+export const setAllowWebCheckoutWithoutUserId = (allow: boolean): void => {
+  try {
+    HeliumPaywallSdkModule.setAllowWebCheckoutWithoutUserId(allow);
+  } catch (e) {
+    console.error('[Helium] setAllowWebCheckoutWithoutUserId error', e);
+  }
+};
 
 /**
  * Get experiment allocation info for a specific trigger

@@ -90,6 +90,16 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   getExperimentInfoForTrigger(trigger: string): ExperimentInfoResult;
 
   setLightDarkModeOverride(mode: HeliumLightDarkMode): void;
+
+  enableExternalWebCheckout(
+    successURL: string,
+    cancelURL: string,
+    paymentProcessors?: string[],
+  ): void;
+
+  disableExternalWebCheckout(): void;
+
+  setAllowWebCheckoutWithoutUserId(allow: boolean): void;
 }
 
 // This call loads the native module object from the JSI.

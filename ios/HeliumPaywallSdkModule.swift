@@ -414,6 +414,37 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.lightDarkModeOverride = heliumMode
     }
 
+    Function("enableExternalWebCheckout") { (successURL: String, cancelURL: String, paymentProcessors: [String]?) in
+      let processors: WebCheckoutProcessors
+      if let paymentProcessors {
+        var set: WebCheckoutProcessors = []
+        for p in paymentProcessors {
+          switch p.lowercased() {
+          case "paddle": set.insert(.paddle)
+          case "stripe": set.insert(.stripe)
+          default:
+            print("[Helium] enableExternalWebCheckout: unknown payment processor '\(p)', ignoring")
+          }
+        }
+        processors = set
+      } else {
+        processors = .all
+      }
+      Helium.config.enableExternalWebCheckout(
+        successURL: successURL,
+        cancelURL: cancelURL,
+        paymentProcessors: processors
+      )
+    }
+
+    Function("disableExternalWebCheckout") {
+      Helium.config.disableExternalWebCheckout()
+    }
+
+    Function("setAllowWebCheckoutWithoutUserId") { (allow: Bool) in
+      Helium.config.allowWebCheckoutWithoutUserId = allow
+    }
+
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
     // view definition: Prop, Events.
     View(HeliumPaywallSdkView.self) {
