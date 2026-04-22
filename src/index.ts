@@ -316,6 +316,7 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
           isSecondTry: event.isSecondTry ?? false,
+          paymentProcessor: event.paymentProcessor,
         });
         break;
       case 'paywallOpenFailed':
