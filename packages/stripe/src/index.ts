@@ -42,32 +42,3 @@ export function setUserIdAndSyncStripeIfNeeded(userId: string): void {
     }
     HeliumStripeSdkModule.setUserIdAndSyncStripeIfNeeded(userId);
 }
-
-export function resetStripeEntitlements(clearUserId: boolean = false): void {
-    if (Platform.OS !== 'ios') {
-        console.log('[HeliumStripe] resetStripeEntitlements is only available on iOS');
-        return;
-    }
-    HeliumStripeSdkModule.resetStripeEntitlements(clearUserId);
-}
-
-export async function createStripePortalSession(returnUrl: string): Promise<string | undefined> {
-    if (Platform.OS !== 'ios') {
-        console.log('[HeliumStripe] createStripePortalSession is only available on iOS');
-        return undefined;
-    }
-    try {
-        return await HeliumStripeSdkModule.createStripePortalSession(returnUrl);
-    } catch (error) {
-        console.log('[HeliumStripe] could not create Stripe portal session');
-        return undefined;
-    }
-}
-
-export async function hasActiveStripeEntitlement(): Promise<boolean> {
-    if (Platform.OS !== 'ios') {
-        console.log('[HeliumStripe] hasActiveStripeEntitlement is only available on iOS');
-        return false;
-    }
-    return HeliumStripeSdkModule.hasActiveStripeEntitlement();
-}

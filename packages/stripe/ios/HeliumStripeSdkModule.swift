@@ -37,18 +37,5 @@ public class HeliumStripeSdkModule: Module {
         Function("setUserIdAndSyncStripeIfNeeded") { (userId: String) in
             Helium.shared.setUserIdAndSyncStripeIfNeeded(userId: userId)
         }
-
-        Function("resetStripeEntitlements") { (clearUserId: Bool) in
-            Helium.shared.resetStripeEntitlements(clearUserId: clearUserId)
-        }
-
-        AsyncFunction("createStripePortalSession") { (returnUrl: String) in
-            let url = try await Helium.shared.createStripePortalSession(returnUrl: returnUrl)
-            return url.absoluteString
-        }
-
-        AsyncFunction("hasActiveStripeEntitlement") {
-            return await Helium.shared.hasActiveStripeEntitlement()
-        }
     }
 }

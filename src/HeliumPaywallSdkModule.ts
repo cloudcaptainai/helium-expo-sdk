@@ -7,6 +7,7 @@ import {
   HeliumPaywallSdkModuleEvents,
   HeliumTransactionStatus,
   NativeHeliumConfig,
+  WebCheckoutProcessor,
 } from "./HeliumPaywallSdk.types";
 
 interface PaywallInfoResult {
@@ -90,6 +91,28 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   getExperimentInfoForTrigger(trigger: string): ExperimentInfoResult;
 
   setLightDarkModeOverride(mode: HeliumLightDarkMode): void;
+
+  enableExternalWebCheckout(
+    successURL: string,
+    cancelURL: string,
+    paymentProcessors?: WebCheckoutProcessor[],
+  ): void;
+
+  disableExternalWebCheckout(): void;
+
+  setAllowWebCheckoutWithoutUserId(allow: boolean): void;
+
+  hasActiveStripeEntitlement(): Promise<boolean>;
+
+  hasActivePaddleEntitlement(): Promise<boolean>;
+
+  createStripePortalSession(returnUrl: string): Promise<string>;
+
+  resetStripeEntitlements(): void;
+
+  createPaddlePortalSession(): Promise<string>;
+
+  resetPaddleEntitlements(): void;
 }
 
 // This call loads the native module object from the JSI.

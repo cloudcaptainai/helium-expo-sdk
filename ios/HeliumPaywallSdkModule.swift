@@ -414,6 +414,63 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.lightDarkModeOverride = heliumMode
     }
 
+    Function("enableExternalWebCheckout") { (successURL: String, cancelURL: String, paymentProcessors: [String]?) in
+      let processors: WebCheckoutProcessors
+      if let paymentProcessors {
+        var set: WebCheckoutProcessors = []
+        for p in paymentProcessors {
+          switch p.lowercased() {
+          case "paddle": set.insert(.paddle)
+          case "stripe": set.insert(.stripe)
+          default:
+            print("[Helium] enableExternalWebCheckout: unknown payment processor '\(p)', ignoring")
+          }
+        }
+        processors = set
+      } else {
+        processors = .all
+      }
+      Helium.config.enableExternalWebCheckout(
+        successURL: successURL,
+        cancelURL: cancelURL,
+        paymentProcessors: processors
+      )
+    }
+
+    Function("disableExternalWebCheckout") {
+      Helium.config.disableExternalWebCheckout()
+    }
+
+    Function("setAllowWebCheckoutWithoutUserId") { (allow: Bool) in
+      Helium.config.allowWebCheckoutWithoutUserId = allow
+    }
+
+    AsyncFunction("hasActiveStripeEntitlement") {
+      return await Helium.entitlements.hasActiveStripeEntitlement()
+    }
+
+    AsyncFunction("hasActivePaddleEntitlement") {
+      return await Helium.entitlements.hasActivePaddleEntitlement()
+    }
+
+    AsyncFunction("createStripePortalSession") { (returnUrl: String) -> String in
+      let url = try await Helium.shared.createStripePortalSession(returnUrl: returnUrl)
+      return url.absoluteString
+    }
+
+    Function("resetStripeEntitlements") {
+      Helium.shared.resetStripeEntitlements()
+    }
+
+    AsyncFunction("createPaddlePortalSession") { () -> String in
+      let url = try await Helium.shared.createPaddlePortalSession()
+      return url.absoluteString
+    }
+
+    Function("resetPaddleEntitlements") {
+      Helium.shared.resetPaddleEntitlements()
+    }
+
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
     // view definition: Prop, Events.
     View(HeliumPaywallSdkView.self) {

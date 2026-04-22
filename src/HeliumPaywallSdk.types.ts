@@ -97,6 +97,7 @@ export type HeliumPurchaseResult = {
 export type HeliumDownloadStatus = 'downloadSuccess' | 'downloadFailure' | 'inProgress' | 'notDownloadedYet';
 export type HeliumLightDarkMode = 'light' | 'dark' | 'system';
 export type HeliumEnvironment = 'sandbox' | 'production';
+export type WebCheckoutProcessor = 'paddle' | 'stripe';
 
 // --- Purchase Configuration Types ---
 

@@ -13,15 +13,5 @@ class HeliumStripeSdkModule : Module() {
         Function("initializeStripe") { _: Map<String, Any> -> }
 
         Function("setUserIdAndSyncStripeIfNeeded") { _: String -> }
-
-        Function("resetStripeEntitlements") { _: Boolean -> }
-
-        AsyncFunction("createStripePortalSession") { _: String ->
-            ""
-        }
-
-        AsyncFunction("hasActiveStripeEntitlement") {
-            false
-        }
     }
 }
