@@ -70,7 +70,12 @@ export type HeliumPaywallEvent = {
   customPaywallActionParams?: Record<string, any>;
   /** Transaction ID for a successful purchase. */
   canonicalJoinTransactionId?: string;
+  /** Payment processor that completed a successful purchase. Present on `purchaseSucceeded` events. */
+  paymentProcessor?: HeliumPaymentProcessor;
 };
+
+/** Identifies which payment processor completed a purchase. */
+export type HeliumPaymentProcessor = 'appStore' | 'stripe' | 'paddle';
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
   productId?: string;
@@ -272,6 +277,7 @@ export interface PurchaseSucceededEvent {
   triggerName: string;
   paywallName: string;
   isSecondTry: boolean;
+  paymentProcessor?: HeliumPaymentProcessor;
 }
 
 export interface PaywallOpenFailedEvent {
