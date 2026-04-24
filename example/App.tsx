@@ -2,14 +2,13 @@
 import {HeliumPaywallEvent, initialize, presentUpsell} from 'expo-helium';
 import {useEffect} from "react";
 import { Button, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
-import {createCustomPurchaseConfig} from "expo-helium";
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
 
   const asyncHeliumInit = async () => {
     await initialize({
-      apiKey: 'api-key-here',
+      apiKey: process.env.EXPO_PUBLIC_HELIUM_API_KEY ?? '',
       onHeliumPaywallEvent: function (event: HeliumPaywallEvent): void {
         console.log('Helium Paywall Event:', event);
       },
@@ -29,7 +28,7 @@ export default function App() {
             title="Show paywall!"
             onPress={async () => {
               presentUpsell({
-                triggerName: 'trigger-name-here',
+                triggerName: process.env.EXPO_PUBLIC_HELIUM_TRIGGER ?? '',
                 eventHandlers: {
                   onOpen: async (e) => {
                     console.log('eventHandler open', e.type);
