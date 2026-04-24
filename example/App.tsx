@@ -1,7 +1,15 @@
 
-import {HeliumPaywallEvent, initialize, presentUpsell} from 'expo-helium';
+import {
+  HeliumPaywallEvent,
+  hasActivePaddleEntitlement,
+  hasAnyActiveSubscription,
+  hasAnyEntitlement,
+  hasEntitlementForPaywall,
+  initialize,
+  presentUpsell,
+} from 'expo-helium';
 import {useEffect} from "react";
-import { Button, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
+import { Alert, Button, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
@@ -18,6 +26,26 @@ export default function App() {
   useEffect(() => {
     void asyncHeliumInit();
   }, []);
+
+  const runEntitlementChecks = async () => {
+    const trigger = process.env.EXPO_PUBLIC_HELIUM_TRIGGER ?? '';
+    const format = (value: unknown) =>
+      value instanceof Error ? `Error: ${value.message}` : String(value);
+    const check = async (label: string, fn: () => Promise<unknown> | unknown) => {
+      try {
+        return `${label}: ${format(await fn())}`;
+      } catch (e) {
+        return `${label}: ${format(e)}`;
+      }
+    };
+    const lines = await Promise.all([
+      check('hasAnyActiveSubscription', () => hasAnyActiveSubscription()),
+      check('hasAnyEntitlement', () => hasAnyEntitlement()),
+      check(`hasEntitlementForPaywall(${trigger})`, () => hasEntitlementForPaywall(trigger)),
+      check('hasActivePaddleEntitlement', () => hasActivePaddleEntitlement()),
+    ]);
+    Alert.alert('Entitlement checks', lines.join('\n'));
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
@@ -50,6 +78,9 @@ export default function App() {
               });
             }}
           />
+        </Group>
+        <Group name="Entitlement checks">
+          <Button title="Run all checks" onPress={runEntitlementChecks} />
         </Group>
       </ScrollView>
     </SafeAreaView>
