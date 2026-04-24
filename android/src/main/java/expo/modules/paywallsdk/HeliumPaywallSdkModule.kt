@@ -510,6 +510,11 @@ class HeliumPaywallSdkModule : Module() {
       return@Function handled
     }
 
+    // iOS-only; declared here so the bridge signature matches across platforms.
+    Function("heliumHandleURL") { _: String ->
+      return@Function false
+    }
+
     // Get experiment info for a trigger
     Function("getExperimentInfoForTrigger") { trigger: String ->
       val experimentInfo = Helium.experiments.getExperimentInfoForTrigger(trigger)

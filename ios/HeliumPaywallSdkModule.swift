@@ -357,6 +357,14 @@ public class HeliumPaywallSdkModule: Module {
       return Helium.shared.handleDeepLink(url)
     }
 
+    Function("heliumHandleURL") { (urlString: String) -> Bool in
+      guard let url = URL(string: urlString) else {
+        return false
+      }
+
+      return Helium.shared.handleURL(url)
+    }
+
     Function("getExperimentInfoForTrigger") { (trigger: String) -> [String: Any] in
       guard let experimentInfo = Helium.experiments.infoForTrigger(trigger) else {
         return ["getExperimentInfoErrorMsg": "No experiment info found for trigger: \(trigger)"]

@@ -765,6 +765,25 @@ export const handleDeepLink = (url: string | null) => {
 };
 
 /**
+ * iOS only. Forward an incoming URL (deep link / universal link) to Helium so the SDK
+ * can react to external web checkout success/cancel redirects.
+ *
+ * Returns `true` if Helium handled the URL; `false` otherwise (including Android, or
+ * when the URL is unrelated to Helium's web checkout flow).
+ */
+export const heliumHandleURL = (url: string): boolean => {
+  if (Platform.OS !== 'ios') {
+    return false;
+  }
+  try {
+    return HeliumPaywallSdkModule.heliumHandleURL(url);
+  } catch (e) {
+    console.error('[Helium] heliumHandleURL error', e);
+    return false;
+  }
+};
+
+/**
  * Recursively converts boolean values to special marker strings to preserve
  * type information when passing through native bridge.
  *

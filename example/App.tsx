@@ -5,6 +5,7 @@ import {
   hasAnyActiveSubscription,
   hasAnyEntitlement,
   hasEntitlementForPaywall,
+  heliumHandleURL,
   clearCustomUserId,
   getCustomUserId,
   initialize,
@@ -12,7 +13,7 @@ import {
   setCustomUserId,
 } from 'expo-helium';
 import {useEffect, useState} from "react";
-import { Alert, Button, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
+import { Alert, Button, Linking, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
 
 const randomUuid = (): string =>
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -46,6 +47,19 @@ export default function App() {
 
   useEffect(() => {
     void asyncHeliumInit();
+  }, []);
+
+  useEffect(() => {
+    const onUrl = (url: string) => {
+      if (!heliumHandleURL(url)) {
+        console.log('[App] URL not handled by Helium:', url);
+      }
+    };
+    const sub = Linking.addEventListener('url', (event) => onUrl(event.url));
+    void Linking.getInitialURL().then((url) => {
+      if (url) onUrl(url);
+    });
+    return () => sub.remove();
   }, []);
 
   const runEntitlementChecks = async () => {
