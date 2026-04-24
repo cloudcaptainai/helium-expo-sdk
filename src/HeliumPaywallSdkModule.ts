@@ -64,7 +64,9 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   setRevenueCatAppUserId(rcAppUserId: string): void;
 
-  setCustomUserId(newUserId: string): void;
+  setCustomUserId(newUserId: string | null): void;
+
+  getCustomUserId(): string | null;
 
   setThirdPartyAnalyticsAnonymousId(anonymousId: string | null): void;
 

@@ -5,22 +5,43 @@ import {
   hasAnyActiveSubscription,
   hasAnyEntitlement,
   hasEntitlementForPaywall,
+  clearCustomUserId,
+  getCustomUserId,
   initialize,
-  presentUpsell,
+  presentUpsell, enableExternalWebCheckout,
+  setCustomUserId,
 } from 'expo-helium';
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
 import { Alert, Button, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
+
+const randomUuid = (): string =>
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 
 export default function App() {
   const isDark = useColorScheme() === 'dark';
+  const [customUserId, setCustomUserIdState] = useState<string | null>(null);
+
+  const refreshCustomUserId = () => {
+    try {
+      setCustomUserIdState(getCustomUserId());
+    } catch (e) {
+      console.error('refreshCustomUserId failed', e);
+    }
+  };
 
   const asyncHeliumInit = async () => {
+    enableExternalWebCheckout({
+      successURL: "heliumexpo://openapps",
+      cancelURL: "heliumexpo://openapps",
+    })
     await initialize({
       apiKey: process.env.EXPO_PUBLIC_HELIUM_API_KEY ?? '',
-      onHeliumPaywallEvent: function (event: HeliumPaywallEvent): void {
-        console.log('Helium Paywall Event:', event);
-      },
     });
+    refreshCustomUserId();
   };
 
   useEffect(() => {
@@ -82,6 +103,34 @@ export default function App() {
         <Group name="Entitlement checks">
           <Button title="Run all checks" onPress={runEntitlementChecks} />
         </Group>
+        <Group name="User ID">
+          <Text style={{ color: isDark ? '#fff' : '#000', marginBottom: 12 }}>
+            Current: {customUserId ?? '(none)'}
+          </Text>
+          <Button
+            title="Set random UUID"
+            onPress={() => {
+              try {
+                setCustomUserId(randomUuid());
+                refreshCustomUserId();
+              } catch (e) {
+                console.error('setCustomUserId failed', e);
+              }
+            }}
+          />
+          <Button
+            title="Clear"
+            onPress={() => {
+              try {
+                clearCustomUserId();
+                refreshCustomUserId();
+              } catch (e) {
+                console.error('clearCustomUserId failed', e);
+              }
+            }}
+          />
+          <Button title="Refresh" onPress={refreshCustomUserId} />
+        </Group>
       </ScrollView>
     </SafeAreaView>
   );
@@ -111,6 +160,7 @@ const styles = {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 20,
+    alignItems: 'flex-start' as const,
   },
   container: {
     flex: 1,

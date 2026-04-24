@@ -324,8 +324,12 @@ public class HeliumPaywallSdkModule: Module {
         Helium.identify.revenueCatAppUserId = rcAppUserId
     }
 
-    Function("setCustomUserId") { (newUserId: String) in
+    Function("setCustomUserId") { (newUserId: String?) in
         Helium.identify.userId = newUserId
+    }
+
+    Function("getCustomUserId") { () -> String? in
+        return Helium.identify.userId
     }
 
     Function("setThirdPartyAnalyticsAnonymousId") { (anonymousId: String?) in

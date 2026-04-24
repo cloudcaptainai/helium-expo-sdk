@@ -403,9 +403,38 @@ export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
 export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUserId;
 
 /**
- * Set a custom user ID for the current user
+ * Set a custom user ID for the current user.
  */
-export const setCustomUserId = HeliumPaywallSdkModule.setCustomUserId;
+export const setCustomUserId = (newUserId: string): void => {
+  try {
+    HeliumPaywallSdkModule.setCustomUserId(newUserId);
+  } catch (e) {
+    console.error('[Helium] Failed to set custom user ID', e);
+  }
+};
+
+/**
+ * Clear the custom user ID for the current user.
+ */
+export const clearCustomUserId = (): void => {
+  try {
+    HeliumPaywallSdkModule.setCustomUserId(null);
+  } catch (e) {
+    console.error('[Helium] Failed to clear custom user ID', e);
+  }
+};
+
+/**
+ * Returns the current custom user ID, or `null` if none has been set.
+ */
+export const getCustomUserId = (): string | null => {
+  try {
+    return HeliumPaywallSdkModule.getCustomUserId();
+  } catch (e) {
+    console.error('[Helium] Failed to get custom user ID', e);
+    return null;
+  }
+};
 
 /**
  * An optional anonymous ID from your third-party analytics provider, sent alongside
