@@ -115,24 +115,6 @@ export default function App() {
             }}
           />
         </Group>
-        <Group name="Entitlements">
-          <Button title="Run all checks" onPress={runEntitlementChecks} />
-          <Button
-            title="Open Paddle portal"
-            onPress={async () => {
-              try {
-                const url = await createPaddlePortalSession();
-                if (!url) {
-                  Alert.alert('Paddle portal', 'No portal URL returned.');
-                  return;
-                }
-                await Linking.openURL(url);
-              } catch (e) {
-                Alert.alert('Paddle portal', String(e));
-              }
-            }}
-          />
-        </Group>
         <Group name="User ID">
           <Text style={{ color: isDark ? '#fff' : '#000', marginBottom: 12 }}>
             Current: {customUserId ?? '(none)'}
@@ -160,6 +142,24 @@ export default function App() {
             }}
           />
           <Button title="Refresh" onPress={refreshCustomUserId} />
+        </Group>
+        <Group name="Entitlements">
+          <Button title="Run all checks" onPress={runEntitlementChecks} />
+          <Button
+            title="Open Paddle portal"
+            onPress={async () => {
+              try {
+                const url = await createPaddlePortalSession();
+                if (!url) {
+                  Alert.alert('Paddle portal', 'No portal URL returned.');
+                  return;
+                }
+                await Linking.openURL(url);
+              } catch (e) {
+                Alert.alert('Paddle portal', String(e));
+              }
+            }}
+          />
         </Group>
       </ScrollView>
     </SafeAreaView>
