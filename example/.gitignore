@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Native directories — regenerated via `npx expo prebuild`
+/ios/
+/android/
+
 # Native
 .kotlin/
 *.orig.*
@@ -31,6 +35,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript

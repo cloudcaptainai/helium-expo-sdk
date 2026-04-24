@@ -28,7 +28,7 @@ export type HeliumPaywallEvent = {
     'paywallOpenFailed' | 'paywallSkipped' | 'paywallButtonPressed' |
     'productSelected' | 'purchasePressed' | 'purchaseSucceeded' |
     'purchaseCancelled' | 'purchaseFailed' | 'purchaseRestored' |
-    'purchaseRestoreFailed' | 'purchasePending' | 'initializeStart' |
+    'purchaseRestoreFailed' | 'purchasePending' | 'initializeCalled' |
     'paywallsDownloadSuccess' | 'paywallsDownloadError' | 'paywallWebViewRendered' |
     'customPaywallAction' | 'userAllocated' | 'purchaseAlreadyEntitled';
   triggerName?: string;
@@ -50,6 +50,12 @@ export type HeliumPaywallEvent = {
   configId?: string;
   numAttempts?: number;
   downloadTimeTakenMS?: number;
+  /** Time loading state was shown for, in milliseconds. Present on `paywallOpen` / `paywallOpenFailed` when a loading state was used. */
+  loadTimeTakenMS?: number;
+  /** Loading budget for the trigger, in milliseconds. Present on `paywallOpen` / `paywallOpenFailed`. */
+  loadingBudgetMS?: number;
+  /** Total time from config fetch start to completion, in milliseconds. Present on `paywallsDownloadSuccess` / `paywallsDownloadError`. */
+  totalInitializeTimeMS?: number;
   webviewRenderTimeTakenMS?: number;
   imagesDownloadTimeTakenMS?: number;
   fontsDownloadTimeTakenMS?: number;
@@ -66,16 +72,32 @@ export type HeliumPaywallEvent = {
    */
   timestamp?: number;
   paywallUnavailableReason?: string;
+  /** Reason the paywall was skipped. Present on `paywallSkipped` events. */
+  skipReason?: PaywallSkippedReason;
   customPaywallActionName?: string;
   customPaywallActionParams?: Record<string, any>;
   /** Transaction ID for a successful purchase. */
   canonicalJoinTransactionId?: string;
   /** Payment processor that completed a successful purchase. Present on `purchaseSucceeded` events. */
   paymentProcessor?: HeliumPaymentProcessor;
+  /** How an existing entitlement was surfaced. Present on `purchaseRestored` events. */
+  origin?: PurchaseRestoredOrigin;
 };
 
 /** Identifies which payment processor completed a purchase. */
 export type HeliumPaymentProcessor = 'appStore' | 'stripe' | 'paddle';
+
+/** Reason a paywall was skipped (not shown) for a trigger. */
+export type PaywallSkippedReason = 'targetingHoldout' | 'alreadyEntitled';
+
+/**
+ * How an existing entitlement was surfaced on a `purchaseRestored` event.
+ * - `restorePurchases`: user tapped the "Restore Purchases" button.
+ * - `duringPurchase`: a purchase action resolved as a restoration (e.g. StoreKit returned `.restored`,
+ *   or a pre-checkout entitlement check found the user already owned the product).
+ * - `detected`: entitlement was passively observed (e.g. after returning from an external web checkout).
+ */
+export type PurchaseRestoredOrigin = 'restorePurchases' | 'duringPurchase' | 'detected';
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
   productId?: string;
@@ -253,7 +275,10 @@ export interface PaywallOpenEvent {
   type: 'paywallOpen';
   triggerName: string;
   paywallName: string;
+  paywallUnavailableReason?: string;
   isSecondTry: boolean;
+  loadTimeTakenMS?: number;
+  loadingBudgetMS?: number;
   viewType?: 'presented' | 'embedded' | 'triggered';
 }
 
@@ -287,6 +312,8 @@ export interface PaywallOpenFailedEvent {
   error: string;
   paywallUnavailableReason?: string;
   isSecondTry: boolean;
+  loadTimeTakenMS?: number;
+  loadingBudgetMS?: number;
 }
 
 export interface CustomPaywallActionEvent {

@@ -403,9 +403,38 @@ export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
 export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUserId;
 
 /**
- * Set a custom user ID for the current user
+ * Set a custom user ID for the current user.
  */
-export const setCustomUserId = HeliumPaywallSdkModule.setCustomUserId;
+export const setCustomUserId = (newUserId: string): void => {
+  try {
+    HeliumPaywallSdkModule.setCustomUserId(newUserId);
+  } catch (e) {
+    console.error('[Helium] Failed to set custom user ID', e);
+  }
+};
+
+/**
+ * Clear the custom user ID for the current user.
+ */
+export const clearCustomUserId = (): void => {
+  try {
+    HeliumPaywallSdkModule.setCustomUserId(null);
+  } catch (e) {
+    console.error('[Helium] Failed to clear custom user ID', e);
+  }
+};
+
+/**
+ * Returns the current custom user ID, or `null` if none has been set.
+ */
+export const getCustomUserId = (): string | null => {
+  try {
+    return HeliumPaywallSdkModule.getCustomUserId();
+  } catch (e) {
+    console.error('[Helium] Failed to get custom user ID', e);
+    return null;
+  }
+};
 
 /**
  * An optional anonymous ID from your third-party analytics provider, sent alongside
@@ -733,6 +762,25 @@ export const handleDeepLink = (url: string | null) => {
     return handled;
   }
   return false;
+};
+
+/**
+ * iOS only. Forward an incoming URL (deep link / universal link) to Helium so the SDK
+ * can react to external web checkout success/cancel redirects.
+ *
+ * Returns `true` if Helium handled the URL; `false` otherwise (including Android, or
+ * when the URL is unrelated to Helium's web checkout flow).
+ */
+export const heliumHandleURL = (url: string): boolean => {
+  if (Platform.OS !== 'ios') {
+    return false;
+  }
+  try {
+    return HeliumPaywallSdkModule.heliumHandleURL(url);
+  } catch (e) {
+    console.error('[Helium] heliumHandleURL error', e);
+    return false;
+  }
 };
 
 /**

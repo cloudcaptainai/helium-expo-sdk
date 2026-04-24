@@ -324,8 +324,12 @@ public class HeliumPaywallSdkModule: Module {
         Helium.identify.revenueCatAppUserId = rcAppUserId
     }
 
-    Function("setCustomUserId") { (newUserId: String) in
+    Function("setCustomUserId") { (newUserId: String?) in
         Helium.identify.userId = newUserId
+    }
+
+    Function("getCustomUserId") { () -> String? in
+        return Helium.identify.userId
     }
 
     Function("setThirdPartyAnalyticsAnonymousId") { (anonymousId: String?) in
@@ -351,6 +355,14 @@ public class HeliumPaywallSdkModule: Module {
       }
 
       return Helium.shared.handleDeepLink(url)
+    }
+
+    Function("heliumHandleURL") { (urlString: String) -> Bool in
+      guard let url = URL(string: urlString) else {
+        return false
+      }
+
+      return Helium.shared.handleURL(url)
     }
 
     Function("getExperimentInfoForTrigger") { (trigger: String) -> [String: Any] in
