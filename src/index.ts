@@ -444,6 +444,7 @@ export const getCustomUserId = (): string | null => {
  * - Amplitude: pass device ID
  * - Mixpanel: pass anonymous ID
  * - PostHog: pass anonymous ID
+ * - Statsig: pass stable ID
  *
  * Set this before calling `initialize()` for best results. Can also be updated after initialization.
  */
@@ -531,7 +532,6 @@ export const setLightDarkModeOverride = HeliumPaywallSdkModule.setLightDarkModeO
  * or is cancelled.
  *
  * @param successURL The URL to redirect to after a successful payment.
- *   Include `{CHECKOUT_SESSION_ID}` in the URL to receive the session ID.
  * @param cancelURL The URL the provider redirects to when the user cancels checkout.
  * @param paymentProcessors Which payment processors to enable. Defaults to both Paddle and Stripe.
  *   Pass `['paddle']` or `['stripe']` if your app only uses one to skip the unused processor's
@@ -771,8 +771,8 @@ export const handleDeepLink = (url: string | null) => {
  * Returns `true` if Helium handled the URL; `false` otherwise (including Android, or
  * when the URL is unrelated to Helium's web checkout flow).
  */
-export const heliumHandleURL = (url: string): boolean => {
-  if (Platform.OS !== 'ios') {
+export const heliumHandleURL = (url: string | null): boolean => {
+  if (Platform.OS !== 'ios' || !url) {
     return false;
   }
   try {

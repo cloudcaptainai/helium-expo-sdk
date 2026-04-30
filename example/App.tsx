@@ -39,6 +39,7 @@ export default function App() {
     enableExternalWebCheckout({
       successURL: "heliumexpo://openapps",
       cancelURL: "heliumexpo://openapps",
+      paymentProcessors: ["paddle"],
     })
     await initialize({
       apiKey: process.env.EXPO_PUBLIC_HELIUM_API_KEY ?? '',
@@ -51,15 +52,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onUrl = (url: string) => {
-      if (!heliumHandleURL(url)) {
-        console.log('[App] URL not handled by Helium:', url);
-      }
-    };
-    const sub = Linking.addEventListener('url', (event) => onUrl(event.url));
-    void Linking.getInitialURL().then((url) => {
-      if (url) onUrl(url);
-    });
+    const sub = Linking.addEventListener('url', (event) => heliumHandleURL(event.url));
+    void Linking.getInitialURL().then(heliumHandleURL);
     return () => sub.remove();
   }, []);
 
