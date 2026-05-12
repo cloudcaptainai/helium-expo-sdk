@@ -357,12 +357,12 @@ public class HeliumPaywallSdkModule: Module {
       return Helium.shared.handleDeepLink(url)
     }
 
-    Function("heliumHandleURL") { (urlString: String) -> Bool in
+    Function("heliumHandleURL") { (urlString: String) -> String? in
       guard let url = URL(string: urlString) else {
-        return false
+        return nil
       }
 
-      return Helium.shared.handleURL(url)
+      return Helium.shared.handleURL(url)?.rawValue
     }
 
     Function("getExperimentInfoForTrigger") { (trigger: String) -> [String: Any] in

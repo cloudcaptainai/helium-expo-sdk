@@ -1,5 +1,6 @@
 import {
   DelegateActionEvent,
+  HeliumCheckoutRedirectType,
   HeliumConfig,
   HeliumLogEvent,
   HeliumPaywallEvent,
@@ -765,21 +766,24 @@ export const handleDeepLink = (url: string | null) => {
 };
 
 /**
- * iOS only. Forward an incoming URL (deep link / universal link) to Helium so the SDK
- * can react to external web checkout success/cancel redirects.
+ * Forward an incoming URL (deep link / universal link) to Helium so the SDK
+ * can react to external web checkout redirects.
  *
- * Returns `true` if Helium handled the URL; `false` otherwise (including Android, or
- * when the URL is unrelated to Helium's web checkout flow).
+ * This is not required, but encouraged for smoother post-purchase experience.
+ *
+ * Returns which configured redirect URL the user came back through, or `null` if the URL
+ * was not recognized as a Helium web checkout redirect (including on Android, or when `url` is null).
  */
-export const heliumHandleURL = (url: string | null): boolean => {
+export const heliumHandleURL = (url: string | null): HeliumCheckoutRedirectType | undefined => {
   if (Platform.OS !== 'ios' || !url) {
-    return false;
+    return undefined;
   }
   try {
-    return HeliumPaywallSdkModule.heliumHandleURL(url);
+    const result = HeliumPaywallSdkModule.heliumHandleURL(url);
+    return (result ?? undefined) as HeliumCheckoutRedirectType | undefined;
   } catch (e) {
     console.error('[Helium] heliumHandleURL error', e);
-    return false;
+    return undefined;
   }
 };
 
