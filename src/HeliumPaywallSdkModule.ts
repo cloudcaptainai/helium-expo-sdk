@@ -62,7 +62,7 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   handleDeepLink(urlString: string): boolean;
 
-  heliumHandleURL(urlString: string): boolean;
+  heliumHandleURL(urlString: string): string | null;
 
   setRevenueCatAppUserId(rcAppUserId: string): void;
 

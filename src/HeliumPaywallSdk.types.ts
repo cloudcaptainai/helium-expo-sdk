@@ -126,6 +126,11 @@ export type HeliumLightDarkMode = 'light' | 'dark' | 'system';
 export type HeliumEnvironment = 'sandbox' | 'production';
 export type WebCheckoutProcessor = 'paddle' | 'stripe';
 
+/**
+ * Which of the configured external web checkout redirect URLs the user returned through.
+ */
+export type HeliumCheckoutRedirectType = 'success' | 'cancel' | 'paymentFailure';
+
 // --- Purchase Configuration Types ---
 
 /** Interface for providing custom purchase handling logic. */

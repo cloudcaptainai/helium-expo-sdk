@@ -512,7 +512,7 @@ class HeliumPaywallSdkModule : Module() {
 
     // iOS-only; declared here so the bridge signature matches across platforms.
     Function("heliumHandleURL") { _: String ->
-      return@Function false
+      return@Function null as String?
     }
 
     // Get experiment info for a trigger
