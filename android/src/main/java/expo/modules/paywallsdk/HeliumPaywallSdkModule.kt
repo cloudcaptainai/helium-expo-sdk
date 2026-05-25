@@ -616,6 +616,20 @@ class HeliumPaywallSdkModule : Module() {
     Function("resetPaddleEntitlements") {
     }
 
+    // Testing stubs — bridge signatures must match iOS so positional args line up.
+    // No-op until the Android Helium SDK ships its testing API.
+    Function("setTestPurchaseResult") { _: String ->
+    }
+
+    Function("setTestRestoreResult") { _: Boolean ->
+    }
+
+    Function("setTestIntroOfferEligibility") { _: Boolean ->
+    }
+
+    Function("resetTesting") {
+    }
+
     // Set light/dark mode override
     Function("setLightDarkModeOverride") { mode: String ->
       val heliumMode: HeliumLightDarkMode = when (mode.lowercase()) {

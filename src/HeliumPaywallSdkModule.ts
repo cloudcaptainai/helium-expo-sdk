@@ -117,6 +117,14 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   createPaddlePortalSession(): Promise<string>;
 
   resetPaddleEntitlements(): void;
+
+  setTestPurchaseResult(result: HeliumTransactionStatus): void;
+
+  setTestRestoreResult(success: boolean): void;
+
+  setTestIntroOfferEligibility(eligible: boolean): void;
+
+  resetTesting(): void;
 }
 
 // This call loads the native module object from the JSI.

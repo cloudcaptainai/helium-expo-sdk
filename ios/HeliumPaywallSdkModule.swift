@@ -483,6 +483,37 @@ public class HeliumPaywallSdkModule: Module {
       Helium.shared.resetPaddleEntitlements()
     }
 
+    // MARK: - Testing
+    // TODO: requires helium-swift version that ships `Helium.testing`. Will not
+    // compile against earlier versions — bump the Podfile dep when this lands.
+
+    Function("setTestPurchaseResult") { (result: String) in
+      let status: HeliumPaywallTransactionStatus
+      switch result.lowercased() {
+      case "purchased": status = .purchased
+      case "cancelled": status = .cancelled
+      case "restored":  status = .restored
+      case "pending":   status = .pending
+      case "failed":    status = .failed(PurchaseError.purchaseFailed(errorMsg: "Stubbed test failure."))
+      default:
+        print("[Helium] heliumTesting.setPurchaseResult: unknown result '\(result)', ignoring")
+        return
+      }
+      Helium.testing.purchaseHandler = { _ in status }
+    }
+
+    Function("setTestRestoreResult") { (success: Bool) in
+      Helium.testing.restoreHandler = { success }
+    }
+
+    Function("setTestIntroOfferEligibility") { (eligible: Bool) in
+      Helium.testing.introOfferEligibility = { _ in eligible }
+    }
+
+    Function("resetTesting") {
+      Helium.testing.reset()
+    }
+
     // Enables the module to be used as a native view. Definition components that are accepted as part of the
     // view definition: Prop, Events.
     View(HeliumPaywallSdkView.self) {
