@@ -525,6 +525,20 @@ export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreF
 export const setLightDarkModeOverride = HeliumPaywallSdkModule.setLightDarkModeOverride;
 
 /**
+ * Controls whether the triple-tap paywall previews gesture is enabled in DEBUG and TestFlight
+ * (iOS) / debug (Android) builds.
+ *
+ * Defaults to `true`.
+ */
+export const setPaywallPreviewsAutoEnabledInDevBuilds = (enabled: boolean): void => {
+  try {
+    HeliumPaywallSdkModule.setPaywallPreviewsAutoEnabledInDevBuilds(enabled);
+  } catch (e) {
+    console.error('[Helium] setPaywallPreviewsAutoEnabledInDevBuilds error', e);
+  }
+};
+
+/**
  * iOS only. Enables External Web Checkout Flow for any Paddle or Stripe products in your paywalls.
  * If not enabled, paywalls with Paddle/Stripe products will not show. Your fallback paywall/s,
  * if provided, will show instead.
