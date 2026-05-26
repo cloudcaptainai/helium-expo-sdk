@@ -426,6 +426,10 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.lightDarkModeOverride = heliumMode
     }
 
+    Function("setPaywallPreviewsAutoEnabledInDevBuilds") { (enabled: Bool) in
+      Helium.config.paywallPreviewsAutoEnabledInDevBuilds = enabled
+    }
+
     Function("enableExternalWebCheckout") { (successURL: String, cancelURL: String, paymentProcessors: [String]?) in
       let processors: WebCheckoutProcessors
       if let paymentProcessors {
