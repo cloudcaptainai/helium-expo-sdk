@@ -631,7 +631,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     Function("setPaywallPreviewsAutoEnabledInDevBuilds") { enabled: Boolean ->
-      Helium.config.paywallPreviewsAutoEnabledInDevBuilds = enabled
+      Helium.config.enablePaywallPreviewsInDevBuilds = enabled
     }
 
     // Enables the module to be used as a native view

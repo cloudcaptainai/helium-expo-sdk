@@ -525,12 +525,12 @@ export const disableRestoreFailedDialog = HeliumPaywallSdkModule.disableRestoreF
 export const setLightDarkModeOverride = HeliumPaywallSdkModule.setLightDarkModeOverride;
 
 /**
- * Controls whether the triple-tap paywall previews gesture is enabled in DEBUG and TestFlight
- * (iOS) / debug (Android) builds.
+ * Controls whether the triple-tap paywall previews gesture is enabled in DEBUG / TestFlight
+ * builds for iOS and debug builds for Android.
  *
  * Defaults to `true`.
  */
-export const setPaywallPreviewsAutoEnabledInDevBuilds = (enabled: boolean): void => {
+export const setPaywallPreviewsEnabledInDevBuilds = (enabled: boolean): void => {
   try {
     HeliumPaywallSdkModule.setPaywallPreviewsAutoEnabledInDevBuilds(enabled);
   } catch (e) {
