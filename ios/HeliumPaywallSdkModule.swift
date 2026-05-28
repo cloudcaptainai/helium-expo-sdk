@@ -488,8 +488,6 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     // MARK: - Testing
-    // TODO: requires helium-swift version that ships `Helium.testing`. Will not
-    // compile against earlier versions — bump the Podfile dep when this lands.
 
     Function("setTestPurchaseResult") { (result: String) in
       let status: HeliumPaywallTransactionStatus

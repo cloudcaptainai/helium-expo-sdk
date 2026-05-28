@@ -616,18 +616,32 @@ class HeliumPaywallSdkModule : Module() {
     Function("resetPaddleEntitlements") {
     }
 
-    // Testing stubs — bridge signatures must match iOS so positional args line up.
-    // No-op until the Android Helium SDK ships its testing API.
-    Function("setTestPurchaseResult") { _: String ->
+    // Testing stubs. See Helium.testing in the Android SDK.
+    Function("setTestPurchaseResult") { result: String ->
+      val status: HeliumPaywallTransactionStatus = when (result.lowercase()) {
+        "purchased" -> HeliumPaywallTransactionStatus.Purchased
+        "cancelled" -> HeliumPaywallTransactionStatus.Cancelled
+        "restored" -> HeliumPaywallTransactionStatus.Purchased  // Android SDK has no Restored, map to Purchased
+        "pending" -> HeliumPaywallTransactionStatus.Pending
+        "failed" -> HeliumPaywallTransactionStatus.Failed(Exception("Stubbed test failure."))
+        else -> {
+          android.util.Log.w("HeliumPaywallSdk", "setTestPurchaseResult: unknown result '$result', ignoring")
+          return@Function
+        }
+      }
+      Helium.testing.purchaseHandler = { _ -> status }
     }
 
-    Function("setTestRestoreResult") { _: Boolean ->
+    Function("setTestRestoreResult") { success: Boolean ->
+      Helium.testing.restoreHandler = { success }
     }
 
-    Function("setTestIntroOfferEligibility") { _: Boolean ->
+    Function("setTestIntroOfferEligibility") { eligible: Boolean ->
+      Helium.testing.introOfferEligibility = { _ -> eligible }
     }
 
     Function("resetTesting") {
+      Helium.testing.reset()
     }
 
     // Set light/dark mode override
