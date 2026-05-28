@@ -644,6 +644,10 @@ class HeliumPaywallSdkModule : Module() {
       Helium.config.lightDarkModeOverride = heliumMode
     }
 
+    Function("setPaywallPreviewsAutoEnabledInDevBuilds") { enabled: Boolean ->
+      Helium.config.enablePaywallPreviewsInDevBuilds = enabled
+    }
+
     // Enables the module to be used as a native view
     View(HeliumPaywallSdkView::class) {
       // Defines a setter for the `url` prop

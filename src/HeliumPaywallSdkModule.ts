@@ -96,6 +96,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   setLightDarkModeOverride(mode: HeliumLightDarkMode): void;
 
+  setPaywallPreviewsAutoEnabledInDevBuilds(enabled: boolean): void;
+
   enableExternalWebCheckout(
     successURL: string,
     cancelURL: string,
