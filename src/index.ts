@@ -842,14 +842,11 @@ function convertValueBooleansToMarkers(value: any): any {
  * configuration is awkward). Gate these calls behind a build-env flag — e.g.
  * `if (process.env.EXPO_PUBLIC_E2E === 'true') { ... }` — so they never run in
  * production builds.
- *
- * The native SDK additionally ignores test handlers when it detects a production
- * environment, but the host app should not rely on that safety net.
  */
 export const heliumTesting = {
   /**
    * Stub purchase attempts to return the given result instead of running the real
-   * StoreKit / Play Billing flow. Applies to every product ID.
+   * purchase flow.
    */
   setPurchaseResult: (result: HeliumTransactionStatus): void => {
     try {
@@ -872,12 +869,9 @@ export const heliumTesting = {
   },
 
   /**
-   * Override the intro-offer eligibility check for every product. Useful for testing
-   * the "no trial offer" UI branch, which sandbox accounts can rarely reproduce
-   * without making a real purchase.
+   * Override the intro-offer eligibility check for every product.
    *
-   * Important: eligibility is read during config fetch and cached, so call this
-   * BEFORE `initialize()` for the initial paywall render to reflect the override.
+   * Important: Call this BEFORE `initialize()`.
    */
   setIntroOfferEligibility: (eligible: boolean): void => {
     try {
@@ -887,7 +881,7 @@ export const heliumTesting = {
     }
   },
 
-  /** Clear all configured test handlers. Native SDK falls back to real flows. */
+  /** Clear all configured test handlers. */
   reset: (): void => {
     try {
       HeliumPaywallSdkModule.resetTesting();
