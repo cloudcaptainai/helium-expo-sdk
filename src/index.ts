@@ -4,6 +4,7 @@ import {
   HeliumConfig,
   HeliumLogEvent,
   HeliumPaywallEvent,
+  HeliumTransactionStatus,
   NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
   ResetHeliumOptions,
   WebCheckoutProcessor,
@@ -835,5 +836,59 @@ function convertValueBooleansToMarkers(value: any): any {
   }
   return value;
 }
+
+/**
+ * Stubs for automated testing (UI tests, CI, EAS builds where StoreKit / Play Billing
+ * configuration is awkward). Gate these calls behind a build-env flag — e.g.
+ * `if (process.env.EXPO_PUBLIC_E2E === 'true') { ... }` — so they never run in
+ * production builds.
+ */
+export const heliumTesting = {
+  /**
+   * Stub purchase attempts to return the given result instead of running the real
+   * purchase flow.
+   */
+  setPurchaseResult: (result: HeliumTransactionStatus): void => {
+    try {
+      HeliumPaywallSdkModule.setTestPurchaseResult(result);
+    } catch (e) {
+      console.error('[Helium] heliumTesting.setPurchaseResult error', e);
+    }
+  },
+
+  /**
+   * Stub restore attempts to return the given result instead of running the real
+   * restore flow.
+   */
+  setRestoreResult: (success: boolean): void => {
+    try {
+      HeliumPaywallSdkModule.setTestRestoreResult(success);
+    } catch (e) {
+      console.error('[Helium] heliumTesting.setRestoreResult error', e);
+    }
+  },
+
+  /**
+   * Override the intro-offer eligibility check for every product.
+   *
+   * Important: Call this BEFORE `initialize()`.
+   */
+  setIntroOfferEligibility: (eligible: boolean): void => {
+    try {
+      HeliumPaywallSdkModule.setTestIntroOfferEligibility(eligible);
+    } catch (e) {
+      console.error('[Helium] heliumTesting.setIntroOfferEligibility error', e);
+    }
+  },
+
+  /** Clear all configured test handlers. */
+  reset: (): void => {
+    try {
+      HeliumPaywallSdkModule.resetTesting();
+    } catch (e) {
+      console.error('[Helium] heliumTesting.reset error', e);
+    }
+  },
+};
 
 export {createCustomPurchaseConfig, HELIUM_CTA_NAMES} from './HeliumPaywallSdk.types';

@@ -616,6 +616,34 @@ class HeliumPaywallSdkModule : Module() {
     Function("resetPaddleEntitlements") {
     }
 
+    // Testing stubs. See Helium.testing in the Android SDK.
+    Function("setTestPurchaseResult") { result: String ->
+      val status: HeliumPaywallTransactionStatus = when (result.lowercase()) {
+        "purchased" -> HeliumPaywallTransactionStatus.Purchased
+        "cancelled" -> HeliumPaywallTransactionStatus.Cancelled
+        "restored" -> HeliumPaywallTransactionStatus.Purchased  // Android SDK has no Restored, map to Purchased
+        "pending" -> HeliumPaywallTransactionStatus.Pending
+        "failed" -> HeliumPaywallTransactionStatus.Failed(Exception("Stubbed test failure."))
+        else -> {
+          android.util.Log.w("HeliumPaywallSdk", "setTestPurchaseResult: unknown result '$result', ignoring")
+          return@Function
+        }
+      }
+      Helium.testing.purchaseHandler = { _ -> status }
+    }
+
+    Function("setTestRestoreResult") { success: Boolean ->
+      Helium.testing.restoreHandler = { success }
+    }
+
+    Function("setTestIntroOfferEligibility") { eligible: Boolean ->
+      Helium.testing.introOfferEligibility = { _ -> eligible }
+    }
+
+    Function("resetTesting") {
+      Helium.testing.reset()
+    }
+
     // Set light/dark mode override
     Function("setLightDarkModeOverride") { mode: String ->
       val heliumMode: HeliumLightDarkMode = when (mode.lowercase()) {
