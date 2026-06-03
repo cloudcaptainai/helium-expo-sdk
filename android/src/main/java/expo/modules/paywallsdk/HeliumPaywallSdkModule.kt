@@ -21,6 +21,7 @@ import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
 import com.tryhelium.paywall.core.HeliumWrapperSdkConfig
 import com.tryhelium.paywall.core.PaywallPresentationConfig
+import com.tryhelium.paywall.core.PresentationMode
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
 import com.tryhelium.paywall.core.logger.HeliumLogLevel
@@ -403,7 +404,8 @@ class HeliumPaywallSdkModule : Module() {
           fromActivityContext = activity,
           customPaywallTraits = convertedTraits,
           dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false,
-          disableSystemBackNavigation = disableSystemBackNavigation ?: false
+          disableSystemBackNavigation = disableSystemBackNavigation ?: false,
+          presentationMode = PresentationMode.SAME_ACTIVITY
         ),
         onEntitled = {
           NativeModuleManager.safeSendEvent(
