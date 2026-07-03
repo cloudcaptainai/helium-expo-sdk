@@ -22,26 +22,52 @@ jobs:
 
       # Android releases are tagged with a leading v (e.g. v4.4.7) but the
       # Gradle dependency uses a bare version, so strip the prefix if present.
+      # Reject anything that is not a version string so an empty or malformed
+      # payload can never reach the sed replacement below.
       - name: Resolve version
         id: version
         env:
           RAW_VERSION: ${{ github.event.client_payload.version || github.event.inputs.version }}
-        run: echo "version=${RAW_VERSION#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION="${RAW_VERSION#v}"
+          VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'
+          if [[ ! "$VERSION" =~ $VERSION_PATTERN ]]; then
+            echo "::error::'${RAW_VERSION}' is not a valid version"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Update Android SDK dependency
+        id: update
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          # Match the full coordinate including the closing quote and paren, so
+          # a version that is merely a prefix of the pinned one cannot pass.
+          TARGET="implementation(\"com.tryhelium.paywall:core:${VERSION}\")"
+
+          if grep -qF "$TARGET" android/build.gradle; then
+            echo "Dependency already at ${VERSION}; nothing to update."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           sed -i "s/implementation(\"com\.tryhelium\.paywall:core:[^\"]*\")/implementation(\"com.tryhelium.paywall:core:${VERSION}\")/" android/build.gradle
 
-          # Fail loudly if the dependency line was not found, rather than
-          # opening a PR that only bumps package.json.
-          grep -q "com.tryhelium.paywall:core:${VERSION}" android/build.gradle
+          # If the dependency line was absent or in an unexpected format, fail
+          # the job instead of opening a PR that only bumps package.json.
+          if ! grep -qF "$TARGET" android/build.gradle; then
+            echo "::error::Could not update com.tryhelium.paywall:core in android/build.gradle"
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Bump package.json version
+        if: steps.update.outputs.changed == 'true'
         run: npm version patch --no-git-tag-version
 
       - name: Create Pull Request
+        if: steps.update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           commit-message: "Update helium-android SDK dependency to ${{ steps.version.outputs.version }}"
