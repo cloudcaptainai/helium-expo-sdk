@@ -700,6 +700,8 @@ export const resetStripeEntitlements = (): void => {
  * manage their subscriptions.
  *
  * @returns The portal session URL, or `undefined` if the session could not be created.
+ * @deprecated Use getPaddleCustomerId() and pass the ID to your server to generate a Paddle
+ * customer portal session instead.
  */
 export const createPaddlePortalSession = async (): Promise<string | undefined> => {
   if (Platform.OS !== 'ios') {
@@ -710,6 +712,27 @@ export const createPaddlePortalSession = async (): Promise<string | undefined> =
     return await HeliumPaywallSdkModule.createPaddlePortalSession();
   } catch (e) {
     console.error('[Helium] createPaddlePortalSession error', e);
+    return undefined;
+  }
+};
+
+/**
+ * iOS only. Returns the Paddle customer ID for the current user, if one exists.
+ *
+ * Pass this ID to your server to generate a Paddle customer portal session,
+ * allowing the user to manage their subscriptions.
+ *
+ * @returns The Paddle customer ID, or `undefined` if none has been assigned.
+ */
+export const getPaddleCustomerId = async (): Promise<string | undefined> => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] getPaddleCustomerId is only available on iOS');
+    return undefined;
+  }
+  try {
+    return (await HeliumPaywallSdkModule.getPaddleCustomerId()) ?? undefined;
+  } catch (e) {
+    console.error('[Helium] getPaddleCustomerId error', e);
     return undefined;
   }
 };

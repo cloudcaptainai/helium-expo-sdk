@@ -116,7 +116,10 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   resetStripeEntitlements(): void;
 
+  /** @deprecated Use getPaddleCustomerId instead. */
   createPaddlePortalSession(): Promise<string>;
+
+  getPaddleCustomerId(): Promise<string | null>;
 
   resetPaddleEntitlements(): void;
 
