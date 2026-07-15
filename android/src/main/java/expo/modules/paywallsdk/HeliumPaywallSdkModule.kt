@@ -612,6 +612,11 @@ class HeliumPaywallSdkModule : Module() {
       return@Coroutine ""
     }
 
+    // No Android SDK equivalent yet. Declared to keep the bridge in sync with iOS.
+    AsyncFunction("getPaddleCustomerId") Coroutine { ->
+      return@Coroutine null as String?
+    }
+
     // iOS-only for now. No-op on Android.
     Function("resetPaddleEntitlements") {
     }

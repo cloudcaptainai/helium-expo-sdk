@@ -483,6 +483,10 @@ public class HeliumPaywallSdkModule: Module {
       return url.absoluteString
     }
 
+    AsyncFunction("getPaddleCustomerId") { () -> String? in
+      return await Helium.shared.getPaddleCustomerId()
+    }
+
     Function("resetPaddleEntitlements") {
       Helium.shared.resetPaddleEntitlements()
     }

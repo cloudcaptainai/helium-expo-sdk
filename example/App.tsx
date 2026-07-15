@@ -8,6 +8,7 @@ import {
   heliumHandleURL,
   clearCustomUserId,
   createPaddlePortalSession,
+  getPaddleCustomerId,
   getCustomUserId,
   initialize,
   presentUpsell, enableExternalWebCheckout,
@@ -151,6 +152,17 @@ export default function App() {
                 await Linking.openURL(url);
               } catch (e) {
                 Alert.alert('Paddle portal', String(e));
+              }
+            }}
+          />
+          <Button
+            title="Get Paddle customer ID"
+            onPress={async () => {
+              try {
+                const customerId = await getPaddleCustomerId();
+                Alert.alert('Paddle customer ID', customerId ?? 'No customer ID assigned.');
+              } catch (e) {
+                Alert.alert('Paddle customer ID', String(e));
               }
             }}
           />
