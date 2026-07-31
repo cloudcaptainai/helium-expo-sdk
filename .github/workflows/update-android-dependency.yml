@@ -10,6 +10,12 @@ on:
         required: true
         type: string
 
+# Serialize runs so concurrent dispatches can't read the same package.json
+# version and open conflicting PRs with an identical patch bump.
+concurrency:
+  group: update-android-dependency
+  cancel-in-progress: false
+
 jobs:
   update-android-dependency:
     runs-on: ubuntu-latest
@@ -18,7 +24,9 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Normalize and validate version
         env:
@@ -36,28 +44,32 @@ jobs:
       - name: Update build.gradle
         run: |
           sed -i "s/com\.tryhelium\.paywall:core:[^\")]*/com.tryhelium.paywall:core:$ANDROID_SDK_VERSION/g" android/build.gradle
+          # sed exits 0 even when nothing matches; make sure the bump landed
+          # (grep also prints the resulting dependency line for the run log)
+          if ! grep -F "com.tryhelium.paywall:core:$ANDROID_SDK_VERSION" android/build.gradle; then
+            echo "Failed to update com.tryhelium.paywall:core in android/build.gradle"
+            exit 1
+          fi
 
       - name: Bump package.json version
         run: |
-          # Get current version and increment patch version
           CURRENT_VERSION=$(node -p "require('./package.json').version")
-          NEW_VERSION=$(node -e "
-            const current = '$CURRENT_VERSION';
-            const parts = current.split('.');
-            const major = parseInt(parts[0]);
-            const minor = parseInt(parts[1]);
-            const patch = parseInt(parts[2]) + 1;
-            console.log(\`\${major}.\${minor}.\${patch}\`);
-          ")
 
-          # Update package.json with new version
-          sed -i '0,/"version": "[^"]*"/{s/"version": "[^"]*"/"version": "'$NEW_VERSION'"/}' package.json
+          # Structural update (also keeps package-lock.json in sync)
+          NEW_VERSION=$(npm version patch --no-git-tag-version)
+          NEW_VERSION=${NEW_VERSION#v}
+
+          if [ "$(node -p "require('./package.json').version")" != "$NEW_VERSION" ]; then
+            echo "Failed to bump package.json version"
+            exit 1
+          fi
 
           echo "Bumped version from $CURRENT_VERSION to $NEW_VERSION"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          token: ${{ github.token }}
           commit-message: "Update Helium Android SDK dependency to ${{ env.ANDROID_SDK_VERSION }}"
           branch: update-android-sdk-${{ env.ANDROID_SDK_VERSION }}
           title: "Update Helium Android SDK to ${{ env.ANDROID_SDK_VERSION }}"
