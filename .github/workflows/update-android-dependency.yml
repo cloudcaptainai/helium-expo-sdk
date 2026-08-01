@@ -71,7 +71,9 @@ jobs:
         with:
           token: ${{ github.token }}
           commit-message: "Update Helium Android SDK dependency to ${{ env.ANDROID_SDK_VERSION }}"
-          branch: update-android-sdk-${{ env.ANDROID_SDK_VERSION }}
+          # Stable branch name so a newer dispatch updates the existing open
+          # bump PR instead of opening a second one from the same base version
+          branch: update-android-sdk
           title: "Update Helium Android SDK to ${{ env.ANDROID_SDK_VERSION }}"
           body: |
             Automated update of Helium Android SDK dependency to version ${{ env.ANDROID_SDK_VERSION }}.
