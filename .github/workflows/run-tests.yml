@@ -31,5 +31,10 @@ jobs:
       - name: Build package
         run: npm run prepare
 
-      - name: Check npm publish dry run
-        run: npm publish --dry-run --access public
+      - name: Check npm pack dry run
+        # Validates the package builds and packs correctly. Deliberately not
+        # `npm publish --dry-run`, which also fails whenever the current
+        # version is already on the registry — breaking every PR that doesn't
+        # bump the version. The real publish in create-release.yml still
+        # catches genuine version collisions.
+        run: npm pack --dry-run
