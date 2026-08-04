@@ -15,10 +15,6 @@ import com.tryhelium.paywall.core.HeliumEnvironment
 import com.tryhelium.paywall.core.event.HeliumEvent
 import com.tryhelium.paywall.core.event.HeliumEventDictionaryMapper
 import com.tryhelium.paywall.core.event.PaywallEventHandlers
-import com.tryhelium.paywall.core.event.PaywallSkipped
-import com.tryhelium.paywall.core.event.PaywallSkippedReason
-import com.tryhelium.paywall.core.event.PurchaseRestored
-import com.tryhelium.paywall.core.event.PurchaseSucceeded
 import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraits.Companion.create
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
@@ -61,13 +57,6 @@ private object NativeModuleManager {
   // SDK coroutine dispatcher). @Volatile ensures cross-thread visibility of the reference.
   @Volatile
   var currentModule: HeliumPaywallSdkModule? = null
-
-  // The most recent entitling event (purchase success/restore, or already-entitled skip),
-  // captured from the delegate event stream. The native Android SDK's onEntitled callback
-  // carries no event argument, so presentUpsell attaches this as the onEntitledEvent payload.
-  // Written from the SDK's event dispatch thread; read on the callback thread.
-  @Volatile
-  var lastEntitledEvent: Map<String, Any?>? = null
 
   // Guards the active purchase/restore continuations against cross-thread races between
   // the Expo module thread (handlePurchaseResult) and the Helium SDK coroutine dispatcher
@@ -287,16 +276,6 @@ class HeliumPaywallSdkModule : Module() {
         eventMap["buttonName"]?.let { eventMap["ctaName"] = it }
         applyEventFieldAliases(eventMap)
 
-        // Capture entitling events so presentUpsell can attach one to its onEntitledEvent
-        // payload — the native Android SDK's onEntitled callback carries no event argument.
-        when (event) {
-          is PurchaseSucceeded, is PurchaseRestored -> NativeModuleManager.lastEntitledEvent = eventMap
-          is PaywallSkipped -> if (event.skipReason == PaywallSkippedReason.AlreadyEntitled) {
-            NativeModuleManager.lastEntitledEvent = eventMap
-          }
-          else -> {}
-        }
-
         NativeModuleManager.safeSendEvent("onHeliumPaywallEvent", eventMap)
       }
 
@@ -402,7 +381,6 @@ class HeliumPaywallSdkModule : Module() {
     Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any>?, dontShowIfAlreadyEntitled: Boolean?, disableSystemBackNavigation: Boolean? ->
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
       NativeModuleManager.flushEvents(this@HeliumPaywallSdkModule)
-      NativeModuleManager.lastEntitledEvent = null // don't let a previous presentation's event leak into this one
 
       // Convert custom paywall traits
       val convertedTraits = convertToHeliumUserTraits(customPaywallTraits)
@@ -427,10 +405,12 @@ class HeliumPaywallSdkModule : Module() {
           dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false,
           disableSystemBackNavigation = disableSystemBackNavigation ?: false
         ),
-        onEntitled = {
+        onEntitled = { entitledEvent ->
+          val entitledEventMap = HeliumEventDictionaryMapper.toDictionary(entitledEvent.event).toMutableMap()
+          applyEventFieldAliases(entitledEventMap)
           NativeModuleManager.safeSendEvent(
             "onEntitledEvent",
-            NativeModuleManager.lastEntitledEvent ?: emptyMap(),
+            entitledEventMap,
             this@HeliumPaywallSdkModule
           )
         },
@@ -578,7 +558,6 @@ class HeliumPaywallSdkModule : Module() {
       // Reset logger so initialize() can set up a fresh BridgingLogger
       Helium.config.logger = HeliumLogger.Stdout
       NativeModuleManager.clearPendingEvents()
-      NativeModuleManager.lastEntitledEvent = null
       try {
         suspendCancellableCoroutine<Unit> { continuation ->
           Helium.resetHelium(
