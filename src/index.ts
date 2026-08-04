@@ -157,8 +157,13 @@ function setupEventListeners(config: HeliumConfig) {
   addEntitledEventListener((event) => {
     // Native sends an empty payload when the entitling event isn't available
     const entitledEvent = event && event.type ? event : undefined;
-    presentOnEntitled?.(entitledEvent);
+    const onEntitled = presentOnEntitled;
     presentOnEntitled = undefined;
+    try {
+      onEntitled?.(entitledEvent);
+    } catch (error) {
+      console.error('[Helium] onEntitled callback failed', error);
+    }
   });
 }
 
