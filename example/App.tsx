@@ -100,8 +100,8 @@ export default function App() {
                   }
                 },
                 // dontShowIfAlreadyEntitled: true,
-                onEntitled: () => {
-                  console.log('onEntitled called!')
+                onEntitled: (event) => {
+                  console.log('onEntitled called!', event?.type, event?.productId)
                 },
                 onPaywallUnavailable: () => {
                   console.log('onPaywallUnavailable called!')
