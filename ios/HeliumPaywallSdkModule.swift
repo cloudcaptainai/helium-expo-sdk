@@ -278,8 +278,10 @@ public class HeliumPaywallSdkModule: Module {
                     NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: eventDict)
                 }
             ),
-            onEntitled: {
-                NativeModuleManager.shared.safeSendEvent(eventName: "onEntitledEvent", eventData: [:])
+            onEntitled: { entitledEvent in
+                var eventDict = entitledEvent.event.toDictionary()
+                applyEventFieldAliases(&eventDict)
+                NativeModuleManager.shared.safeSendEvent(eventName: "onEntitledEvent", eventData: eventDict)
             }
         ) { paywallNotShownReason in
             // nothing for now

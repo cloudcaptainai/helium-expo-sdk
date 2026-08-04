@@ -5,7 +5,7 @@ import {
   HeliumLogEvent,
   HeliumPaywallEvent,
   HeliumTransactionStatus,
-  NativeHeliumConfig, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
+  NativeHeliumConfig, PaywallEntitledEvent, PaywallEventHandlers, PaywallInfo, PresentUpsellParams,
   ResetHeliumOptions,
   WebCheckoutProcessor,
 } from "./HeliumPaywallSdk.types";
@@ -43,7 +43,7 @@ function addHeliumLogEventListener(listener: (event: HeliumLogEvent) => void): E
   return HeliumPaywallSdkModule.addListener('onHeliumLogEvent', listener);
 }
 
-function addEntitledEventListener(listener: () => void): EventSubscription {
+function addEntitledEventListener(listener: (event?: PaywallEntitledEvent) => void): EventSubscription {
   return HeliumPaywallSdkModule.addListener('onEntitledEvent', listener);
 }
 
@@ -154,9 +154,16 @@ function setupEventListeners(config: HeliumConfig) {
   });
 
   // Set up listener for onEntitled callback from native presentPaywall
-  addEntitledEventListener(() => {
-    presentOnEntitled?.();
+  addEntitledEventListener((event) => {
+    // Native sends an empty payload when the entitling event isn't available
+    const entitledEvent = event && event.type ? event : undefined;
+    const onEntitled = presentOnEntitled;
     presentOnEntitled = undefined;
+    try {
+      onEntitled?.(entitledEvent);
+    } catch (error) {
+      console.error('[Helium] onEntitled callback failed', error);
+    }
   });
 }
 
@@ -258,7 +265,7 @@ export const initialize = async (config: HeliumConfig) => {
 
 let paywallEventHandlers: PaywallEventHandlers | undefined;
 let presentOnPaywallUnavailable: (() => void) | undefined;
-let presentOnEntitled: (() => void) | undefined;
+let presentOnEntitled: ((event?: PaywallEntitledEvent) => void) | undefined;
 export const presentUpsell = ({
                                 triggerName,
                                 eventHandlers,

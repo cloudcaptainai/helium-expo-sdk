@@ -405,10 +405,12 @@ class HeliumPaywallSdkModule : Module() {
           dontShowIfAlreadyEntitled = dontShowIfAlreadyEntitled ?: false,
           disableSystemBackNavigation = disableSystemBackNavigation ?: false
         ),
-        onEntitled = {
+        onEntitled = { entitledEvent ->
+          val entitledEventMap = HeliumEventDictionaryMapper.toDictionary(entitledEvent.event).toMutableMap()
+          applyEventFieldAliases(entitledEventMap)
           NativeModuleManager.safeSendEvent(
             "onEntitledEvent",
-            emptyMap(),
+            entitledEventMap,
             this@HeliumPaywallSdkModule
           )
         },
