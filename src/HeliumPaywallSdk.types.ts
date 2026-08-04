@@ -9,7 +9,7 @@ export type HeliumPaywallSdkModuleEvents = {
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
   paywallEventHandlers: (params: HeliumPaywallEvent) => void;
   onHeliumLogEvent: (params: HeliumLogEvent) => void;
-  onEntitledEvent: () => void;
+  onEntitledEvent: (params?: PaywallEntitledEvent) => void;
 };
 
 /** A log event emitted by the Helium SDK. */
@@ -89,6 +89,18 @@ export type HeliumPaymentProcessor = 'appStore' | 'stripe' | 'paddle';
 
 /** Reason a paywall was skipped (not shown) for a trigger. */
 export type PaywallSkippedReason = 'targetingHoldout' | 'alreadyEntitled';
+
+/**
+ * The entitling event passed to `onEntitled`, identifying how the user became (or was found to be) entitled.
+ * - `purchaseSucceeded`: a new purchase completed successfully.
+ * - `purchaseRestored`: an existing entitlement was surfaced via restore.
+ * - `purchaseAlreadyEntitled`: a purchase attempt resolved to an entitlement the user already had. (iOS only)
+ * - `paywallSkipped`: the paywall was not shown because the user is already entitled
+ *   (requires `dontShowIfAlreadyEntitled`).
+ */
+export type PaywallEntitledEvent = HeliumPaywallEvent & {
+  type: 'purchaseSucceeded' | 'purchaseRestored' | 'purchaseAlreadyEntitled' | 'paywallSkipped';
+};
 
 /**
  * How an existing entitlement was surfaced on a `purchaseRestored` event.
@@ -245,11 +257,14 @@ export type PresentUpsellParams = {
   dontShowIfAlreadyEntitled?: boolean;
   /** Optional. Android only. If true, disables the system back button/gesture while the paywall is displayed. Defaults to false. */
   androidDisableSystemBackNavigation?: boolean;
-  /** Optional. Called upon purchase success or purchase restore.
-   * If you set `dontShowIfAlreadyEntitled` to true, this handler will also be called when paywall not shown
-   * to users who already have entitlement for a product in the paywall.
+  /** Optional. Called with the entitling event upon purchase success (`purchaseSucceeded`),
+   * purchase restore (`purchaseRestored`), or a purchase attempt resolving to an existing
+   * entitlement (`purchaseAlreadyEntitled`, iOS only) — in these cases it is called when the paywall closes.
+   * If you set `dontShowIfAlreadyEntitled` to true, this handler is also called immediately with a
+   * `paywallSkipped` event when the paywall is not shown to users who already have entitlement
+   * for a product in the paywall.
    */
-  onEntitled?: () => void;
+  onEntitled?: (event?: PaywallEntitledEvent) => void;
   /** Optional. Called if desired paywall and fallback paywall did not show for any reason.
    * This is uncommon, but best practice to handle it just in case.
    * See https://docs.tryhelium.com/guides/fallback-bundle */
