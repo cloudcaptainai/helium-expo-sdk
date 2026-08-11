@@ -110,6 +110,10 @@ export type PaywallEntitledEvent = HeliumPaywallEvent & {
  * - `detected`: entitlement was passively observed (e.g. after returning from an external web checkout).
  */
 export type PurchaseRestoredOrigin = 'restorePurchases' | 'duringPurchase' | 'detected';
+
+/** Play Store product type: `subs` for subscriptions, `inapp` for one-time purchases. */
+export type HeliumAndroidProductType = 'subs' | 'inapp';
+
 export type DelegateActionEvent = {
   type: 'purchase' | 'restore';
   productId?: string;
@@ -117,6 +121,8 @@ export type DelegateActionEvent = {
   basePlanId?: string;
   /** Android-specific: Offer ID for promotional offers */
   offerId?: string;
+  /** Android-specific: Whether the product is a subscription or a one-time purchase */
+  productType?: HeliumAndroidProductType;
 };
 
 export type HeliumPaywallSdkViewProps = {
@@ -157,7 +163,7 @@ export interface HeliumPurchaseConfig {
   makePurchaseIOS?: (productId: string) => Promise<HeliumPurchaseResult>;
 
   /** Android-specific purchase handler. Receives product ID and optional subscription parameters. */
-  makePurchaseAndroid?: (productId: string, basePlanId?: string, offerId?: string) => Promise<HeliumPurchaseResult>;
+  makePurchaseAndroid?: (productId: string, basePlanId?: string, offerId?: string, productType?: HeliumAndroidProductType) => Promise<HeliumPurchaseResult>;
 
   restorePurchases: () => Promise<boolean>;
 
@@ -173,7 +179,7 @@ export function createCustomPurchaseConfig(callbacks: {
   /** @deprecated Use makePurchaseIOS or makePurchaseAndroid instead */
   makePurchase?: (productId: string) => Promise<HeliumPurchaseResult>;
   makePurchaseIOS?: (productId: string) => Promise<HeliumPurchaseResult>;
-  makePurchaseAndroid?: (productId: string, basePlanId?: string, offerId?: string) => Promise<HeliumPurchaseResult>;
+  makePurchaseAndroid?: (productId: string, basePlanId?: string, offerId?: string, productType?: HeliumAndroidProductType) => Promise<HeliumPurchaseResult>;
   restorePurchases: () => Promise<boolean>;
 }): HeliumPurchaseConfig {
   return {

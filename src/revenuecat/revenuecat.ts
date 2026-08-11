@@ -4,9 +4,14 @@ import type {
   PurchasesError,
   SubscriptionOption
 } from 'react-native-purchases';
-import Purchases, {PRODUCT_CATEGORY, PURCHASES_ERROR_CODE, PurchasesStoreProduct} from 'react-native-purchases';
+import Purchases, {PURCHASE_TYPE, PURCHASES_ERROR_CODE} from 'react-native-purchases';
 import {Platform} from 'react-native';
-import {HeliumPaywallEvent, HeliumPurchaseConfig, HeliumPurchaseResult} from "../HeliumPaywallSdk.types";
+import {
+  HeliumAndroidProductType,
+  HeliumPaywallEvent,
+  HeliumPurchaseConfig,
+  HeliumPurchaseResult
+} from "../HeliumPaywallSdk.types";
 import {setRevenueCatAppUserId} from "../index";
 
 export interface RevenueCatConfig {
@@ -42,6 +47,10 @@ const RETRYABLE_RC_CODES = new Set([
 ]);
 
 type PurchaseAttemptResult = HeliumPurchaseResult & { shouldRetry?: boolean };
+
+// RN's wrapper reads only productId and id off the option; the native SDK resolves it.
+const androidSubscriptionOption = (productId: string, optionId: string): SubscriptionOption =>
+  ({productId, id: optionId}) as unknown as SubscriptionOption;
 
 export class RevenueCatHeliumHandler {
   private stripePurchaseSyncDisabled: boolean = false;
@@ -105,19 +114,8 @@ export class RevenueCatHeliumHandler {
   }
 
   private async attemptPurchaseIOS(productId: string): Promise<PurchaseAttemptResult> {
-    let rcProduct: PurchasesStoreProduct | undefined;
     try {
-      rcProduct = await this.getProduct(productId);
-    } catch {
-      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] Failed to retrieve product: ${productId}`};
-    }
-
-    if (!rcProduct) {
-      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] iOS product not found: ${productId}`};
-    }
-
-    try {
-      const purchaseResult = await Purchases.purchaseStoreProduct(rcProduct);
+      const purchaseResult = await Purchases.purchaseProduct(productId);
       const transactionId = purchaseResult.transaction?.transactionIdentifier;
       return this.evaluatePurchaseResult(purchaseResult.customerInfo, productId, transactionId);
     } catch (error) {
@@ -125,106 +123,57 @@ export class RevenueCatHeliumHandler {
     }
   }
 
-  async makePurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<HeliumPurchaseResult> {
+  async makePurchaseAndroid(
+    productId: string,
+    basePlanId?: string,
+    offerId?: string,
+    productType?: HeliumAndroidProductType
+  ): Promise<HeliumPurchaseResult> {
     await this.setUpPromise;
     // Keep this value as up-to-date as possible
     await this.syncRevenueCatAppUserId();
-    const result = await this.attemptPurchaseAndroid(productId, basePlanId, offerId);
+    const result = await this.attemptPurchaseAndroid(productId, basePlanId, offerId, productType);
 
     if (this.isRetryableResult(result)) {
       await this.delay(1000);
-      return this.attemptPurchaseAndroid(productId, basePlanId, offerId);
+      return this.attemptPurchaseAndroid(productId, basePlanId, offerId, productType);
     }
     return result;
   }
 
-  private async attemptPurchaseAndroid(productId: string, basePlanId?: string, offerId?: string): Promise<PurchaseAttemptResult> {
-    // Handle subscription with base plan or offer
-    if (basePlanId || offerId) {
-      const subscriptionOption = await this.findAndroidSubscriptionOption(
-        productId,
-        basePlanId,
-        offerId
-      );
+  private async attemptPurchaseAndroid(
+    productId: string,
+    basePlanId?: string,
+    offerId?: string,
+    productType?: HeliumAndroidProductType
+  ): Promise<PurchaseAttemptResult> {
+    if (productType === 'inapp') {
+      try {
+        const customerInfo = (await Purchases.purchaseProduct(productId, null, PURCHASE_TYPE.INAPP)).customerInfo;
 
-      if (subscriptionOption) {
-        try {
-          const customerInfo = (await Purchases.purchaseSubscriptionOption(subscriptionOption)).customerInfo;
-
-          return this.evaluatePurchaseResult(customerInfo, productId);
-        } catch (error) {
-          return this.handlePurchasesError(error);
-        }
+        return this.evaluatePurchaseResult(customerInfo, productId);
+      } catch (error) {
+        return this.handlePurchasesError(error);
       }
     }
 
-    // Handle one-time purchase or subscription that didn't have matching base plan / offer
-    let rcProduct: PurchasesStoreProduct | undefined;
-    try {
-      // Try non-subscription (NON_SUBSCRIPTION) product first; most likely not a sub at this point
-      let products = await Purchases.getProducts([productId], PRODUCT_CATEGORY.NON_SUBSCRIPTION);
-      if (products.length > 0) {
-        rcProduct = products[0];
-      } else {
-        // Then try subscription product (let RC pick option since we couldn't find a match)
-        products = await Purchases.getProducts([productId]);
-        if (products.length > 0) {
-          rcProduct = products[0];
-        }
-      }
-    } catch {
-      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] Failed to retrieve Android product: ${productId}`};
-    }
-    if (!rcProduct) {
-      return {status: 'failed', shouldRetry: true, error: `[RevenueCat] Android product not found: ${productId}`};
+    if (!basePlanId) {
+      return {
+        status: 'failed',
+        error: `[Helium] Android subscription "${productId}" has no base plan id. ` +
+          `Set the product id to "productId:basePlanId" (optionally ":offerId") in the Helium dashboard.`,
+      };
     }
 
+    const optionId = offerId ? `${basePlanId}:${offerId}` : basePlanId;
     try {
-      const customerInfo = (await Purchases.purchaseStoreProduct(rcProduct)).customerInfo;
+      const customerInfo = (await Purchases.purchaseSubscriptionOption(
+        androidSubscriptionOption(productId, optionId)
+      )).customerInfo;
 
       return this.evaluatePurchaseResult(customerInfo, productId);
     } catch (error) {
       return this.handlePurchasesError(error);
-    }
-  }
-
-  // Android helper: Find subscription option
-  private async findAndroidSubscriptionOption(
-    productId: string,
-    basePlanId?: string,
-    offerId?: string
-  ): Promise<SubscriptionOption | undefined> {
-    try {
-      const products = await Purchases.getProducts([productId]);
-      if (products.length === 0) {
-        return undefined;
-      }
-
-      // RC will return multiple products if multiple base plans per subscription
-      // Collect all subscription options from all products into a flat list
-      const allSubscriptionOptions = products.flatMap(
-        product => product.subscriptionOptions ?? []
-      );
-
-      if (allSubscriptionOptions.length === 0) {
-        return undefined;
-      }
-
-      let subscriptionOption: SubscriptionOption | undefined;
-
-      if (offerId && basePlanId) {
-        // Look for specific offer: "basePlanId:offerId"
-        const targetId = `${basePlanId}:${offerId}`;
-        subscriptionOption = allSubscriptionOptions.find(opt => opt.id === targetId);
-      }
-      if (!subscriptionOption && basePlanId) {
-        // Otherwise the RC option id will simply be base plan id
-        subscriptionOption = allSubscriptionOptions.find(opt => opt.id === basePlanId);
-      }
-
-      return subscriptionOption;
-    } catch (error) {
-      return undefined;
     }
   }
 
@@ -271,11 +220,6 @@ export class RevenueCatHeliumHandler {
     } catch (error) {
       return false;
     }
-  }
-
-  private async getProduct(productId: string): Promise<PurchasesStoreProduct | undefined> {
-    const products = await Purchases.getProducts([productId]);
-    return products.length > 0 ? products[0] : undefined;
   }
 
   private isRetryableResult(result: PurchaseAttemptResult): boolean {

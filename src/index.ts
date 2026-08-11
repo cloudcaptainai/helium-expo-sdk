@@ -108,7 +108,8 @@ function setupEventListeners(config: HeliumConfig) {
               result = await purchaseConfig.makePurchaseAndroid(
                 event.productId,
                 event.basePlanId,
-                event.offerId
+                event.offerId,
+                event.productType
               );
             } else {
               console.log('[Helium] No Android purchase handler configured.');
