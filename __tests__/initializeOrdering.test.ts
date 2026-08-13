@@ -48,12 +48,13 @@ jest.mock('expo-file-system', () => {
 
 type NativeModuleMock = {
   initialize: jest.Mock;
+  setupCore: jest.Mock;
   presentUpsell: jest.Mock;
   fallbackOpenOrCloseEvent: jest.Mock;
   __emit: (name: string, event: unknown) => void;
 };
 
-type FileSystemMock = { __finishWrite: () => void };
+type FileSystemMock = { __finishWrite: () => void; writeAsStringAsync: jest.Mock };
 
 /** Each test needs the module's initialization state fresh, and it is module-level. */
 function loadHelium() {
@@ -71,6 +72,16 @@ function loadHelium() {
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const CONFIG = { apiKey: 'test-key', fallbackBundle: { paywalls: [] } };
+/** Distinct from CONFIG so assertions can tell which initialization reached the native SDK. */
+const CONFIG_AFTER_RESET = { apiKey: 'test-key-after-reset', fallbackBundle: { paywalls: [] } };
+/** Fails while assembling the native config, the one window in which a reset can overtake it. */
+const CONFIG_THAT_FAILS_AFTER_WRITE = {
+  apiKey: 'test-key',
+  fallbackBundle: { paywalls: [] },
+  get customUserTraits(): Record<string, any> {
+    throw new Error('trait access blew up');
+  },
+};
 
 /** The native SDK does not throw when it has no configuration; it reports over the event channel. */
 const reportOpenFailedFromNative = (native: NativeModuleMock) => {
@@ -158,17 +169,70 @@ describe('presentUpsell ordering against initialize', () => {
     const { helium, native, fileSystem } = loadHelium();
     void helium.initialize(CONFIG);
     await helium.resetHelium();
-    void helium.initialize(CONFIG);
+    void helium.initialize(CONFIG_AFTER_RESET);
 
     helium.presentUpsell({ triggerName: 'go_online' });
 
     fileSystem.__finishWrite();
     await flushMicrotasks();
+    expect(native.initialize).not.toHaveBeenCalled();
     expect(native.presentUpsell).not.toHaveBeenCalled();
 
     fileSystem.__finishWrite();
     await flushMicrotasks();
+    expect(native.initialize).toHaveBeenCalledTimes(1);
+    expect(native.initialize).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: CONFIG_AFTER_RESET.apiKey }),
+    );
     expect(native.presentUpsell).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a queued present when a reset abandons the initialization it waited on', async () => {
+    const { helium, native, fileSystem } = loadHelium();
+    void helium.initialize(CONFIG);
+    helium.presentUpsell({ triggerName: 'go_online' });
+
+    await helium.resetHelium();
+    fileSystem.__finishWrite();
+    await flushMicrotasks();
+
+    expect(native.initialize).not.toHaveBeenCalled();
+    expect(native.presentUpsell).not.toHaveBeenCalled();
+  });
+
+  it('completes the present failure path when the host callback throws', async () => {
+    const { helium, native, fileSystem } = loadHelium();
+    native.presentUpsell.mockImplementation(() => {
+      throw new Error('native presentUpsell blew up');
+    });
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const onPaywallUnavailable = jest.fn(() => {
+      throw new Error('host onPaywallUnavailable blew up');
+    });
+
+    void helium.initialize(CONFIG);
+    helium.presentUpsell({ triggerName: 'go_online', onPaywallUnavailable });
+    fileSystem.__finishWrite();
+    await flushMicrotasks();
+
+    expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
+    expect(native.fallbackOpenOrCloseEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('never throws at the caller when the present recovery path also fails', () => {
+    const { helium, native } = loadHelium();
+    native.presentUpsell.mockImplementation(() => {
+      throw new Error('native presentUpsell blew up');
+    });
+    native.fallbackOpenOrCloseEvent.mockImplementation(() => {
+      throw new Error('native fallbackOpenOrCloseEvent blew up');
+    });
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => helium.presentUpsell({ triggerName: 'go_online' })).not.toThrow();
+    expect(native.fallbackOpenOrCloseEvent).toHaveBeenCalledTimes(1);
   });
 
   it('presents immediately again after resetHelium re-arms initialization', async () => {
@@ -220,5 +284,37 @@ describe('initialize against callers that await it', () => {
     await settingUpCore;
 
     expect(native.initialize).toHaveBeenCalledTimes(1);
+    expect(native.setupCore).not.toHaveBeenCalled();
+  });
+
+  it('lets an abandoned initialization fail without disturbing the current one', async () => {
+    const { helium, native, fileSystem } = loadHelium();
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    void helium.initialize(CONFIG_THAT_FAILS_AFTER_WRITE);
+    await helium.resetHelium();
+    void helium.initialize(CONFIG_AFTER_RESET);
+
+    // Pin that the abandoned initialization fails after its write, since that is the only point
+    // the reset can have overtaken it.
+    expect(consoleError).not.toHaveBeenCalled();
+    fileSystem.__finishWrite();
+    await flushMicrotasks();
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining('Initialization failed'),
+      expect.anything(),
+    );
+
+    // The surviving initialization still owns the state, so a later caller joins it.
+    void helium.initialize(CONFIG_AFTER_RESET);
+    await flushMicrotasks();
+    expect(fileSystem.writeAsStringAsync).toHaveBeenCalledTimes(2);
+
+    fileSystem.__finishWrite();
+    await flushMicrotasks();
+    expect(native.initialize).toHaveBeenCalledTimes(1);
+    expect(native.initialize).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: CONFIG_AFTER_RESET.apiKey }),
+    );
   });
 });
