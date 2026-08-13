@@ -35,11 +35,13 @@
   "homepage": "https://github.com/cloudcaptainai/helium-expo-sdk/#readme",
   "dependencies": {},
   "devDependencies": {
+    "@types/jest": "^29.2.1",
     "@types/react": "~19.0.0",
     "expo-module-scripts": "^4.1.9",
     "expo": "~53.0.0",
     "react-native": "0.79.1",
-    "react-native-purchases": ">=9.0.0"
+    "react-native-purchases": ">=9.0.0",
+    "ts-jest": "~29.0.4"
   },
   "peerDependencies": {
     "expo": "*",
