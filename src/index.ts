@@ -564,7 +564,7 @@ export const setPaywallPreviewsEnabledInDevBuilds = (enabled: boolean): void => 
  *   Pass `['paddle']` or `['stripe']` if your app only uses one to skip the unused
  *   processor's entitlement network calls.
  */
-export function enableExternalWebCheckout(options: {
+function enableExternalWebCheckout(options: {
   redirectURL: string;
   paymentProcessors: WebCheckoutProcessor[];
 }): void;
@@ -572,12 +572,12 @@ export function enableExternalWebCheckout(options: {
  * @deprecated Pass `redirectURL` instead. A single redirect URL covers success, cancel, and
  * payment failure.
  */
-export function enableExternalWebCheckout(options: {
+function enableExternalWebCheckout(options: {
   successURL: string;
   cancelURL: string;
   paymentProcessors?: WebCheckoutProcessor[];
 }): void;
-export function enableExternalWebCheckout(options: {
+function enableExternalWebCheckout(options: {
   redirectURL?: string;
   successURL?: string;
   cancelURL?: string;
@@ -614,6 +614,8 @@ export function enableExternalWebCheckout(options: {
     console.error('[Helium] enableExternalWebCheckout error', e);
   }
 }
+
+export { enableExternalWebCheckout };
 
 /**
  * iOS only. Disables External Web Checkout Flow. Paywalls with Paddle or Stripe products
