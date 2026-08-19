@@ -579,7 +579,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // iOS-only for now. No-op on Android.
-    Function("enableExternalWebCheckout") { _: String, _: String, _: List<String>? ->
+    Function("enableExternalWebCheckout") { _: String, _: String?, _: List<String>? ->
     }
 
     // iOS-only for now. No-op on Android.

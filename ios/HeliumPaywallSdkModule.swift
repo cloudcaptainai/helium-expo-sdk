@@ -432,7 +432,7 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.paywallPreviewsAutoEnabledInDevBuilds = enabled
     }
 
-    Function("enableExternalWebCheckout") { (successURL: String, cancelURL: String, paymentProcessors: [String]?) in
+    Function("enableExternalWebCheckout") { (redirectURL: String, cancelURL: String?, paymentProcessors: [String]?) in
       let processors: WebCheckoutProcessors
       if let paymentProcessors {
         var set: WebCheckoutProcessors = []
@@ -448,11 +448,18 @@ public class HeliumPaywallSdkModule: Module {
       } else {
         processors = .all
       }
-      Helium.config.enableExternalWebCheckout(
-        successURL: successURL,
-        cancelURL: cancelURL,
-        paymentProcessors: processors
-      )
+      if let cancelURL {
+        Helium.config.enableExternalWebCheckout(
+          successURL: redirectURL,
+          cancelURL: cancelURL,
+          paymentProcessors: processors
+        )
+      } else {
+        Helium.config.enableExternalWebCheckout(
+          redirectURL: redirectURL,
+          paymentProcessors: processors
+        )
+      }
     }
 
     Function("disableExternalWebCheckout") {
