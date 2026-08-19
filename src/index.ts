@@ -564,15 +564,32 @@ export const setPaywallPreviewsEnabledInDevBuilds = (enabled: boolean): void => 
  *   Defaults to both. Pass `['paddle']` or `['stripe']` if your app only uses one to skip the
  *   unused processor's entitlement network calls.
  */
-export const enableExternalWebCheckout = ({
-                                            redirectURL,
-                                            paymentProcessors,
-                                          }: {
+export function enableExternalWebCheckout(options: {
   redirectURL: string;
   paymentProcessors?: WebCheckoutProcessor[];
-}): void => {
-  setExternalWebCheckout(redirectURL, null, paymentProcessors);
-};
+}): void;
+/**
+ * @deprecated Use `enableExternalWebCheckout({ redirectURL })`. A single redirect URL covers
+ * success, cancel, and payment failure.
+ */
+export function enableExternalWebCheckout(options: {
+  successURL: string;
+  cancelURL: string;
+  paymentProcessors?: WebCheckoutProcessor[];
+}): void;
+export function enableExternalWebCheckout(options: {
+  redirectURL?: string;
+  successURL?: string;
+  cancelURL?: string;
+  paymentProcessors?: WebCheckoutProcessor[];
+}): void {
+  const { redirectURL, successURL, cancelURL, paymentProcessors } = options;
+  setExternalWebCheckout(
+    redirectURL ?? successURL,
+    redirectURL ? null : cancelURL,
+    paymentProcessors,
+  );
+}
 
 /**
  * iOS only. Enables External Web Checkout Flow with separate success and cancel URLs.
@@ -596,8 +613,8 @@ export const enableExternalWebCheckoutSuccessAndCancel = ({
 };
 
 const setExternalWebCheckout = (
-  redirectURL: string,
-  cancelURL: string | null,
+  redirectURL: string | undefined,
+  cancelURL: string | null | undefined,
   paymentProcessors?: WebCheckoutProcessor[],
 ): void => {
   if (Platform.OS !== 'ios') {
@@ -608,12 +625,16 @@ const setExternalWebCheckout = (
     console.error('[Helium] enableExternalWebCheckout: redirectURL must not be empty.');
     return;
   }
+  if (cancelURL === '') {
+    console.error('[Helium] enableExternalWebCheckout: cancelURL must not be empty.');
+    return;
+  }
   if (paymentProcessors && paymentProcessors.length === 0) {
     console.error("[Helium] enableExternalWebCheckout: paymentProcessors must not be empty. Omit it to enable all, or pass ['paddle'] or ['stripe'].");
     return;
   }
   try {
-    HeliumPaywallSdkModule.enableExternalWebCheckout(redirectURL, cancelURL, paymentProcessors);
+    HeliumPaywallSdkModule.enableExternalWebCheckout(redirectURL, cancelURL ?? null, paymentProcessors);
   } catch (e) {
     console.error('[Helium] enableExternalWebCheckout error', e);
   }
