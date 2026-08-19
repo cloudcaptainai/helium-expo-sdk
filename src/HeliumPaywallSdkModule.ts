@@ -100,7 +100,12 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   enableExternalWebCheckout(
     redirectURL: string,
-    cancelURL: string | null,
+    paymentProcessors?: WebCheckoutProcessor[],
+  ): void;
+
+  enableExternalWebCheckoutSuccessAndCancel(
+    successURL: string,
+    cancelURL: string,
     paymentProcessors?: WebCheckoutProcessor[],
   ): void;
 
