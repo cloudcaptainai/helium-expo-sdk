@@ -38,8 +38,7 @@ export default function App() {
 
   const asyncHeliumInit = async () => {
     enableExternalWebCheckout({
-      successURL: "heliumexpo://openapps",
-      cancelURL: "heliumexpo://openapps",
+      redirectURL: "heliumexpo://openapps",
       paymentProcessors: ["paddle"],
     })
     await initialize({

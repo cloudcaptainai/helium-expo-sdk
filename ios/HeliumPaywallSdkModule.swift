@@ -179,6 +179,20 @@ private class NativeModuleManager {
     }
 }
 
+private func parseWebCheckoutProcessors(_ names: [String]?) -> WebCheckoutProcessors {
+  guard let names else { return .all }
+  var processors: WebCheckoutProcessors = []
+  for name in names {
+    switch name.lowercased() {
+    case "paddle": processors.insert(.paddle)
+    case "stripe": processors.insert(.stripe)
+    default:
+      print("[Helium] enableExternalWebCheckout: unknown payment processor '\(name)', ignoring")
+    }
+  }
+  return processors
+}
+
 public class HeliumPaywallSdkModule: Module {
   // Each module class must implement the definition function. The definition consists of components
   // that describes the module's functionality and behavior.
@@ -432,26 +446,18 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.paywallPreviewsAutoEnabledInDevBuilds = enabled
     }
 
-    Function("enableExternalWebCheckout") { (successURL: String, cancelURL: String, paymentProcessors: [String]?) in
-      let processors: WebCheckoutProcessors
-      if let paymentProcessors {
-        var set: WebCheckoutProcessors = []
-        for p in paymentProcessors {
-          switch p.lowercased() {
-          case "paddle": set.insert(.paddle)
-          case "stripe": set.insert(.stripe)
-          default:
-            print("[Helium] enableExternalWebCheckout: unknown payment processor '\(p)', ignoring")
-          }
-        }
-        processors = set
-      } else {
-        processors = .all
-      }
+    Function("enableExternalWebCheckout") { (redirectURL: String, paymentProcessors: [String]?) in
+      Helium.config.enableExternalWebCheckout(
+        redirectURL: redirectURL,
+        paymentProcessors: parseWebCheckoutProcessors(paymentProcessors)
+      )
+    }
+
+    Function("enableExternalWebCheckoutSuccessAndCancel") { (successURL: String, cancelURL: String, paymentProcessors: [String]?) in
       Helium.config.enableExternalWebCheckout(
         successURL: successURL,
         cancelURL: cancelURL,
-        paymentProcessors: processors
+        paymentProcessors: parseWebCheckoutProcessors(paymentProcessors)
       )
     }
 

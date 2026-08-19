@@ -99,6 +99,11 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
   setPaywallPreviewsAutoEnabledInDevBuilds(enabled: boolean): void;
 
   enableExternalWebCheckout(
+    redirectURL: string,
+    paymentProcessors?: WebCheckoutProcessor[],
+  ): void;
+
+  enableExternalWebCheckoutSuccessAndCancel(
     successURL: string,
     cancelURL: string,
     paymentProcessors?: WebCheckoutProcessor[],
