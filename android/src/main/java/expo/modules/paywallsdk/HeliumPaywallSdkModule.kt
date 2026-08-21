@@ -756,7 +756,8 @@ class CustomPaywallDelegate(
       // Send event to JavaScript with separate parameters
       val eventMap = mutableMapOf<String, Any?>(
         "type" to "purchase",
-        "productId" to productDetails.productId
+        "productId" to productDetails.productId,
+        "productType" to productDetails.productType
       )
       if (basePlanId != null) {
         eventMap["basePlanId"] = basePlanId
