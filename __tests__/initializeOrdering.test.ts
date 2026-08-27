@@ -224,6 +224,38 @@ describe('presentUpsell ordering against initialize', () => {
     expect(native.fallbackOpenOrCloseEvent).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a later present's handlers when an earlier queued present fails, even when both share them", async () => {
+    const { helium, native, fileSystem } = loadHelium();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    native.presentUpsell.mockImplementation((triggerName: string) => {
+      if (triggerName === 'first') {
+        throw new Error('native presentUpsell blew up');
+      }
+    });
+    const onOpen = jest.fn();
+    const onPaywallUnavailable = jest.fn();
+    const onEntitled = jest.fn();
+    const sharedHandlers = { onOpen };
+
+    void helium.initialize(CONFIG);
+    helium.presentUpsell({ triggerName: 'first', eventHandlers: sharedHandlers, onPaywallUnavailable, onEntitled });
+    helium.presentUpsell({ triggerName: 'second', eventHandlers: sharedHandlers, onPaywallUnavailable, onEntitled });
+    fileSystem.__finishWrite();
+    await flushMicrotasks();
+
+    expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
+
+    native.__emit('paywallEventHandlers', {
+      type: 'paywallOpen',
+      triggerName: 'second',
+      paywallName: 'test-paywall',
+    });
+    native.__emit('onEntitledEvent', { type: 'subscription' });
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onEntitled).toHaveBeenCalledTimes(1);
+  });
+
   it('never throws at the caller when the present recovery path also fails', () => {
     const { helium, native } = loadHelium();
     native.presentUpsell.mockImplementation(() => {

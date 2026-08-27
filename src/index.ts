@@ -310,6 +310,8 @@ export const initialize = async (config: HeliumConfig) => {
 let paywallEventHandlers: PaywallEventHandlers | undefined;
 let presentOnPaywallUnavailable: (() => void) | undefined;
 let presentOnEntitled: ((event?: PaywallEntitledEvent) => void) | undefined;
+/** Identifies which presentUpsell call owns the handler slots above; queued presents may share callback references, so identity checks can't tell them apart. */
+let currentPresentToken: symbol | undefined;
 export const presentUpsell = ({
                                 triggerName,
                                 eventHandlers,
@@ -319,15 +321,24 @@ export const presentUpsell = ({
                                 onEntitled,
                                 onPaywallUnavailable,
                               }: PresentUpsellParams) => {
+  const presentToken = Symbol(triggerName);
+  currentPresentToken = presentToken;
   paywallEventHandlers = eventHandlers;
   presentOnPaywallUnavailable = onPaywallUnavailable;
   presentOnEntitled = onEntitled;
 
+  const clearHandlersIfStillOwned = () => {
+    if (currentPresentToken === presentToken) {
+      currentPresentToken = undefined;
+      paywallEventHandlers = undefined;
+      presentOnPaywallUnavailable = undefined;
+      presentOnEntitled = undefined;
+    }
+  };
+
   const reportPresentFailed = (error: unknown) => {
     console.log('[Helium] presentUpsell error', error);
-    paywallEventHandlers = undefined;
-    presentOnPaywallUnavailable = undefined;
-    presentOnEntitled = undefined;
+    clearHandlersIfStillOwned();
     try {
       onPaywallUnavailable?.();
     } catch (e) {
@@ -357,15 +368,7 @@ export const presentUpsell = ({
   const presentUnlessReset = () => {
     if (!isCurrentGeneration()) {
       console.log('[Helium] presentUpsell skipped; SDK was reset before presentation', triggerName);
-      if (paywallEventHandlers === eventHandlers) {
-        paywallEventHandlers = undefined;
-      }
-      if (presentOnPaywallUnavailable === onPaywallUnavailable) {
-        presentOnPaywallUnavailable = undefined;
-      }
-      if (presentOnEntitled === onEntitled) {
-        presentOnEntitled = undefined;
-      }
+      clearHandlersIfStillOwned();
       try {
         onPaywallUnavailable?.();
       } catch (e) {
@@ -587,6 +590,7 @@ export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
  */
 export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> => {
   sdkGeneration += 1;
+  currentPresentToken = undefined;
   paywallEventHandlers = undefined;
   presentOnPaywallUnavailable = undefined;
   presentOnEntitled = undefined;
