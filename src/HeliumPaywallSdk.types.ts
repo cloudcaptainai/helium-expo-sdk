@@ -10,6 +10,7 @@ export type HeliumPaywallSdkModuleEvents = {
   paywallEventHandlers: (params: HeliumPaywallEvent) => void;
   onHeliumLogEvent: (params: HeliumLogEvent) => void;
   onEntitledEvent: (params?: PaywallEntitledEvent) => void;
+  onPaywallSkipEvent: (params: PaywallSkippedEvent) => void;
 };
 
 /** A log event emitted by the Helium SDK. */
@@ -262,9 +263,17 @@ export type PresentUpsellParams = {
    * entitlement (`purchaseAlreadyEntitled`, iOS only) — in these cases it is called when the paywall closes.
    * If you set `dontShowIfAlreadyEntitled` to true, this handler is also called immediately with a
    * `paywallSkipped` event when the paywall is not shown to users who already have entitlement
-   * for a product in the paywall.
+   * for a product in the paywall. When this handler is not provided, that already-entitled skip
+   * goes to `onPaywallSkip` instead.
    */
   onEntitled?: (event?: PaywallEntitledEvent) => void;
+  /** Optional. Called when the paywall is intentionally not shown for this trigger — a targeting
+   * holdout configured in your workflow (`skipReason` = `targetingHoldout`), or, when
+   * `dontShowIfAlreadyEntitled` is true, an already-entitled user (`skipReason` = `alreadyEntitled`).
+   * For already-entitled skips `onEntitled` takes precedence: `onPaywallSkip` is only called for
+   * that case when `onEntitled` is not provided. Not called for errors — see `onPaywallUnavailable`.
+   */
+  onPaywallSkip?: (event: PaywallSkippedEvent) => void;
   /** Optional. Called if desired paywall and fallback paywall did not show for any reason.
    * This is uncommon, but best practice to handle it just in case.
    * See https://docs.tryhelium.com/guides/fallback-bundle */
@@ -334,6 +343,13 @@ export interface PaywallOpenFailedEvent {
   isSecondTry: boolean;
   loadTimeTakenMS?: number;
   loadingBudgetMS?: number;
+}
+
+/** Passed to `onPaywallSkip` when the paywall is intentionally not shown for a trigger. */
+export interface PaywallSkippedEvent {
+  type: 'paywallSkipped';
+  triggerName: string;
+  skipReason: PaywallSkippedReason;
 }
 
 export interface CustomPaywallActionEvent {
