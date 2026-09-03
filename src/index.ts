@@ -175,11 +175,12 @@ function setupEventListeners(config: HeliumConfig) {
         console.error('[Helium] onEntitled callback failed', error);
       }
     } else if (isSkip) {
-      dispatchPaywallSkip({
-        type: 'paywallSkipped',
-        triggerName: entitledEvent.triggerName ?? 'unknown',
-        skipReason: entitledEvent.skipReason ?? 'alreadyEntitled',
-      });
+      const { triggerName, skipReason } = entitledEvent;
+      if (triggerName && skipReason) {
+        dispatchPaywallSkip({ type: 'paywallSkipped', triggerName, skipReason });
+      } else {
+        console.warn('[Helium] paywallSkipped event is missing triggerName or skipReason', entitledEvent);
+      }
     }
   });
 
@@ -299,8 +300,7 @@ let presentOnPaywallSkip: ((event: PaywallSkippedEvent) => void) | undefined;
  * Presents a full-screen paywall for the specified trigger.
  *
  * You must have a trigger and workflow configured in the Helium dashboard (https://app.tryhelium.com/workflows)
- * in order to show a paywall. See `PresentUpsellParams` for every option, including the per-presentation
- * `onEntitled` / `onPaywallSkip` / `onPaywallUnavailable` handlers and when (not) to use `dontShowIfAlreadyEntitled`.
+ * in order to show a paywall. See `PresentUpsellParams` for every option.
  */
 export const presentUpsell = ({
                                 triggerName,
