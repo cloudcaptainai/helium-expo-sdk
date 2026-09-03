@@ -213,7 +213,7 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent", "onPaywallSkipEvent")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -298,7 +298,20 @@ public class HeliumPaywallSdkModule: Module {
                 NativeModuleManager.shared.safeSendEvent(eventName: "onEntitledEvent", eventData: eventDict)
             }
         ) { paywallNotShownReason in
-            // nothing for now
+            let skipReason: PaywallSkippedReason
+            switch paywallNotShownReason {
+            case .targetingHoldout:
+                skipReason = .targetingHoldout
+            case .alreadyEntitled:
+                skipReason = .alreadyEntitled
+            case .error:
+                return
+            }
+            NativeModuleManager.shared.safeSendEvent(eventName: "onPaywallSkipEvent", eventData: [
+                "type": "paywallSkipped",
+                "triggerName": trigger,
+                "skipReason": skipReason.rawValue,
+            ])
         }
     }
 

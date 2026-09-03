@@ -15,6 +15,7 @@ import com.tryhelium.paywall.core.HeliumEnvironment
 import com.tryhelium.paywall.core.event.HeliumEvent
 import com.tryhelium.paywall.core.event.HeliumEventDictionaryMapper
 import com.tryhelium.paywall.core.event.PaywallEventHandlers
+import com.tryhelium.paywall.core.event.PaywallSkippedReason
 import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraits.Companion.create
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
@@ -23,6 +24,7 @@ import com.tryhelium.paywall.core.HeliumWrapperSdkConfig
 import com.tryhelium.paywall.core.PaywallPresentationConfig
 import com.tryhelium.paywall.delegate.HeliumPaywallDelegate
 import com.tryhelium.paywall.delegate.PlayStorePaywallDelegate
+import com.tryhelium.paywall.ui.PaywallNotShownReason
 import com.tryhelium.paywall.core.logger.HeliumLogLevel
 import com.tryhelium.paywall.core.logger.HeliumLogger
 import com.android.billingclient.api.ProductDetails
@@ -215,7 +217,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Defines event names that the module can send to JavaScript
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent", "onPaywallSkipEvent")
 
     // Lifecycle event to cache Activity reference for hot reload resilience
     OnActivityEntersForeground {
@@ -415,8 +417,23 @@ class HeliumPaywallSdkModule : Module() {
           )
         },
         eventListener = eventHandlers,
-        onPaywallNotShown = { _ ->
-          // nothing for now
+        onPaywallNotShown = { reason ->
+          val skipReason = when (reason) {
+            is PaywallNotShownReason.TargetingHoldout -> PaywallSkippedReason.TargetingHoldout
+            is PaywallNotShownReason.AlreadyEntitled -> PaywallSkippedReason.AlreadyEntitled
+            is PaywallNotShownReason.Error -> null
+          }
+          skipReason?.let {
+            NativeModuleManager.safeSendEvent(
+              "onPaywallSkipEvent",
+              mapOf(
+                "type" to "paywallSkipped",
+                "triggerName" to trigger,
+                "skipReason" to it.rawValue
+              ),
+              this@HeliumPaywallSdkModule
+            )
+          }
         }
       )
     }
