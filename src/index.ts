@@ -184,10 +184,14 @@ function setupEventListeners(config: HeliumConfig) {
   });
 
   addPaywallSkipEventListener((event) => {
-    if (event.skipReason === 'alreadyEntitled' && presentOnEntitled) {
-      return;
+    try {
+      if (event.skipReason === 'alreadyEntitled' && presentOnEntitled) {
+        return;
+      }
+      dispatchPaywallSkip(event);
+    } catch (error) {
+      console.error('[Helium] onPaywallSkipEvent handler failed', error);
     }
-    dispatchPaywallSkip(event);
   });
 }
 
