@@ -175,12 +175,14 @@ function setupEventListeners(config: HeliumConfig) {
         console.error('[Helium] onEntitled callback failed', error);
       }
     } else if (isSkip) {
-      const { triggerName, skipReason } = entitledEvent;
-      if (triggerName && skipReason) {
-        dispatchPaywallSkip({ type: 'paywallSkipped', triggerName, skipReason });
-      } else {
+      if (!entitledEvent.triggerName || !entitledEvent.skipReason) {
         console.warn('[Helium] paywallSkipped event is missing triggerName or skipReason', entitledEvent);
       }
+      dispatchPaywallSkip({
+        type: 'paywallSkipped',
+        triggerName: entitledEvent.triggerName ?? 'hlm_unknown',
+        skipReason: entitledEvent.skipReason ?? 'unknown',
+      });
     }
   });
 
