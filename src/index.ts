@@ -52,6 +52,18 @@ function addPaywallSkipEventListener(listener: (event: PaywallSkippedEvent) => v
 }
 
 let isInitialized = false;
+/** In-flight native handoff. Initialization is async here, so a caller that does not await it can reach native first. */
+let pendingNativeInit: Promise<void> | undefined;
+/** In-flight teardown. An initialize issued mid-reset must wait for it, or the reset's cleanup swallows the new initialization. */
+let pendingReset: Promise<void> | undefined;
+/** Incremented by each teardown, so work started under an older generation can tell it was abandoned. */
+let sdkGeneration = 0;
+
+/** Snapshots the generation so deferred work can refuse to reach the native SDK after a teardown. */
+const captureGeneration = () => {
+  const generation = sdkGeneration;
+  return () => generation === sdkGeneration;
+};
 
 const HELIUM_EVENT_NAMES = [
   'onHeliumPaywallEvent',
@@ -256,22 +268,62 @@ const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConf
 };
 
 /**
- * @internal Not part of the public API.
+ * Publishes the handoff as {@link pendingNativeInit} before awaiting it, so callers that must reach
+ * the native SDK after initialization can queue behind it.
  */
-export const _setupCore = async (config: HeliumConfig) => {
+const startInitialization = async (
+  config: HeliumConfig,
+  handOffToNative: (nativeConfig: NativeHeliumConfig) => void,
+  failureLabel: string,
+): Promise<void> => {
+  while (pendingReset) {
+    await pendingReset;
+  }
   if (isInitialized) {
+    await pendingNativeInit;
     return;
   }
   isInitialized = true;
+
+  const isCurrentGeneration = captureGeneration();
+
+  // Listeners stay attached on failure; they are how the native SDK reports why later calls fail.
+  const inFlight = (async () => {
+    try {
+      setupEventListeners(config);
+      const nativeConfig = await buildNativeConfig(config);
+      if (isCurrentGeneration()) {
+        handOffToNative(nativeConfig);
+      }
+    } catch (error) {
+      if (isCurrentGeneration()) {
+        isInitialized = false;
+      }
+      console.error(`[Helium] ${failureLabel} failed:`, error);
+    }
+  })();
+  pendingNativeInit = inFlight;
+
   try {
-    setupEventListeners(config);
-    const nativeConfig = await buildNativeConfig(config);
-    HeliumPaywallSdkModule.setupCore(nativeConfig);
-  } catch (error) {
-    isInitialized = false;
-    removeAllHeliumListeners();
-    console.error('[Helium] Setup failed:', error);
+    await inFlight;
+  } finally {
+    // A reset can start a newer initialization while this one is still in flight; only the
+    // current handoff may clear the slot.
+    if (pendingNativeInit === inFlight) {
+      pendingNativeInit = undefined;
+    }
   }
+};
+
+/**
+ * @internal Not part of the public API.
+ */
+export const _setupCore = async (config: HeliumConfig) => {
+  await startInitialization(
+    config,
+    (nativeConfig) => HeliumPaywallSdkModule.setupCore(nativeConfig),
+    'Setup',
+  );
 };
 
 export const initialize = async (config: HeliumConfig) => {
@@ -279,25 +331,19 @@ export const initialize = async (config: HeliumConfig) => {
     console.error('[Helium] initialize called without an apiKey; aborting.');
     return;
   }
-  if (isInitialized) {
-    return;
-  }
-  isInitialized = true;
-  try {
-    setupEventListeners(config);
-    const nativeConfig = await buildNativeConfig(config);
-    HeliumPaywallSdkModule.initialize(nativeConfig);
-  } catch (error) {
-    isInitialized = false;
-    removeAllHeliumListeners();
-    console.error('[Helium] Initialization failed:', error);
-  }
+  await startInitialization(
+    config,
+    (nativeConfig) => HeliumPaywallSdkModule.initialize(nativeConfig),
+    'Initialization',
+  );
 };
 
 let paywallEventHandlers: PaywallEventHandlers | undefined;
 let presentOnPaywallUnavailable: (() => void) | undefined;
 let presentOnEntitled: ((event?: PaywallEntitledEvent) => void) | undefined;
 let presentOnPaywallSkip: ((event: PaywallSkippedEvent) => void) | undefined;
+/** Identifies which presentUpsell call owns the handler slots above; queued presents may share callback references, so identity checks can't tell them apart. */
+let currentPresentToken: symbol | undefined;
 /**
  * Presents a full-screen paywall for the specified trigger.
  *
@@ -314,21 +360,75 @@ export const presentUpsell = ({
                                 onPaywallSkip,
                                 onPaywallUnavailable,
                               }: PresentUpsellParams) => {
-  try {
-    paywallEventHandlers = eventHandlers;
-    presentOnPaywallUnavailable = onPaywallUnavailable;
-    presentOnEntitled = onEntitled;
-    presentOnPaywallSkip = onPaywallSkip;
-    HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits), dontShowIfAlreadyEntitled, androidDisableSystemBackNavigation);
-  } catch (error) {
+  const presentToken = Symbol(triggerName);
+  currentPresentToken = presentToken;
+  paywallEventHandlers = eventHandlers;
+  presentOnPaywallUnavailable = onPaywallUnavailable;
+  presentOnEntitled = onEntitled;
+  presentOnPaywallSkip = onPaywallSkip;
+
+  const clearHandlersIfStillOwned = () => {
+    if (currentPresentToken === presentToken) {
+      currentPresentToken = undefined;
+      paywallEventHandlers = undefined;
+      presentOnPaywallUnavailable = undefined;
+      presentOnEntitled = undefined;
+      presentOnPaywallSkip = undefined;
+    }
+  };
+
+  const reportPresentFailed = (error: unknown) => {
     console.log('[Helium] presentUpsell error', error);
-    paywallEventHandlers = undefined;
-    presentOnPaywallUnavailable = undefined;
-    presentOnEntitled = undefined;
-    presentOnPaywallSkip = undefined;
-    onPaywallUnavailable?.();
-    HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
+    clearHandlersIfStillOwned();
+    try {
+      onPaywallUnavailable?.();
+    } catch (e) {
+      console.error('[Helium] onPaywallUnavailable callback failed', e);
+    }
+    try {
+      HeliumPaywallSdkModule.fallbackOpenOrCloseEvent(triggerName, true, 'presented');
+    } catch (e) {
+      console.error('[Helium] fallbackOpenOrCloseEvent failed', e);
+    }
+  };
+
+  const present = () => {
+    try {
+      HeliumPaywallSdkModule.presentUpsell(triggerName, convertBooleansToMarkers(customPaywallTraits), dontShowIfAlreadyEntitled, androidDisableSystemBackNavigation);
+    } catch (error) {
+      reportPresentFailed(error);
+    }
+  };
+
+  if (!pendingNativeInit && !pendingReset) {
+    present();
+    return;
   }
+
+  const isCurrentGeneration = captureGeneration();
+  const presentUnlessReset = () => {
+    if (!isCurrentGeneration()) {
+      console.log('[Helium] presentUpsell skipped; SDK was reset before presentation', triggerName);
+      clearHandlersIfStillOwned();
+      try {
+        onPaywallUnavailable?.();
+      } catch (e) {
+        console.error('[Helium] onPaywallUnavailable callback failed', e);
+      }
+      return;
+    }
+    present();
+  };
+  // Wait out any in-flight reset first: an initialize issued mid-reset has not published its
+  // handoff yet, and the present must queue behind that handoff once it exists.
+  const waitForPendingWork = async () => {
+    while (pendingReset) {
+      await pendingReset;
+    }
+    await pendingNativeInit;
+  };
+  // Present on either arm: an initialization that gave up still leaves the native SDK to report why.
+  waitForPendingWork().then(presentUnlessReset, presentUnlessReset);
 };
 
 function dispatchPaywallSkip(event: PaywallSkippedEvent) {
@@ -542,25 +642,40 @@ export const hasAnyEntitlement = HeliumPaywallSdkModule.hasAnyEntitlement;
  * Reset Helium entirely so you can call initialize again. Only for advanced use cases.
  */
 export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> => {
+  sdkGeneration += 1;
+  currentPresentToken = undefined;
   paywallEventHandlers = undefined;
   presentOnPaywallUnavailable = undefined;
   presentOnEntitled = undefined;
   presentOnPaywallSkip = undefined;
   removeAllHeliumListeners();
 
+  const resetting = (async () => {
+    try {
+      await HeliumPaywallSdkModule.resetHelium(
+        options?.clearUserTraits ?? true,
+        true, // always clear for now, these listeners are not yet exposed to RN
+        options?.clearExperimentAllocations ?? false,
+      );
+    } catch (e) {
+      // Native reset likely completed; the async bridge response may have been
+      // lost (e.g. coroutine cancellation during module teardown). JS state is
+      // cleaned up below regardless.
+      console.warn('[Helium] resetHelium did not receive native completion:', e);
+    } finally {
+      isInitialized = false;
+      pendingNativeInit = undefined;
+    }
+  })();
+  pendingReset = resetting;
+
   try {
-    await HeliumPaywallSdkModule.resetHelium(
-      options?.clearUserTraits ?? true,
-      true, // always clear for now, these listeners are not yet exposed to RN
-      options?.clearExperimentAllocations ?? false,
-    );
-  } catch (e) {
-    // Native reset likely completed; the async bridge response may have been
-    // lost (e.g. coroutine cancellation during module teardown). JS state is
-    // cleaned up below regardless.
-    console.warn('[Helium] resetHelium did not receive native completion:', e);
+    await resetting;
   } finally {
-    isInitialized = false;
+    // Overlapping resets each publish their own promise; only the latest owns the slot.
+    if (pendingReset === resetting) {
+      pendingReset = undefined;
+    }
   }
 };
 
