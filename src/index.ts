@@ -172,29 +172,33 @@ function setupEventListeners(config: HeliumConfig) {
 
   // Set up listener for onEntitled callback from native presentPaywall
   addEntitledEventListener((event) => {
-    // Native sends an empty payload when the entitling event isn't available
-    const entitledEvent = event && event.type ? event : undefined;
-    const onEntitled = presentOnEntitled;
-    presentOnEntitled = undefined;
-    const isSkip = entitledEvent?.type === 'paywallSkipped';
-    if (onEntitled) {
-      if (isSkip) {
-        presentOnPaywallSkip = undefined;
+    try {
+      // Native sends an empty payload when the entitling event isn't available
+      const entitledEvent = event && event.type ? event : undefined;
+      const onEntitled = presentOnEntitled;
+      presentOnEntitled = undefined;
+      const isSkip = entitledEvent?.type === 'paywallSkipped';
+      if (onEntitled) {
+        if (isSkip) {
+          presentOnPaywallSkip = undefined;
+        }
+        try {
+          onEntitled(entitledEvent);
+        } catch (error) {
+          console.error('[Helium] onEntitled callback failed', error);
+        }
+      } else if (isSkip) {
+        if (!entitledEvent.triggerName || !entitledEvent.skipReason) {
+          console.warn('[Helium] paywallSkipped event is missing triggerName or skipReason', entitledEvent);
+        }
+        dispatchPaywallSkip({
+          type: 'paywallSkipped',
+          triggerName: entitledEvent.triggerName ?? 'hlm_unknown',
+          skipReason: entitledEvent.skipReason ?? 'unknown',
+        });
       }
-      try {
-        onEntitled(entitledEvent);
-      } catch (error) {
-        console.error('[Helium] onEntitled callback failed', error);
-      }
-    } else if (isSkip) {
-      if (!entitledEvent.triggerName || !entitledEvent.skipReason) {
-        console.warn('[Helium] paywallSkipped event is missing triggerName or skipReason', entitledEvent);
-      }
-      dispatchPaywallSkip({
-        type: 'paywallSkipped',
-        triggerName: entitledEvent.triggerName ?? 'hlm_unknown',
-        skipReason: entitledEvent.skipReason ?? 'unknown',
-      });
+    } catch (error) {
+      console.error('[Helium] onEntitledEvent handler failed', error);
     }
   });
 
