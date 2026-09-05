@@ -102,6 +102,9 @@ export default function App() {
                 onEntitled: (event) => {
                   console.log('onEntitled called!', event?.type, event?.productId)
                 },
+                onPaywallSkip: (event) => {
+                  console.log('onPaywallSkip called!', event.skipReason)
+                },
                 onPaywallUnavailable: () => {
                   console.log('onPaywallUnavailable called!')
                 },
