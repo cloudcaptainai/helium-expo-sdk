@@ -521,7 +521,7 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
       paywallEventHandlers = undefined;
       presentOnPaywallUnavailable = undefined;
       break;
-    case 'paywallOpenFailed':
+    case 'paywallOpenFailed': {
       paywallEventHandlers = undefined;
       const unavailableReason = event.paywallUnavailableReason;
       // Clear before invoking: the callback may call presentUpsell again, and clearing
@@ -540,6 +540,7 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
         }
       }
       break;
+    }
   }
 }
 
