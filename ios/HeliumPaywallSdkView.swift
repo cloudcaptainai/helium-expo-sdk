@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import Helium
+import React
 import SwiftUI
 
 class HeliumPaywallSdkView: ExpoView {
@@ -14,6 +15,15 @@ class HeliumPaywallSdkView: ExpoView {
   override func layoutSubviews() {
     super.layoutSubviews()
     hostingController?.view.frame = bounds
+  }
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    if window == nil {
+      hostingController?.removeFromParent()
+    } else {
+      attachToReactViewController()
+    }
   }
 
   func loadPaywallIfNeeded() {
@@ -36,6 +46,17 @@ class HeliumPaywallSdkView: ExpoView {
     controller.view.frame = bounds
     addSubview(controller.view)
     hostingController = controller
+    attachToReactViewController()
+  }
+
+  private func attachToReactViewController() {
+    guard let hostingController, window != nil, let parent = reactViewController(), hostingController.parent !== parent else {
+      return
+    }
+    if !(parent is UINavigationController) {
+      parent.addChild(hostingController)
+    }
+    hostingController.didMove(toParent: parent)
   }
 }
 
