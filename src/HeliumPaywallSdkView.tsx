@@ -1,11 +1,22 @@
-import { requireNativeView } from 'expo';
 import * as React from 'react';
 
-import { HeliumPaywallSdkViewProps } from './HeliumPaywallSdk.types';
+import { convertBooleansToMarkers } from './booleanMarkers';
+import type { HeliumPaywallViewProps } from './HeliumPaywallSdk.types';
 
-const NativeView: React.ComponentType<HeliumPaywallSdkViewProps> =
-  requireNativeView('HeliumPaywallSdk');
+let NativeView: React.ComponentType<HeliumPaywallViewProps> | undefined;
 
-export default function HeliumPaywallSdkView(props: HeliumPaywallSdkViewProps) {
-  return <NativeView {...props} />;
+function resolveNativeView(): React.ComponentType<HeliumPaywallViewProps> {
+  if (!NativeView) {
+    const expo: typeof import('expo') = require('expo');
+    NativeView = expo.requireNativeView('HeliumPaywallSdk');
+  }
+  return NativeView;
+}
+
+export function HeliumPaywallView({ triggerName, customPaywallTraits, style }: HeliumPaywallViewProps) {
+  return React.createElement(resolveNativeView(), {
+    triggerName,
+    customPaywallTraits: convertBooleansToMarkers(customPaywallTraits),
+    style,
+  });
 }

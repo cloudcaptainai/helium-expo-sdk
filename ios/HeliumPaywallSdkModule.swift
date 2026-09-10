@@ -541,17 +541,18 @@ public class HeliumPaywallSdkModule: Module {
       Helium.testing.reset()
     }
 
-    // Enables the module to be used as a native view. Definition components that are accepted as part of the
-    // view definition: Prop, Events.
     View(HeliumPaywallSdkView.self) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { (view: HeliumPaywallSdkView, url: URL) in
-        if view.webView.url != url {
-          view.webView.load(URLRequest(url: url))
-        }
+      Prop("triggerName") { (view: HeliumPaywallSdkView, triggerName: String) in
+        view.triggerName = triggerName
       }
 
-      Events("onLoad")
+      Prop("customPaywallTraits") { (view: HeliumPaywallSdkView, customPaywallTraits: [String: Any]?) in
+        view.customPaywallTraits = convertMarkersToBooleans(customPaywallTraits)
+      }
+
+      OnViewDidUpdateProps { (view: HeliumPaywallSdkView) in
+        view.loadPaywallIfNeeded()
+      }
     }
   }
 
@@ -660,42 +661,6 @@ public class HeliumPaywallSdkModule: Module {
         }
       }
     }
-
-    /// Recursively converts special marker strings back to boolean values to restore
-    /// type information that was preserved when passing through native bridge
-    ///
-    /// Native bridge converts booleans to NSNumber (0/1), so we use
-    /// special marker strings to preserve the original intent. This helper converts:
-    /// - "__helium_rn_bool_true__" -> true
-    /// - "__helium_rn_bool_false__" -> false
-    /// - All other values remain unchanged
-    private func convertMarkersToBooleans(_ input: [String: Any]?) -> [String: Any]? {
-        guard let input = input else { return nil }
-
-        var result: [String: Any] = [:]
-        for (key, value) in input {
-            result[key] = convertValueMarkersToBooleans(value)
-        }
-        return result
-    }
-    /// Helper to recursively convert marker strings in any value type
-    private func convertValueMarkersToBooleans(_ value: Any) -> Any {
-        if let stringValue = value as? String {
-            switch stringValue {
-            case "__helium_rn_bool_true__":
-                return true
-            case "__helium_rn_bool_false__":
-                return false
-            default:
-                return stringValue
-            }
-        } else if let dictValue = value as? [String: Any] {
-            return convertMarkersToBooleans(dictValue) ?? [:]
-        } else if let arrayValue = value as? [Any] {
-            return arrayValue.map { convertValueMarkersToBooleans($0) }
-        }
-        return value
-    }
 }
 
 private class InternalDelegate: HeliumPaywallDelegate, HeliumDelegateReturnsTransaction {
@@ -771,4 +736,40 @@ private func applyEventFieldAliases(_ eventDict: inout [String: Any]) {
     if eventDict["customPaywallActionParams"] == nil, let params = eventDict["params"] {
         eventDict["customPaywallActionParams"] = params
     }
+}
+
+/// Recursively converts special marker strings back to boolean values to restore
+/// type information that was preserved when passing through native bridge
+///
+/// Native bridge converts booleans to NSNumber (0/1), so we use
+/// special marker strings to preserve the original intent. This helper converts:
+/// - "__helium_rn_bool_true__" -> true
+/// - "__helium_rn_bool_false__" -> false
+/// - All other values remain unchanged
+func convertMarkersToBooleans(_ input: [String: Any]?) -> [String: Any]? {
+    guard let input = input else { return nil }
+
+    var result: [String: Any] = [:]
+    for (key, value) in input {
+        result[key] = convertValueMarkersToBooleans(value)
+    }
+    return result
+}
+/// Helper to recursively convert marker strings in any value type
+private func convertValueMarkersToBooleans(_ value: Any) -> Any {
+    if let stringValue = value as? String {
+        switch stringValue {
+        case "__helium_rn_bool_true__":
+            return true
+        case "__helium_rn_bool_false__":
+            return false
+        default:
+            return stringValue
+        }
+    } else if let dictValue = value as? [String: Any] {
+        return convertMarkersToBooleans(dictValue) ?? [:]
+    } else if let arrayValue = value as? [Any] {
+        return arrayValue.map { convertValueMarkersToBooleans($0) }
+    }
+    return value
 }

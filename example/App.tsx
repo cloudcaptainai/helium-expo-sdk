@@ -13,6 +13,7 @@ import {
   initialize,
   presentUpsell, enableExternalWebCheckout,
   setCustomUserId,
+  HeliumPaywallView,
 } from 'expo-helium';
 import {useEffect, useState} from "react";
 import { Alert, Button, Linking, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
@@ -27,6 +28,7 @@ const randomUuid = (): string =>
 export default function App() {
   const isDark = useColorScheme() === 'dark';
   const [customUserId, setCustomUserIdState] = useState<string | null>(null);
+  const [showEmbeddedPaywall, setShowEmbeddedPaywall] = useState(false);
 
   const refreshCustomUserId = () => {
     try {
@@ -43,6 +45,11 @@ export default function App() {
     })
     await initialize({
       apiKey: process.env.EXPO_PUBLIC_HELIUM_API_KEY ?? '',
+      onHeliumPaywallEvent: (event) => {
+        if (event.type === 'paywallDismissed' || event.type === 'purchaseSucceeded') {
+          setShowEmbeddedPaywall(false);
+        }
+      },
     });
     refreshCustomUserId();
   };
@@ -111,6 +118,18 @@ export default function App() {
               });
             }}
           />
+        </Group>
+        <Group name="Embedded paywall">
+          <Button
+            title={showEmbeddedPaywall ? 'Hide embedded paywall' : 'Show embedded paywall'}
+            onPress={() => setShowEmbeddedPaywall((shown) => !shown)}
+          />
+          {showEmbeddedPaywall && (
+            <HeliumPaywallView
+              triggerName={process.env.EXPO_PUBLIC_HELIUM_TRIGGER ?? ''}
+              style={styles.embeddedPaywall}
+            />
+          )}
         </Group>
         <Group name="User ID">
           <Text style={{ color: isDark ? '#fff' : '#000', marginBottom: 12 }}>
@@ -207,5 +226,10 @@ const styles = {
   view: {
     flex: 1,
     height: 200,
+  },
+  embeddedPaywall: {
+    alignSelf: 'stretch' as const,
+    height: 520,
+    marginTop: 12,
   },
 };

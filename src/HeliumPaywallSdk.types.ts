@@ -1,9 +1,5 @@
 import type { StyleProp, ViewStyle } from 'react-native';
 
-export type OnLoadEventPayload = {
-  url: string;
-};
-
 export type HeliumPaywallSdkModuleEvents = {
   onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
   onDelegateActionEvent: (params: DelegateActionEvent) => void;
@@ -118,12 +114,6 @@ export type DelegateActionEvent = {
   basePlanId?: string;
   /** Android-specific: Offer ID for promotional offers */
   offerId?: string;
-};
-
-export type HeliumPaywallSdkViewProps = {
-  url: string;
-  onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
-  style?: StyleProp<ViewStyle>;
 };
 
 export type HeliumTransactionStatus = 'purchased' | 'failed' | 'cancelled' | 'pending' | 'restored';
@@ -288,6 +278,10 @@ export type PresentUpsellParams = {
    * This is uncommon, but best practice to handle it just in case.
    * See https://docs.tryhelium.com/guides/fallback-bundle */
   onPaywallUnavailable?: () => void;
+};
+
+export type HeliumPaywallViewProps = Pick<PresentUpsellParams, 'triggerName' | 'customPaywallTraits'> & {
+  style?: StyleProp<ViewStyle>;
 };
 
 export interface PaywallInfo {

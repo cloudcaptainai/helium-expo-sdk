@@ -11,6 +11,7 @@ import {
 } from "./HeliumPaywallSdk.types";
 import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
+import { convertBooleansToMarkers } from './booleanMarkers';
 import { EventSubscription } from 'expo-modules-core';
 import * as ExpoFileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
@@ -23,7 +24,7 @@ try {
 }
 
 export { default } from './HeliumPaywallSdkModule';
-// export { default as HeliumPaywallSdkView } from './HeliumPaywallSdkView';
+export { HeliumPaywallView } from './HeliumPaywallSdkView';
 export * from  './HeliumPaywallSdk.types';
 export * from './HeliumExperimentInfo.types';
 
@@ -1045,41 +1046,6 @@ export const heliumHandleURL = (url: string | null): HeliumCheckoutRedirectType 
     return undefined;
   }
 };
-
-/**
- * Recursively converts boolean values to special marker strings to preserve
- * type information when passing through native bridge.
- *
- * Native bridge converts booleans to NSNumber (0/1), making them
- * indistinguishable from actual numeric values. This helper converts:
- * - true -> "__helium_rn_bool_true__"
- * - false -> "__helium_rn_bool_false__"
- * - All other values remain unchanged
- */
-function convertBooleansToMarkers(input: Record<string, any> | undefined): Record<string, any> | undefined {
-  if (!input) return undefined;
-
-  const result: Record<string, any> = {};
-  for (const [key, value] of Object.entries(input)) {
-    // Strip null/undefined values — native SDKs ignore them and it complicates bridging code
-    if (value == null) continue;
-    result[key] = convertValueBooleansToMarkers(value);
-  }
-  return result;
-}
-/**
- * Helper to recursively convert booleans in any value type
- */
-function convertValueBooleansToMarkers(value: any): any {
-  if (typeof value === 'boolean') {
-    return value ? "__helium_rn_bool_true__" : "__helium_rn_bool_false__";
-  } else if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return convertBooleansToMarkers(value);
-  } else if (value && Array.isArray(value)) {
-    return value.map(convertValueBooleansToMarkers);
-  }
-  return value;
-}
 
 /**
  * Stubs for automated testing (UI tests, CI, EAS builds where StoreKit / Play Billing

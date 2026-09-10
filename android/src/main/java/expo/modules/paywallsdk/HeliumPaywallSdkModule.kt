@@ -30,7 +30,6 @@ import com.tryhelium.paywall.core.logger.HeliumLogger
 import com.android.billingclient.api.ProductDetails
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.ref.WeakReference
-import java.net.URL
 import kotlin.coroutines.resume
 
 // Record data classes for type-safe return values
@@ -690,14 +689,18 @@ class HeliumPaywallSdkModule : Module() {
       Helium.config.enablePaywallPreviewsInDevBuilds = enabled
     }
 
-    // Enables the module to be used as a native view
     View(HeliumPaywallSdkView::class) {
-      // Defines a setter for the `url` prop
-      Prop("url") { view: HeliumPaywallSdkView, url: URL ->
-        view.webView.loadUrl(url.toString())
+      Prop("triggerName") { view: HeliumPaywallSdkView, triggerName: String ->
+        view.triggerName = triggerName
       }
-      // Defines an event that the view can send to JavaScript
-      Events("onLoad")
+
+      Prop("customPaywallTraits") { view: HeliumPaywallSdkView, customPaywallTraits: Map<String, Any>? ->
+        view.customPaywallTraits = convertToHeliumUserTraits(customPaywallTraits)
+      }
+
+      OnViewDidUpdateProps { view: HeliumPaywallSdkView ->
+        view.loadPaywallIfNeeded()
+      }
     }
   }
 

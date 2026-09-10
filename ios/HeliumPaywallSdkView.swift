@@ -1,38 +1,39 @@
 import ExpoModulesCore
-import WebKit
+import Helium
+import SwiftUI
 
-// This view will be used as a native component. Make sure to inherit from `ExpoView`
-// to apply the proper styling (e.g. border radius and shadows).
 class HeliumPaywallSdkView: ExpoView {
-  let webView = WKWebView()
-  let onLoad = EventDispatcher()
-  var delegate: WebViewDelegate?
+  var triggerName = ""
+  var customPaywallTraits: [String: Any]?
 
-  required init(appContext: AppContext? = nil) {
-    super.init(appContext: appContext)
-    clipsToBounds = true
-    delegate = WebViewDelegate { url in
-      self.onLoad(["url": url])
-    }
-    webView.navigationDelegate = delegate
-    addSubview(webView)
-  }
+  private var hostingController: UIHostingController<AnyView>?
+  private var loadedTrigger: String?
 
   override func layoutSubviews() {
-    webView.frame = bounds
-  }
-}
-
-class WebViewDelegate: NSObject, WKNavigationDelegate {
-  let onUrlChange: (String) -> Void
-
-  init(onUrlChange: @escaping (String) -> Void) {
-    self.onUrlChange = onUrlChange
+    super.layoutSubviews()
+    hostingController?.view.frame = bounds
   }
 
-  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation) {
-    if let url = webView.url {
-      onUrlChange(url.absoluteString)
+  func loadPaywallIfNeeded() {
+    guard !triggerName.isEmpty, triggerName != loadedTrigger else {
+      return
     }
+    loadedTrigger = triggerName
+    let paywall = HeliumPaywall(
+      trigger: triggerName,
+      config: PaywallPresentationConfig(customPaywallTraits: customPaywallTraits.map { HeliumUserTraits($0) })
+    ) { _ in
+      EmptyView()
+    }
+    let rootView = AnyView(paywall.id(triggerName))
+    if let hostingController {
+      hostingController.rootView = rootView
+      return
+    }
+    let controller = UIHostingController(rootView: rootView)
+    controller.view.backgroundColor = .clear
+    controller.view.frame = bounds
+    addSubview(controller.view)
+    hostingController = controller
   }
 }
