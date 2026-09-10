@@ -1,12 +1,23 @@
 import * as React from 'react';
+import { useState } from 'react';
 import { Platform } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 import { convertBooleansToMarkers } from './booleanMarkers';
-import type { HeliumPaywallViewProps } from './HeliumPaywallSdk.types';
+import type { HeliumPaywallEvent, HeliumPaywallViewProps } from './HeliumPaywallSdk.types';
+import { dispatchPaywallEvent } from './paywallEventDispatch';
 
-let NativeView: React.ComponentType<HeliumPaywallViewProps> | undefined;
+type NativeHeliumPaywallViewProps = {
+  triggerName: string;
+  customPaywallTraits?: Record<string, any>;
+  onPaywallEvent: (event: { nativeEvent: HeliumPaywallEvent }) => void;
+  onPaywallNotShown: () => void;
+  style?: StyleProp<ViewStyle>;
+};
 
-function resolveNativeView(): React.ComponentType<HeliumPaywallViewProps> {
+let NativeView: React.ComponentType<NativeHeliumPaywallViewProps> | undefined;
+
+function resolveNativeView(): React.ComponentType<NativeHeliumPaywallViewProps> {
   if (!NativeView) {
     const expo: typeof import('expo') = require('expo');
     NativeView = expo.requireNativeView('HeliumPaywallSdk');
@@ -14,13 +25,30 @@ function resolveNativeView(): React.ComponentType<HeliumPaywallViewProps> {
   return NativeView;
 }
 
-export function HeliumPaywallView({ triggerName, customPaywallTraits, style }: HeliumPaywallViewProps) {
+export function HeliumPaywallView({
+  triggerName,
+  eventHandlers,
+  customPaywallTraits,
+  paywallNotShownReplacement,
+  style,
+}: HeliumPaywallViewProps) {
+  const [paywallNotShown, setPaywallNotShown] = useState(false);
+
   if (Platform.OS !== 'ios') {
     return null;
+  }
+  if (paywallNotShown) {
+    return React.createElement(React.Fragment, null, paywallNotShownReplacement);
   }
   return React.createElement(resolveNativeView(), {
     triggerName,
     customPaywallTraits: convertBooleansToMarkers(customPaywallTraits),
+    onPaywallEvent: ({ nativeEvent }) => {
+      if (eventHandlers) {
+        dispatchPaywallEvent(eventHandlers, nativeEvent, 'embedded');
+      }
+    },
+    onPaywallNotShown: () => setPaywallNotShown(true),
     style,
   });
 }

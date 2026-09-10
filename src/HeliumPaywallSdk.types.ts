@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
 export type HeliumPaywallSdkModuleEvents = {
@@ -283,7 +284,8 @@ export type PresentUpsellParams = {
   onPaywallUnavailable?: () => void;
 };
 
-export type HeliumPaywallViewProps = Pick<PresentUpsellParams, 'triggerName' | 'customPaywallTraits'> & {
+export type HeliumPaywallViewProps = Pick<PresentUpsellParams, 'triggerName' | 'eventHandlers' | 'customPaywallTraits'> & {
+  paywallNotShownReplacement: ReactNode;
   style?: StyleProp<ViewStyle>;
 };
 

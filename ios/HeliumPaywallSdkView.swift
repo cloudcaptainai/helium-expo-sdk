@@ -3,83 +3,44 @@ import Helium
 import SwiftUI
 
 class HeliumPaywallSdkView: ExpoView {
+  let onPaywallEvent = EventDispatcher()
+  let onPaywallNotShown = EventDispatcher()
+
   var triggerName = ""
   var customPaywallTraits: [String: Any]?
 
   private var hostingController: UIHostingController<AnyView>?
-  private var loadedTrigger: String?
-  private var loadedTraits: NSDictionary?
-  private var loadCount = 0
 
   override func layoutSubviews() {
     super.layoutSubviews()
     hostingController?.view.frame = bounds
   }
 
-  override func didMoveToWindow() {
-    super.didMoveToWindow()
-    if window == nil {
-      detachFromParentViewController()
-    } else {
-      attachToParentViewController()
-    }
-  }
-
   func loadPaywallIfNeeded() {
-    let traits = customPaywallTraits.map { NSDictionary(dictionary: $0) }
-    guard !triggerName.isEmpty, triggerName != loadedTrigger || traits != loadedTraits else {
+    guard hostingController == nil, !triggerName.isEmpty else {
       return
     }
-    loadedTrigger = triggerName
-    loadedTraits = traits
-    loadCount += 1
     let paywall = HeliumPaywall(
       trigger: triggerName,
-      config: PaywallPresentationConfig(customPaywallTraits: customPaywallTraits.map { HeliumUserTraits($0) })
-    ) { _ in
-      EmptyView()
+      config: PaywallPresentationConfig(customPaywallTraits: customPaywallTraits.map { HeliumUserTraits($0) }),
+      eventHandlers: PaywallEventHandlers.withHandlers(onAnyEvent: { [weak self] event in
+        self?.onPaywallEvent(eventPayload(event))
+      })
+    ) { [weak self] _ in
+      Color.clear.onAppear {
+        self?.onPaywallNotShown([:])
+      }
     }
-    let rootView = AnyView(paywall.id(loadCount))
-    if let hostingController {
-      hostingController.rootView = rootView
-      return
-    }
-    let controller = UIHostingController(rootView: rootView)
+    let controller = UIHostingController(rootView: AnyView(paywall))
     controller.view.backgroundColor = .clear
     controller.view.frame = bounds
     addSubview(controller.view)
     hostingController = controller
-    attachToParentViewController()
   }
+}
 
-  private func attachToParentViewController() {
-    guard let hostingController, window != nil, let parent = nearestViewController() else {
-      return
-    }
-    if hostingController.parent === parent {
-      return
-    }
-    detachFromParentViewController()
-    parent.addChild(hostingController)
-    hostingController.didMove(toParent: parent)
-  }
-
-  private func detachFromParentViewController() {
-    guard let hostingController, hostingController.parent != nil else {
-      return
-    }
-    hostingController.willMove(toParent: nil)
-    hostingController.removeFromParent()
-  }
-
-  private func nearestViewController() -> UIViewController? {
-    var responder: UIResponder? = next
-    while let current = responder {
-      if let viewController = current as? UIViewController {
-        return viewController
-      }
-      responder = current.next
-    }
-    return nil
-  }
+private func eventPayload(_ event: any HeliumEvent) -> [String: Any] {
+  var payload = event.toDictionary()
+  applyEventFieldAliases(&payload)
+  return payload
 }

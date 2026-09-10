@@ -47,14 +47,6 @@ export default function App() {
     })
     await initialize({
       apiKey: process.env.EXPO_PUBLIC_HELIUM_API_KEY ?? '',
-      onHeliumPaywallEvent: (event) => {
-        if (
-          event.triggerName === EMBEDDED_TRIGGER &&
-          (event.type === 'paywallDismissed' || event.type === 'purchaseSucceeded')
-        ) {
-          setShowEmbeddedPaywall(false);
-        }
-      },
     });
     refreshCustomUserId();
   };
@@ -130,7 +122,17 @@ export default function App() {
             onPress={() => setShowEmbeddedPaywall((shown) => !shown)}
           />
           {showEmbeddedPaywall && (
-            <HeliumPaywallView triggerName={EMBEDDED_TRIGGER} style={styles.embeddedPaywall} />
+            <HeliumPaywallView
+              triggerName={EMBEDDED_TRIGGER}
+              style={styles.embeddedPaywall}
+              eventHandlers={{
+                onDismissed: () => setShowEmbeddedPaywall(false),
+                onPurchaseSucceeded: () => setShowEmbeddedPaywall(false),
+              }}
+              paywallNotShownReplacement={
+                <Text style={{ color: isDark ? '#fff' : '#000' }}>Paywall not shown</Text>
+              }
+            />
           )}
         </Group>
         <Group name="User ID">

@@ -542,6 +542,8 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     View(HeliumPaywallSdkView.self) {
+      Events("onPaywallEvent", "onPaywallNotShown")
+
       Prop("triggerName") { (view: HeliumPaywallSdkView, triggerName: String) in
         view.triggerName = triggerName
       }
@@ -729,7 +731,7 @@ fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
 
 /// Modifies native event dictionary fields to match expected TypeScript types.
 /// Free function to avoid capturing `self` in long-lived closures.
-private func applyEventFieldAliases(_ eventDict: inout [String: Any]) {
+func applyEventFieldAliases(_ eventDict: inout [String: Any]) {
     if eventDict["customPaywallActionName"] == nil, let actionName = eventDict["actionName"] {
         eventDict["customPaywallActionName"] = actionName
     }

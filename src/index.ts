@@ -12,6 +12,7 @@ import {
 import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import HeliumPaywallSdkModule from "./HeliumPaywallSdkModule";
 import { convertBooleansToMarkers } from './booleanMarkers';
+import { dispatchPaywallEvent } from './paywallEventDispatch';
 import { EventSubscription } from 'expo-modules-core';
 import * as ExpoFileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
@@ -448,71 +449,11 @@ function dispatchPaywallSkip(event: { triggerName?: string; skipReason?: Paywall
 
 function callPaywallEventHandlers(event: HeliumPaywallEvent) {
   if (paywallEventHandlers) {
-    switch (event.type) {
-      case 'paywallOpen':
-        paywallEventHandlers?.onOpen?.({
-          type: 'paywallOpen',
-          triggerName: event.triggerName ?? 'unknown',
-          paywallName: event.paywallName ?? 'unknown',
-          isSecondTry: event.isSecondTry ?? false,
-          viewType: 'presented',
-        });
-        break;
-      case 'paywallClose':
-        paywallEventHandlers?.onClose?.({
-          type: 'paywallClose',
-          triggerName: event.triggerName ?? 'unknown',
-          paywallName: event.paywallName ?? 'unknown',
-          isSecondTry: event.isSecondTry ?? false,
-        });
-        break;
-      case 'paywallDismissed':
-        paywallEventHandlers?.onDismissed?.({
-          type: 'paywallDismissed',
-          triggerName: event.triggerName ?? 'unknown',
-          paywallName: event.paywallName ?? 'unknown',
-          isSecondTry: event.isSecondTry ?? false,
-        });
-        break;
-      case 'purchaseSucceeded':
-        paywallEventHandlers?.onPurchaseSucceeded?.({
-          type: 'purchaseSucceeded',
-          productId: event.productId ?? 'unknown',
-          triggerName: event.triggerName ?? 'unknown',
-          paywallName: event.paywallName ?? 'unknown',
-          isSecondTry: event.isSecondTry ?? false,
-          paymentProcessor: event.paymentProcessor,
-        });
-        break;
-      case 'paywallOpenFailed':
-        paywallEventHandlers?.onOpenFailed?.({
-          type: 'paywallOpenFailed',
-          triggerName: event.triggerName ?? 'unknown',
-          paywallName: event.paywallName ?? 'unknown',
-          error: event.error ?? 'Unknown error',
-          paywallUnavailableReason: event.paywallUnavailableReason,
-          isSecondTry: event.isSecondTry ?? false,
-        });
-        break;
-      case 'customPaywallAction':
-        paywallEventHandlers?.onCustomPaywallAction?.({
-          type: 'customPaywallAction',
-          triggerName: event.triggerName ?? 'unknown',
-          paywallName: event.paywallName ?? 'unknown',
-          actionName: event.customPaywallActionName ?? 'unknown',
-          params: event.customPaywallActionParams ?? {},
-          isSecondTry: event.isSecondTry ?? false,
-        });
-        break;
-    }
-    paywallEventHandlers?.onAnyEvent?.(event);
+    dispatchPaywallEvent(paywallEventHandlers, event, 'presented');
   }
 }
 
 function handlePaywallEvent(event: HeliumPaywallEvent) {
-  if (currentPresentToken && event.triggerName && event.triggerName !== currentPresentToken.description) {
-    return;
-  }
   switch (event.type) {
     case 'paywallClose':
       if (!event.isSecondTry) {
