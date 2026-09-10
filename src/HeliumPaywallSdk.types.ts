@@ -284,6 +284,12 @@ export type PresentUpsellParams = {
   onPaywallUnavailable?: () => void;
 };
 
+/**
+ * Props for `HeliumPaywallView`. The paywall loads once when the view mounts; later changes to
+ * `triggerName` or `customPaywallTraits` are ignored. Mount it with a stable trigger and use
+ * mount/unmount to show or hide it, since each mount is a paywall impression. Remount with a
+ * different `key` to reconfigure a placement.
+ */
 export type HeliumPaywallViewProps = Pick<PresentUpsellParams, 'triggerName' | 'eventHandlers' | 'customPaywallTraits'> & {
   paywallNotShownReplacement: ReactNode;
   style?: StyleProp<ViewStyle>;

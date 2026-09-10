@@ -20,6 +20,7 @@ class HeliumPaywallSdkView: ExpoView {
   override func didMoveToWindow() {
     super.didMoveToWindow()
     if window == nil {
+      hostingController?.willMove(toParent: nil)
       hostingController?.removeFromParent()
     } else {
       attachToReactViewController()
@@ -53,9 +54,10 @@ class HeliumPaywallSdkView: ExpoView {
     guard let hostingController, window != nil, let parent = reactViewController(), hostingController.parent !== parent else {
       return
     }
-    if !(parent is UINavigationController) {
-      parent.addChild(hostingController)
+    if parent is UINavigationController || parent is UITabBarController {
+      return
     }
+    parent.addChild(hostingController)
     hostingController.didMove(toParent: parent)
   }
 }
