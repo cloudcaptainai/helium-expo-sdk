@@ -16,6 +16,7 @@ class HeliumPaywallSdkView(context: Context, appContext: AppContext) : ExpoView(
   var customPaywallTraits: HeliumUserTraits? = null
 
   private var loadedTrigger: String? = null
+  private var loadedTraits: HeliumUserTraits? = null
 
   override val shouldUseAndroidLayout = true
 
@@ -26,18 +27,20 @@ class HeliumPaywallSdkView(context: Context, appContext: AppContext) : ExpoView(
 
   fun loadPaywallIfNeeded() {
     val trigger = triggerName
-    if (!isAttachedToWindow || trigger.isEmpty() || trigger == loadedTrigger) return
+    val traits = customPaywallTraits
+    if (!isAttachedToWindow || trigger.isEmpty() || (trigger == loadedTrigger && traits == loadedTraits)) return
     loadedTrigger = trigger
+    loadedTraits = traits
     removeAllViews()
 
-    val config = PaywallPresentationConfig(customPaywallTraits = customPaywallTraits)
+    val config = PaywallPresentationConfig(customPaywallTraits = traits)
     when (val eligibility = checkPaywallEligibility(trigger, config)) {
       is PaywallEligibilityResult.Eligible -> {
         val paywallView = HeliumPaywallView(context)
         paywallView.loadPaywall(
           trigger = trigger,
           navigationDispatcher = HeliumNavigationDispatcher { },
-          customPaywallTraits = customPaywallTraits,
+          customPaywallTraits = traits,
         )
         addView(paywallView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
       }

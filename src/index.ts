@@ -510,6 +510,9 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
 }
 
 function handlePaywallEvent(event: HeliumPaywallEvent) {
+  if (currentPresentToken && event.triggerName && event.triggerName !== currentPresentToken.description) {
+    return;
+  }
   switch (event.type) {
     case 'paywallClose':
       if (!event.isSecondTry) {

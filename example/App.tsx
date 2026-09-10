@@ -18,6 +18,8 @@ import {
 import {useEffect, useState} from "react";
 import { Alert, Button, Linking, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
 
+const EMBEDDED_TRIGGER = process.env.EXPO_PUBLIC_HELIUM_TRIGGER ?? '';
+
 const randomUuid = (): string =>
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -46,7 +48,10 @@ export default function App() {
     await initialize({
       apiKey: process.env.EXPO_PUBLIC_HELIUM_API_KEY ?? '',
       onHeliumPaywallEvent: (event) => {
-        if (event.type === 'paywallDismissed' || event.type === 'purchaseSucceeded') {
+        if (
+          event.triggerName === EMBEDDED_TRIGGER &&
+          (event.type === 'paywallDismissed' || event.type === 'purchaseSucceeded')
+        ) {
           setShowEmbeddedPaywall(false);
         }
       },
@@ -125,10 +130,7 @@ export default function App() {
             onPress={() => setShowEmbeddedPaywall((shown) => !shown)}
           />
           {showEmbeddedPaywall && (
-            <HeliumPaywallView
-              triggerName={process.env.EXPO_PUBLIC_HELIUM_TRIGGER ?? ''}
-              style={styles.embeddedPaywall}
-            />
+            <HeliumPaywallView triggerName={EMBEDDED_TRIGGER} style={styles.embeddedPaywall} />
           )}
         </Group>
         <Group name="User ID">

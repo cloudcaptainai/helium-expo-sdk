@@ -59,6 +59,7 @@ export type HeliumPaywallEvent = {
   bundleDownloadTimeMS?: number;
   dismissAll?: boolean;
   isSecondTry?: boolean;
+  viewType?: PaywallViewType;
   error?: string;
   /**
    * @deprecated Use `error` instead.
@@ -83,6 +84,8 @@ export type HeliumPaywallEvent = {
 
 /** Identifies which payment processor completed a purchase. */
 export type HeliumPaymentProcessor = 'appStore' | 'stripe' | 'paddle';
+
+export type PaywallViewType = 'presented' | 'embedded' | 'triggered';
 
 /** Reason a paywall was skipped (not shown) for a trigger. `unknown` is a defensive default and should not occur in normal use. */
 export type PaywallSkippedReason = 'targetingHoldout' | 'alreadyEntitled' | 'unknown';
@@ -312,7 +315,7 @@ export interface PaywallOpenEvent {
   isSecondTry: boolean;
   loadTimeTakenMS?: number;
   loadingBudgetMS?: number;
-  viewType?: 'presented' | 'embedded' | 'triggered';
+  viewType?: PaywallViewType;
 }
 
 export interface PaywallCloseEvent {
