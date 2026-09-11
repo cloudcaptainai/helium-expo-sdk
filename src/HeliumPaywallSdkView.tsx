@@ -25,6 +25,15 @@ function resolveNativeView(): React.ComponentType<NativeHeliumPaywallViewProps> 
   return NativeView;
 }
 
+/**
+ * Renders the paywall for a trigger inline, as part of your own screen. Most integrations should
+ * use `presentUpsell`; reach for this view for custom inline placements such as an onboarding step
+ * or an upgrade tab. iOS only for now; it renders nothing on Android.
+ *
+ * You must have a trigger and workflow configured in the Helium dashboard
+ * (https://app.tryhelium.com/workflows). See `HeliumPaywallViewProps` for `eventHandlers`,
+ * `paywallNotShownReplacement`, and the load-once behavior.
+ */
 export function HeliumPaywallView({
   triggerName,
   eventHandlers,

@@ -81,6 +81,26 @@ export default function App() {
     Alert.alert('Entitlement checks', lines.join('\n'));
   };
 
+  if (showEmbeddedPaywall) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
+        {/* The native paywall fills its frame, so the parent must give it dimensions. */}
+        <HeliumPaywallView
+          triggerName={EMBEDDED_TRIGGER}
+          style={styles.embeddedPaywall}
+          eventHandlers={{
+            onDismissed: () => setShowEmbeddedPaywall(false),
+            onPurchaseSucceeded: () => setShowEmbeddedPaywall(false),
+          }}
+          paywallNotShownReplacement={
+            <Text style={{ color: isDark ? '#fff' : '#000' }}>Paywall not shown</Text>
+          }
+        />
+        <Button title="Hide embedded paywall" onPress={() => setShowEmbeddedPaywall(false)} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
       <ScrollView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
@@ -117,23 +137,7 @@ export default function App() {
           />
         </Group>
         <Group name="Embedded paywall">
-          <Button
-            title={showEmbeddedPaywall ? 'Hide embedded paywall' : 'Show embedded paywall'}
-            onPress={() => setShowEmbeddedPaywall((shown) => !shown)}
-          />
-          {showEmbeddedPaywall && (
-            <HeliumPaywallView
-              triggerName={EMBEDDED_TRIGGER}
-              style={styles.embeddedPaywall}
-              eventHandlers={{
-                onDismissed: () => setShowEmbeddedPaywall(false),
-                onPurchaseSucceeded: () => setShowEmbeddedPaywall(false),
-              }}
-              paywallNotShownReplacement={
-                <Text style={{ color: isDark ? '#fff' : '#000' }}>Paywall not shown</Text>
-              }
-            />
-          )}
+          <Button title="Show embedded paywall" onPress={() => setShowEmbeddedPaywall(true)} />
         </Group>
         <Group name="User ID">
           <Text style={{ color: isDark ? '#fff' : '#000', marginBottom: 12 }}>
@@ -232,8 +236,6 @@ const styles = {
     height: 200,
   },
   embeddedPaywall: {
-    alignSelf: 'stretch' as const,
-    height: 520,
-    marginTop: 12,
+    flex: 1,
   },
 };
