@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Button, StyleSheet, Text, View } from 'react-native';
 import { HeliumPaywallView } from 'expo-helium';
 
 type Props = {
@@ -18,7 +18,12 @@ export function EmbeddedPaywallScreen({ trigger, onEntitled, onDismissed }: Prop
           onAnyEvent: (event) => console.log('[Example] embedded event →', event.type),
           onDismissed,
         }}
-        paywallNotShownReplacement={<Text style={styles.notShown}>Paywall not shown</Text>}
+        paywallNotShownReplacement={
+          <View style={styles.notShown}>
+            <Text>Paywall not shown</Text>
+            <Button title="Go back" onPress={onDismissed} />
+          </View>
+        }
       />
     </View>
   );
@@ -33,7 +38,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   notShown: {
-    margin: 20,
-    color: '#555',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
   },
 });
