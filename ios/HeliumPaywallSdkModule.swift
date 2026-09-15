@@ -542,7 +542,7 @@ public class HeliumPaywallSdkModule: Module {
     }
 
     View(HeliumPaywallSdkView.self) {
-      Events("onPaywallEvent", "onPaywallNotShown")
+      Events("onPaywallEvent", "onEntitledEvent", "onPaywallNotShown")
 
       Prop("triggerName") { (view: HeliumPaywallSdkView, triggerName: String) in
         view.triggerName = triggerName

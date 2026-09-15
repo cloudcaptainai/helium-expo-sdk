@@ -5,6 +5,7 @@ export function dispatchPaywallEvent(
   event: HeliumPaywallEvent,
   viewType: PaywallViewType,
 ): void {
+  const taggedEvent = { ...event, viewType: event.viewType ?? viewType };
   try {
     switch (event.type) {
       case 'paywallOpen':
@@ -63,7 +64,7 @@ export function dispatchPaywallEvent(
         });
         break;
     }
-    handlers.onAnyEvent?.(event);
+    handlers.onAnyEvent?.(taggedEvent);
   } catch (error) {
     console.error('[Helium] paywall event handler failed', error);
   }

@@ -5,6 +5,7 @@ import SwiftUI
 
 class HeliumPaywallSdkView: ExpoView {
   let onPaywallEvent = EventDispatcher()
+  let onEntitledEvent = EventDispatcher()
   let onPaywallNotShown = EventDispatcher()
 
   var triggerName = ""
@@ -36,7 +37,10 @@ class HeliumPaywallSdkView: ExpoView {
       config: PaywallPresentationConfig(customPaywallTraits: customPaywallTraits.map { HeliumUserTraits($0) }),
       eventHandlers: PaywallEventHandlers.withHandlers(onAnyEvent: { [weak self] event in
         self?.onPaywallEvent(eventPayload(event))
-      })
+      }),
+      onEntitled: { [weak self] entitledEvent in
+        self?.onEntitledEvent(eventPayload(entitledEvent.event))
+      }
     ) { [weak self] _ in
       Color.clear.onAppear {
         self?.onPaywallNotShown([:])
