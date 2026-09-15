@@ -14,8 +14,11 @@ import {
   presentUpsell, enableExternalWebCheckout,
   setCustomUserId,
 } from 'expo-helium';
+import { EmbeddedPaywallScreen } from './EmbeddedPaywallScreen';
 import {useEffect, useState} from "react";
 import { Alert, Button, Linking, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
+
+const EMBEDDED_TRIGGER = process.env.EXPO_PUBLIC_HELIUM_TRIGGER ?? '';
 
 const randomUuid = (): string =>
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -27,6 +30,7 @@ const randomUuid = (): string =>
 export default function App() {
   const isDark = useColorScheme() === 'dark';
   const [customUserId, setCustomUserIdState] = useState<string | null>(null);
+  const [showEmbeddedPaywall, setShowEmbeddedPaywall] = useState(false);
 
   const refreshCustomUserId = () => {
     try {
@@ -77,6 +81,16 @@ export default function App() {
     Alert.alert('Entitlement checks', lines.join('\n'));
   };
 
+  if (showEmbeddedPaywall) {
+    return (
+      <EmbeddedPaywallScreen
+        trigger={EMBEDDED_TRIGGER}
+        onEntitled={() => setShowEmbeddedPaywall(false)}
+        onDismissed={() => setShowEmbeddedPaywall(false)}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
       <ScrollView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
@@ -111,6 +125,9 @@ export default function App() {
               });
             }}
           />
+        </Group>
+        <Group name="Embedded paywall">
+          <Button title="Show embedded paywall" onPress={() => setShowEmbeddedPaywall(true)} />
         </Group>
         <Group name="User ID">
           <Text style={{ color: isDark ? '#fff' : '#000', marginBottom: 12 }}>

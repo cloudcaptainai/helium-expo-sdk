@@ -1,38 +1,73 @@
 import ExpoModulesCore
-import WebKit
+import Helium
+import React
+import SwiftUI
 
-// This view will be used as a native component. Make sure to inherit from `ExpoView`
-// to apply the proper styling (e.g. border radius and shadows).
 class HeliumPaywallSdkView: ExpoView {
-  let webView = WKWebView()
-  let onLoad = EventDispatcher()
-  var delegate: WebViewDelegate?
+  let onPaywallEvent = EventDispatcher()
+  let onEntitledEvent = EventDispatcher()
+  let onPaywallNotShown = EventDispatcher()
 
-  required init(appContext: AppContext? = nil) {
-    super.init(appContext: appContext)
-    clipsToBounds = true
-    delegate = WebViewDelegate { url in
-      self.onLoad(["url": url])
-    }
-    webView.navigationDelegate = delegate
-    addSubview(webView)
-  }
+  var triggerName = ""
+  var customPaywallTraits: [String: Any]?
+
+  private var hostingController: UIHostingController<AnyView>?
 
   override func layoutSubviews() {
-    webView.frame = bounds
+    super.layoutSubviews()
+    hostingController?.view.frame = bounds
+  }
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    if window == nil {
+      hostingController?.willMove(toParent: nil)
+      hostingController?.removeFromParent()
+    } else {
+      attachToReactViewController()
+    }
+  }
+
+  func loadPaywallIfNeeded() {
+    guard hostingController == nil, !triggerName.isEmpty else {
+      return
+    }
+    let paywall = HeliumPaywall(
+      trigger: triggerName,
+      config: PaywallPresentationConfig(customPaywallTraits: customPaywallTraits.map { HeliumUserTraits($0) }),
+      eventHandlers: PaywallEventHandlers.withHandlers(onAnyEvent: { [weak self] event in
+        self?.onPaywallEvent(eventPayload(event))
+      }),
+      onEntitled: { [weak self] entitledEvent in
+        self?.onEntitledEvent(eventPayload(entitledEvent.event))
+      }
+    ) { [weak self] _ in
+      Color.clear.onAppear {
+        self?.onPaywallNotShown([:])
+      }
+    }
+    let controller = UIHostingController(rootView: AnyView(paywall))
+    controller.view.backgroundColor = .clear
+    controller.view.frame = bounds
+    addSubview(controller.view)
+    hostingController = controller
+    attachToReactViewController()
+  }
+
+  private func attachToReactViewController() {
+    guard let hostingController, window != nil, let parent = reactViewController(), hostingController.parent !== parent else {
+      return
+    }
+    if parent is UINavigationController || parent is UITabBarController {
+      return
+    }
+    parent.addChild(hostingController)
+    hostingController.didMove(toParent: parent)
   }
 }
 
-class WebViewDelegate: NSObject, WKNavigationDelegate {
-  let onUrlChange: (String) -> Void
-
-  init(onUrlChange: @escaping (String) -> Void) {
-    self.onUrlChange = onUrlChange
-  }
-
-  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation) {
-    if let url = webView.url {
-      onUrlChange(url.absoluteString)
-    }
-  }
+private func eventPayload(_ event: any HeliumEvent) -> [String: Any] {
+  var payload = event.toDictionary()
+  applyEventFieldAliases(&payload)
+  return payload
 }
