@@ -13,8 +13,8 @@ import {
   initialize,
   presentUpsell, enableExternalWebCheckout,
   setCustomUserId,
-  HeliumPaywallView,
 } from 'expo-helium';
+import { EmbeddedPaywallScreen } from './EmbeddedPaywallScreen';
 import {useEffect, useState} from "react";
 import { Alert, Button, Linking, SafeAreaView, ScrollView, Text, useColorScheme, View } from 'react-native';
 
@@ -83,21 +83,11 @@ export default function App() {
 
   if (showEmbeddedPaywall) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#111' : '#eee' }]}>
-        {/* The native paywall fills its frame, so the parent must give it dimensions. */}
-        <HeliumPaywallView
-          triggerName={EMBEDDED_TRIGGER}
-          style={styles.embeddedPaywall}
-          eventHandlers={{
-            onDismissed: () => setShowEmbeddedPaywall(false),
-            onPurchaseSucceeded: () => setShowEmbeddedPaywall(false),
-          }}
-          paywallNotShownReplacement={
-            <Text style={{ color: isDark ? '#fff' : '#000' }}>Paywall not shown</Text>
-          }
-        />
-        <Button title="Hide embedded paywall" onPress={() => setShowEmbeddedPaywall(false)} />
-      </SafeAreaView>
+      <EmbeddedPaywallScreen
+        trigger={EMBEDDED_TRIGGER}
+        onEntitled={() => setShowEmbeddedPaywall(false)}
+        onDismissed={() => setShowEmbeddedPaywall(false)}
+      />
     );
   }
 
@@ -234,8 +224,5 @@ const styles = {
   view: {
     flex: 1,
     height: 200,
-  },
-  embeddedPaywall: {
-    flex: 1,
   },
 };
