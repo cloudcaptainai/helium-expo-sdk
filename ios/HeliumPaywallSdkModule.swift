@@ -482,6 +482,10 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.allowWebCheckoutWithoutUserId = allow
     }
 
+    Function("setEnableWebApplePayReadiness") { (enabled: Bool) in
+      Helium.config.enableWebApplePayReadiness = enabled
+    }
+
     AsyncFunction("hasActiveStripeEntitlement") {
       return await Helium.entitlements.hasActiveStripeEntitlement()
     }
