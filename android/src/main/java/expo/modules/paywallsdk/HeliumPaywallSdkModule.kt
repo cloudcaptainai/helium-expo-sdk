@@ -612,6 +612,10 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // iOS-only for now. No-op on Android.
+    Function("setEnableWebApplePayReadiness") { _: Boolean ->
+    }
+
+    // iOS-only for now. No-op on Android.
     AsyncFunction("hasActiveStripeEntitlement") Coroutine { ->
       return@Coroutine false
     }

@@ -113,6 +113,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   setAllowWebCheckoutWithoutUserId(allow: boolean): void;
 
+  setEnableWebApplePayReadiness(enabled: boolean): void;
+
   hasActiveStripeEntitlement(): Promise<boolean>;
 
   hasActivePaddleEntitlement(): Promise<boolean>;

@@ -791,6 +791,27 @@ export const setAllowWebCheckoutWithoutUserId = (allow: boolean): void => {
 };
 
 /**
+ * iOS only. Experimental. Call before `initialize`, otherwise the first launch is already measured.
+ *
+ * Measures whether Apple Pay can complete a payment in the browser and reports the result for
+ * targeting. The first launch after install is delayed by up to two seconds so the measurement can
+ * be sent; later launches send the stored measurement immediately and re-measure in the background.
+ *
+ * Defaults to `false`.
+ */
+export const setEnableWebApplePayReadiness = (enabled: boolean): void => {
+  if (Platform.OS !== 'ios') {
+    console.log('[Helium] setEnableWebApplePayReadiness is only available on iOS');
+    return;
+  }
+  try {
+    HeliumPaywallSdkModule.setEnableWebApplePayReadiness(enabled);
+  } catch (e) {
+    console.error('[Helium] setEnableWebApplePayReadiness error', e);
+  }
+};
+
+/**
  * iOS only. Returns `true` if the user has any active Stripe entitlement.
  */
 export const hasActiveStripeEntitlement = async (): Promise<boolean> => {
