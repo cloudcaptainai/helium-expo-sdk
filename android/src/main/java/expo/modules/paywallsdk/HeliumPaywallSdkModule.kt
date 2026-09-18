@@ -313,6 +313,9 @@ class HeliumPaywallSdkModule : Module() {
           ?.filter { it.isNotEmpty() }
           ?.toSet()
         consumableIds?.let { Helium.config.consumableIds = it }
+        if (config["enableWebApplePayReadiness"] != null) {
+          android.util.Log.i("HeliumPaywallSdk", "enableWebApplePayReadiness is only used on iOS and will be ignored on Android.")
+        }
         customAPIEndpoint?.let { Helium.config.customApiEndpoint = it }
 
         // Pass fallback JSON to native SDK

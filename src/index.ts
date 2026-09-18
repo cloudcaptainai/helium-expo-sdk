@@ -263,6 +263,7 @@ const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConf
     wrapperSdkVersion: SDK_VERSION,
     delegateType: config.purchaseConfig?._delegateType,
     androidConsumableProductIds: config.androidConsumableProductIds,
+    enableWebApplePayReadiness: config.enableWebApplePayReadiness,
   };
 };
 
