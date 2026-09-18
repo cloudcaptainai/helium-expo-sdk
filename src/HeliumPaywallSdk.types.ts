@@ -226,14 +226,6 @@ export interface HeliumConfig {
    * This is only relevant on Android and is a no-op on other platforms.
    */
   androidConsumableProductIds?: string[];
-  /**
-   * Measure whether Apple Pay can complete a payment in the browser and report it for targeting.
-   * The first launch after install is delayed by up to two seconds so the measurement can be sent;
-   * later launches send the stored measurement immediately and re-measure in the background.
-   * This is only relevant on iOS and is a no-op on other platforms.
-   * Default: false
-   */
-  enableWebApplePayReadiness?: boolean;
 }
 
 export interface NativeHeliumConfig {
@@ -250,7 +242,6 @@ export interface NativeHeliumConfig {
   wrapperSdkVersion?: string;
   delegateType?: string;
   androidConsumableProductIds?: string[];
-  enableWebApplePayReadiness?: boolean;
 }
 
 export type PresentUpsellParams = {

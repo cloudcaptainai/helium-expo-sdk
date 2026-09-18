@@ -482,6 +482,10 @@ public class HeliumPaywallSdkModule: Module {
       Helium.config.allowWebCheckoutWithoutUserId = allow
     }
 
+    Function("setEnableWebApplePayReadiness") { (enabled: Bool) in
+      Helium.config.enableWebApplePayReadiness = enabled
+    }
+
     AsyncFunction("hasActiveStripeEntitlement") {
       return await Helium.entitlements.hasActiveStripeEntitlement()
     }
@@ -645,8 +649,6 @@ public class HeliumPaywallSdkModule: Module {
       if let customAPIEndpoint = config["customAPIEndpoint"] as? String {
         Helium.config.customAPIEndpoint = customAPIEndpoint
       }
-
-      Helium.config.enableWebApplePayReadiness = config["enableWebApplePayReadiness"] as? Bool ?? false
 
       // Set up log listener if not already registered
       if NativeModuleManager.shared.logListenerToken == nil {
