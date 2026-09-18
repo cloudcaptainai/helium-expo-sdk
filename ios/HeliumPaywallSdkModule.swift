@@ -646,9 +646,7 @@ public class HeliumPaywallSdkModule: Module {
         Helium.config.customAPIEndpoint = customAPIEndpoint
       }
 
-      if let enableWebApplePayReadiness = config["enableWebApplePayReadiness"] as? Bool {
-        Helium.config.enableWebApplePayReadiness = enableWebApplePayReadiness
-      }
+      Helium.config.enableWebApplePayReadiness = config["enableWebApplePayReadiness"] as? Bool ?? false
 
       // Set up log listener if not already registered
       if NativeModuleManager.shared.logListenerToken == nil {
