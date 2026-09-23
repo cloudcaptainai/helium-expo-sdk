@@ -224,6 +224,10 @@ class HeliumPaywallSdkModule : Module() {
       activityRef = WeakReference(appContext.currentActivity)
     }
 
+    Function("setWrapperSdkInfo") { version: String ->
+      HeliumWrapperSdkConfig.setWrapperSdkInfo(sdk = "expo", version = version)
+    }
+
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
       val apiKey = config["apiKey"] as? String
@@ -280,9 +284,6 @@ class HeliumPaywallSdkModule : Module() {
 
         NativeModuleManager.safeSendEvent("onHeliumPaywallEvent", eventMap)
       }
-
-      val wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?: "unknown"
-      HeliumWrapperSdkConfig.setWrapperSdkInfo(sdk = "expo", version = wrapperSdkVersion)
 
       // Set up bridging logger to forward native SDK logs to JavaScript
       Helium.config.logger = BridgingLogger()

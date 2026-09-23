@@ -229,6 +229,10 @@ public class HeliumPaywallSdkModule: Module {
       performCoreSetup(config)
     }
 
+    Function("setWrapperSdkInfo") { (version: String) in
+      HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: version)
+    }
+
     // Function for JavaScript to provide purchase result
     Function("handlePurchaseResult") { (statusString: String, errorMsg: String?, transactionId: String?, originalTransactionId: String?, productId: String?) in
       guard let continuation = NativeModuleManager.shared.takePurchaseContinuation() else {
@@ -624,9 +628,6 @@ public class HeliumPaywallSdkModule: Module {
           fallbackBundleURL = tempURL
         }
       }
-
-      let wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?? "unknown"
-      HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: wrapperSdkVersion)
 
       if let customUserId = config["customUserId"] as? String {
         Helium.identify.userId = customUserId

@@ -14,6 +14,7 @@ jest.mock('../src/HeliumPaywallSdkModule', () => {
   return {
     __esModule: true,
     default: {
+      setWrapperSdkInfo: jest.fn(),
       initialize: jest.fn(),
       setupCore: jest.fn(),
       presentUpsell: jest.fn(),

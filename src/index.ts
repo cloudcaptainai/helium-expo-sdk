@@ -23,6 +23,7 @@ try {
 } catch {
   // package.json can't be loaded, accept that we won't get wrapper sdk version
 }
+HeliumPaywallSdkModule.setWrapperSdkInfo(SDK_VERSION);
 
 export { default } from './HeliumPaywallSdkModule';
 export { HeliumPaywallView } from './HeliumPaywallSdkView';
@@ -260,7 +261,6 @@ const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConf
     paywallLoadingConfig: convertBooleansToMarkers(config.paywallLoadingConfig),
     useDefaultDelegate: !config.purchaseConfig,
     environment: config.environment,
-    wrapperSdkVersion: SDK_VERSION,
     delegateType: config.purchaseConfig?._delegateType,
     androidConsumableProductIds: config.androidConsumableProductIds,
   };

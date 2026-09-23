@@ -239,7 +239,6 @@ export interface NativeHeliumConfig {
   paywallLoadingConfig?: HeliumPaywallLoadingConfig;
   useDefaultDelegate?: boolean;
   environment?: string;
-  wrapperSdkVersion?: string;
   delegateType?: string;
   androidConsumableProductIds?: string[];
 }
