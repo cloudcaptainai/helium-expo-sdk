@@ -453,7 +453,16 @@ function callPaywallEventHandlers(event: HeliumPaywallEvent) {
   }
 }
 
+const PREVIEW_TRIGGERS = new Set(['helium_preview_trigger', 'helium_preview_trigger_second_try']);
+
+function isPreviewTrigger(triggerName: string | undefined): boolean {
+  return triggerName !== undefined && PREVIEW_TRIGGERS.has(triggerName);
+}
+
 function handlePaywallEvent(event: HeliumPaywallEvent) {
+  if (isPreviewTrigger(event.triggerName)) {
+    return;
+  }
   switch (event.type) {
     case 'paywallClose':
       if (!event.isSecondTry) {
@@ -467,16 +476,17 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
       presentOnPaywallUnavailable = undefined;
       break;
     case 'paywallOpenFailed': {
-      paywallEventHandlers = undefined;
       const unavailableReason = event.paywallUnavailableReason;
+      if (unavailableReason === 'alreadyPresented' || unavailableReason === 'secondTryNoMatch') {
+        break;
+      }
+      paywallEventHandlers = undefined;
       // Clear before invoking: the callback may call presentUpsell again, and clearing
       // afterwards would drop the new presentation's handlers.
       const onPaywallUnavailable = presentOnPaywallUnavailable;
       presentOnPaywallUnavailable = undefined;
       presentOnPaywallSkip = undefined;
-      if (event.triggerName
-        && unavailableReason !== "alreadyPresented"
-        && unavailableReason !== "secondTryNoMatch") {
+      if (event.triggerName) {
         console.log('[Helium] paywall open failed', unavailableReason);
         try {
           onPaywallUnavailable?.();
