@@ -23,7 +23,11 @@ try {
 } catch {
   // package.json can't be loaded, accept that we won't get wrapper sdk version
 }
-HeliumPaywallSdkModule.setWrapperSdkInfo(SDK_VERSION);
+try {
+  HeliumPaywallSdkModule.setWrapperSdkInfo(SDK_VERSION);
+} catch (error) {
+  console.warn('[Helium] Failed to set wrapper SDK info.', error);
+}
 
 export { default } from './HeliumPaywallSdkModule';
 export { HeliumPaywallView } from './HeliumPaywallSdkView';
