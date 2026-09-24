@@ -146,10 +146,11 @@ describe('onPaywallSkip routing', () => {
     });
 
     helium.presentUpsell({ triggerName: 'first', onPaywallUnavailable });
-    native.__emit('onHeliumPaywallEvent', {
+    native.__emit('onPaywallUnavailableEvent', {
       type: 'paywallOpenFailed',
       triggerName: 'first',
       paywallUnavailableReason: 'notInitialized',
+      presentationId: native.presentUpsell.mock.calls[0][4],
     });
 
     expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
@@ -169,7 +170,7 @@ describe('onPaywallSkip routing', () => {
     const onPaywallSkip = jest.fn();
 
     helium.presentUpsell({ triggerName: 'go_online', onPaywallSkip });
-    native.__emit('onHeliumPaywallEvent', { type: 'paywallClose', triggerName: 'go_online' });
+    native.__emit('paywallEventHandlers', { type: 'paywallClose', triggerName: 'go_online' });
     native.__emit('onPaywallSkipEvent', SKIP_EVENT);
 
     expect(onPaywallSkip).not.toHaveBeenCalled();

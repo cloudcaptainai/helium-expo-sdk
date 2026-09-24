@@ -8,7 +8,15 @@ export type HeliumPaywallSdkModuleEvents = {
   onHeliumLogEvent: (params: HeliumLogEvent) => void;
   onEntitledEvent: (params?: PaywallEntitledEvent) => void;
   onPaywallSkipEvent: (params: PaywallSkippedEvent) => void;
+  onPaywallUnavailableEvent: (params: PaywallUnavailableEvent) => void;
 };
+
+export interface PaywallUnavailableEvent {
+  type: 'paywallOpenFailed';
+  triggerName?: string;
+  paywallUnavailableReason?: string;
+  presentationId?: string;
+}
 
 /** A log event emitted by the Helium SDK. */
 export interface HeliumLogEvent {
@@ -30,6 +38,7 @@ export type HeliumPaywallEvent = {
     'paywallsDownloadSuccess' | 'paywallsDownloadError' | 'paywallWebViewRendered' |
     'customPaywallAction' | 'userAllocated' | 'purchaseAlreadyEntitled';
   triggerName?: string;
+  presentationId?: string;
   paywallName?: string;
   /**
    * @deprecated Use `paywallName` instead.
@@ -382,6 +391,7 @@ export interface PaywallSkippedEvent {
   type: 'paywallSkipped';
   triggerName: string;
   skipReason: PaywallSkippedReason;
+  presentationId?: string;
 }
 
 export interface CustomPaywallActionEvent {

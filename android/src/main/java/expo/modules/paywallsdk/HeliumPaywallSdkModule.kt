@@ -217,7 +217,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Defines event names that the module can send to JavaScript
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent", "onPaywallSkipEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent", "onPaywallSkipEvent", "onPaywallUnavailableEvent")
 
     // Lifecycle event to cache Activity reference for hot reload resilience
     OnActivityEntersForeground {
@@ -380,7 +380,7 @@ class HeliumPaywallSdkModule : Module() {
     }
 
     // Present a paywall with the given trigger
-    Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any>?, dontShowIfAlreadyEntitled: Boolean?, disableSystemBackNavigation: Boolean? ->
+    Function("presentUpsell") { trigger: String, customPaywallTraits: Map<String, Any>?, dontShowIfAlreadyEntitled: Boolean?, disableSystemBackNavigation: Boolean?, presentationId: String? ->
       NativeModuleManager.currentModule = this@HeliumPaywallSdkModule // extra redundancy to update to latest live module
       NativeModuleManager.flushEvents(this@HeliumPaywallSdkModule)
 
@@ -391,6 +391,7 @@ class HeliumPaywallSdkModule : Module() {
         onAnyEvent = { event ->
           val eventMap = HeliumEventDictionaryMapper.toDictionary(event).toMutableMap()
           applyEventFieldAliases(eventMap)
+          presentationId?.let { eventMap["presentationId"] = it }
           NativeModuleManager.safeSendEvent(
             "paywallEventHandlers",
             eventMap,
@@ -410,6 +411,7 @@ class HeliumPaywallSdkModule : Module() {
         onEntitled = { entitledEvent ->
           val entitledEventMap = HeliumEventDictionaryMapper.toDictionary(entitledEvent.event).toMutableMap()
           applyEventFieldAliases(entitledEventMap)
+          presentationId?.let { entitledEventMap["presentationId"] = it }
           NativeModuleManager.safeSendEvent(
             "onEntitledEvent",
             entitledEventMap,
@@ -421,16 +423,27 @@ class HeliumPaywallSdkModule : Module() {
           val skipReason = when (reason) {
             is PaywallNotShownReason.TargetingHoldout -> PaywallSkippedReason.TargetingHoldout
             is PaywallNotShownReason.AlreadyEntitled -> PaywallSkippedReason.AlreadyEntitled
-            is PaywallNotShownReason.Error -> null
+            is PaywallNotShownReason.Error -> {
+              val eventMap = mutableMapOf<String, Any>(
+                "type" to "paywallOpenFailed",
+                "triggerName" to trigger,
+                "paywallUnavailableReason" to (reason.unavailableReason?.rawValue ?: "unknown")
+              )
+              presentationId?.let { eventMap["presentationId"] = it }
+              NativeModuleManager.safeSendEvent("onPaywallUnavailableEvent", eventMap, this@HeliumPaywallSdkModule)
+              null
+            }
           }
           skipReason?.let {
+            val eventMap = mutableMapOf<String, Any>(
+              "type" to "paywallSkipped",
+              "triggerName" to trigger,
+              "skipReason" to it.rawValue
+            )
+            presentationId?.let { id -> eventMap["presentationId"] = id }
             NativeModuleManager.safeSendEvent(
               "onPaywallSkipEvent",
-              mapOf(
-                "type" to "paywallSkipped",
-                "triggerName" to trigger,
-                "skipReason" to it.rawValue
-              ),
+              eventMap,
               this@HeliumPaywallSdkModule
             )
           }

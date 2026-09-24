@@ -86,11 +86,12 @@ const CONFIG_THAT_FAILS_AFTER_WRITE = {
 
 /** The native SDK does not throw when it has no configuration; it reports over the event channel. */
 const reportOpenFailedFromNative = (native: NativeModuleMock) => {
-  native.presentUpsell.mockImplementation((triggerName: string) => {
-    native.__emit('onHeliumPaywallEvent', {
+  native.presentUpsell.mockImplementation((triggerName: string, _traits: unknown, _dontShow: unknown, _back: unknown, presentationId: string) => {
+    native.__emit('onPaywallUnavailableEvent', {
       type: 'paywallOpenFailed',
       triggerName,
-      error: 'not initialized',
+      paywallUnavailableReason: 'notInitialized',
+      presentationId,
     });
   });
 };
@@ -254,6 +255,39 @@ describe('presentUpsell ordering against initialize', () => {
 
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onEntitled).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a later queued present keep its own handlers when an earlier one fails', async () => {
+    const { helium, native, fileSystem } = loadHelium();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    native.presentUpsell.mockImplementation((triggerName: string) => {
+      if (triggerName === 'first') {
+        throw new Error('native presentUpsell blew up');
+      }
+    });
+    const firstOpen = jest.fn();
+    const firstUnavailable = jest.fn();
+    const firstEntitled = jest.fn();
+    const secondOpen = jest.fn();
+    const secondUnavailable = jest.fn();
+    const secondEntitled = jest.fn();
+
+    void helium.initialize(CONFIG);
+    helium.presentUpsell({ triggerName: 'first', eventHandlers: { onOpen: firstOpen }, onPaywallUnavailable: firstUnavailable, onEntitled: firstEntitled });
+    helium.presentUpsell({ triggerName: 'second', eventHandlers: { onOpen: secondOpen }, onPaywallUnavailable: secondUnavailable, onEntitled: secondEntitled });
+    fileSystem.__finishWrite();
+    await flushMicrotasks();
+
+    const secondId = native.presentUpsell.mock.calls[1][4];
+    native.__emit('paywallEventHandlers', { type: 'paywallOpen', triggerName: 'second', paywallName: 'test-paywall', presentationId: secondId });
+    native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: 'second', presentationId: secondId });
+
+    expect(firstUnavailable).toHaveBeenCalledTimes(1);
+    expect(secondUnavailable).not.toHaveBeenCalled();
+    expect(firstOpen).not.toHaveBeenCalled();
+    expect(secondOpen).toHaveBeenCalledTimes(1);
+    expect(firstEntitled).not.toHaveBeenCalled();
+    expect(secondEntitled).toHaveBeenCalledTimes(1);
   });
 
   it('never throws at the caller when the present recovery path also fails', () => {
