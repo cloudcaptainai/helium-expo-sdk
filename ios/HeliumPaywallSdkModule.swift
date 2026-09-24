@@ -629,6 +629,9 @@ public class HeliumPaywallSdkModule: Module {
         }
       }
 
+      let wrapperSdkVersion = config["wrapperSdkVersion"] as? String ?? "unknown"
+      HeliumSdkConfig.shared.setWrapperSdkInfo(sdk: "expo", version: wrapperSdkVersion)
+
       if let customUserId = config["customUserId"] as? String {
         Helium.identify.userId = customUserId
       }

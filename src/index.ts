@@ -265,6 +265,7 @@ const buildNativeConfig = async (config: HeliumConfig): Promise<NativeHeliumConf
     paywallLoadingConfig: convertBooleansToMarkers(config.paywallLoadingConfig),
     useDefaultDelegate: !config.purchaseConfig,
     environment: config.environment,
+    wrapperSdkVersion: SDK_VERSION,
     delegateType: config.purchaseConfig?._delegateType,
     androidConsumableProductIds: config.androidConsumableProductIds,
   };
