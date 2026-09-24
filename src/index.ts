@@ -558,7 +558,7 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
   if (event.type !== 'paywallOpenFailed' || event.paywallUnavailableReason !== 'alreadyPresented') {
     return;
   }
-  const rejected = latestPresentation((candidate) => candidate.rejected)
+  const rejected = latestPresentation((candidate) => candidate.rejected && candidate.triggerName === event.triggerName)
     ?? latestPresentation((candidate) => !candidate.opened && !candidate.closed && candidate.triggerName === event.triggerName);
   if (rejected) {
     presentations.delete(rejected.id);

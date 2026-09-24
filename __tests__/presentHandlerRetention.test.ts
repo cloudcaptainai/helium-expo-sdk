@@ -234,6 +234,27 @@ describe('presentation routing', () => {
     expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
   });
 
+  it('resolves interleaved rejections by trigger', async () => {
+    const { helium, native } = loadHelium();
+    await helium.initialize(CONFIG);
+    const first = jest.fn();
+    const second = jest.fn();
+
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent: first } });
+    helium.presentUpsell({ triggerName: OTHER_TRIGGER, eventHandlers: { onAnyEvent: second } });
+    const firstId = idOfCall(native, 0);
+    const secondId = idOfCall(native, 1);
+    perCall(native, firstId, 'paywallOpenFailed', TRIGGER, { paywallUnavailableReason: 'alreadyPresented' });
+    global(native, { type: 'paywallOpenFailed', triggerName: OTHER_TRIGGER, paywallUnavailableReason: 'alreadyPresented' });
+    perCall(native, firstId, 'paywallOpenFailed', TRIGGER, { paywallUnavailableReason: 'alreadyPresented' });
+    perCall(native, secondId, 'paywallOpen', OTHER_TRIGGER);
+    global(native, { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'alreadyPresented' });
+    perCall(native, firstId, 'paywallOpen');
+
+    expect(eventTypes(first)).toEqual(['paywallOpenFailed', 'paywallOpenFailed']);
+    expect(second).not.toHaveBeenCalled();
+  });
+
   it('does not report a rejected repeat present as unavailable', async () => {
     const { helium, native } = loadHelium();
     await helium.initialize(CONFIG);
