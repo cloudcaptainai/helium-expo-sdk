@@ -183,7 +183,10 @@ function setupEventListeners(config: HeliumConfig) {
       // Native sends an empty payload when the entitling event isn't available
       const entitledEvent = event && event.type ? event : undefined;
       const isSkip = entitledEvent?.type === 'paywallSkipped';
-      const presentation = presentationFor(event?.presentationId, (candidate) => candidate.onEntitled !== undefined);
+      const presentation = presentationFor(
+        event?.presentationId,
+        (candidate) => candidate.onEntitled !== undefined || candidate.onPaywallSkip !== undefined,
+      );
       const onEntitled = presentation?.onEntitled;
       if (presentation) {
         presentation.onEntitled = undefined;
@@ -222,8 +225,15 @@ function setupEventListeners(config: HeliumConfig) {
 
   addPaywallUnavailableEventListener((event) => {
     try {
+      if (event.paywallUnavailableReason === 'secondTryNoMatch') {
+        return;
+      }
       const presentation = presentationFor(event.presentationId, (candidate) => !candidate.opened && !candidate.closed);
       if (!presentation) {
+        return;
+      }
+      if (event.paywallUnavailableReason === 'alreadyPresented') {
+        presentation.rejected = true;
         return;
       }
       const onPaywallUnavailable = presentation.onPaywallUnavailable;
@@ -400,12 +410,12 @@ function latestPresentation(predicate: (presentation: Presentation) => boolean =
 
 function presentationFor(
   presentationId: string | undefined,
-  fallback: (presentation: Presentation) => boolean,
+  matchesWithoutId: (presentation: Presentation) => boolean,
 ): Presentation | undefined {
   if (presentationId) {
     return presentations.get(presentationId);
   }
-  return latestPresentation(fallback) ?? latestPresentation();
+  return latestPresentation(matchesWithoutId);
 }
 
 function endPresentation(presentation: Presentation) {
@@ -527,7 +537,7 @@ function dispatchPaywallSkip(
 }
 
 function callPaywallEventHandlers(event: HeliumPaywallEvent) {
-  const presentation = presentationFor(event.presentationId, (candidate) => candidate.opened);
+  const presentation = presentationFor(event.presentationId, (candidate) => !candidate.closed);
   if (!presentation) {
     return;
   }
@@ -549,8 +559,7 @@ function handlePaywallEvent(event: HeliumPaywallEvent) {
     return;
   }
   const rejected = latestPresentation((candidate) => candidate.rejected)
-    ?? latestPresentation((candidate) => !candidate.opened && !candidate.closed && candidate.triggerName === event.triggerName)
-    ?? latestPresentation((candidate) => !candidate.opened && !candidate.closed);
+    ?? latestPresentation((candidate) => !candidate.opened && !candidate.closed && candidate.triggerName === event.triggerName);
   if (rejected) {
     presentations.delete(rejected.id);
   }
