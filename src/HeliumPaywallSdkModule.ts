@@ -29,6 +29,8 @@ declare class HeliumPaywallSdkModule extends NativeModule<HeliumPaywallSdkModule
 
   setupCore(config: NativeHeliumConfig): void;
 
+  setWrapperSdkInfo(version: string): void;
+
   presentUpsell(
     triggerName: string,
     customPaywallTraits?: Record<string, any>,

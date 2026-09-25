@@ -14,6 +14,7 @@ jest.mock('../src/HeliumPaywallSdkModule', () => {
   return {
     __esModule: true,
     default: {
+      setWrapperSdkInfo: jest.fn(),
       initialize: jest.fn(),
       setupCore: jest.fn(),
       presentUpsell: jest.fn(),
@@ -47,6 +48,7 @@ jest.mock('expo-file-system', () => {
 });
 
 type NativeModuleMock = {
+  setWrapperSdkInfo: jest.Mock;
   initialize: jest.Mock;
   setupCore: jest.Mock;
   presentUpsell: jest.Mock;
@@ -411,5 +413,15 @@ describe('initialize against callers that await it', () => {
     expect(native.initialize).toHaveBeenLastCalledWith(
       expect.objectContaining({ apiKey: CONFIG_AFTER_RESET.apiKey }),
     );
+  });
+});
+
+describe('wrapper SDK info', () => {
+  it('reaches the native SDK on import, before any initialize or present', () => {
+    const { native } = loadHelium();
+
+    expect(native.setWrapperSdkInfo).toHaveBeenCalledWith(require('../package.json').version);
+    expect(native.initialize).not.toHaveBeenCalled();
+    expect(native.presentUpsell).not.toHaveBeenCalled();
   });
 });

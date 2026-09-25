@@ -224,6 +224,10 @@ class HeliumPaywallSdkModule : Module() {
       activityRef = WeakReference(appContext.currentActivity)
     }
 
+    Function("setWrapperSdkInfo") { version: String ->
+      HeliumWrapperSdkConfig.setWrapperSdkInfo(sdk = "expo", version = version)
+    }
+
     // Initialize the Helium SDK with configuration
     Function("initialize") { config: Map<String, Any?> ->
       val apiKey = config["apiKey"] as? String
