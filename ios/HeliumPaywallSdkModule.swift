@@ -213,7 +213,7 @@ public class HeliumPaywallSdkModule: Module {
 //     ])
 
     // Defines event names that the module can send to JavaScript.
-    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent", "onPaywallSkipEvent")
+    Events("onHeliumPaywallEvent", "onDelegateActionEvent", "paywallEventHandlers", "onHeliumLogEvent", "onEntitledEvent", "onPaywallSkipEvent", "onPaywallUnavailableEvent")
 
     // todo use Record here? https://docs.expo.dev/modules/module-api/#records
     Function("initialize") { (config: [String : Any]) in
@@ -276,7 +276,7 @@ public class HeliumPaywallSdkModule: Module {
       continuation.resume(returning: success)
     }
 
-    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?, _disableSystemBackNavigation: Bool?) in
+    Function("presentUpsell") { (trigger: String, customPaywallTraits: [String: Any]?, dontShowIfAlreadyEntitled: Bool?, _disableSystemBackNavigation: Bool?, presentationId: String?) in
         NativeModuleManager.shared.currentModule = self // extra redundancy to update to latest live module
         NativeModuleManager.shared.flushEvents(module: self)
         var paywallTraits: HeliumUserTraits? = nil
@@ -293,12 +293,18 @@ public class HeliumPaywallSdkModule: Module {
                 onAnyEvent: { event in
                     var eventDict = event.toDictionary()
                     applyEventFieldAliases(&eventDict)
+                    if let presentationId {
+                        eventDict["presentationId"] = presentationId
+                    }
                     NativeModuleManager.shared.safeSendEvent(eventName: "paywallEventHandlers", eventData: eventDict)
                 }
             ),
             onEntitled: { entitledEvent in
                 var eventDict = entitledEvent.event.toDictionary()
                 applyEventFieldAliases(&eventDict)
+                if let presentationId {
+                    eventDict["presentationId"] = presentationId
+                }
                 NativeModuleManager.shared.safeSendEvent(eventName: "onEntitledEvent", eventData: eventDict)
             }
         ) { paywallNotShownReason in
@@ -308,14 +314,27 @@ public class HeliumPaywallSdkModule: Module {
                 skipReason = .targetingHoldout
             case .alreadyEntitled:
                 skipReason = .alreadyEntitled
-            case .error:
+            case .error(let unavailableReason):
+                var eventData: [String: Any] = [
+                    "type": "paywallOpenFailed",
+                    "triggerName": trigger,
+                    "paywallUnavailableReason": unavailableReason.rawValue,
+                ]
+                if let presentationId {
+                    eventData["presentationId"] = presentationId
+                }
+                NativeModuleManager.shared.safeSendEvent(eventName: "onPaywallUnavailableEvent", eventData: eventData)
                 return
             }
-            NativeModuleManager.shared.safeSendEvent(eventName: "onPaywallSkipEvent", eventData: [
+            var eventData: [String: Any] = [
                 "type": "paywallSkipped",
                 "triggerName": trigger,
                 "skipReason": skipReason.rawValue,
-            ])
+            ]
+            if let presentationId {
+                eventData["presentationId"] = presentationId
+            }
+            NativeModuleManager.shared.safeSendEvent(eventName: "onPaywallSkipEvent", eventData: eventData)
         }
     }
 
