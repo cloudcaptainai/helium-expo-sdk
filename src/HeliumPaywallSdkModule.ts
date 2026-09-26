@@ -2,13 +2,35 @@ import { NativeModule, requireNativeModule } from "expo";
 
 import { ExperimentInfo } from "./HeliumExperimentInfo.types";
 import {
+  DelegateActionEvent,
   HeliumDownloadStatus,
   HeliumLightDarkMode,
-  HeliumPaywallSdkModuleEvents,
+  HeliumLogEvent,
+  HeliumPaywallEvent,
   HeliumTransactionStatus,
   NativeHeliumConfig,
+  PaywallEntitledEvent,
+  PaywallSkippedEvent,
   WebCheckoutProcessor,
 } from "./HeliumPaywallSdk.types";
+
+export type PresentationScoped<T> = T & { presentationId?: string };
+
+export type NativePaywallUnavailableEvent = PresentationScoped<{
+  type: 'paywallOpenFailed';
+  triggerName?: string;
+  paywallUnavailableReason?: string;
+}>;
+
+export type HeliumPaywallSdkModuleEvents = {
+  onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
+  onDelegateActionEvent: (params: DelegateActionEvent) => void;
+  paywallEventHandlers: (params: PresentationScoped<HeliumPaywallEvent>) => void;
+  onHeliumLogEvent: (params: HeliumLogEvent) => void;
+  onEntitledEvent: (params?: PresentationScoped<PaywallEntitledEvent>) => void;
+  onPaywallSkipEvent: (params: PresentationScoped<PaywallSkippedEvent>) => void;
+  onPaywallUnavailableEvent: (params: NativePaywallUnavailableEvent) => void;
+};
 
 interface PaywallInfoResult {
   errorMsg?: string;

@@ -300,15 +300,38 @@ describe('presentation routing', () => {
     expect(eventTypes(onAnyEvent)).toEqual(['paywallOpen']);
   });
 
-  it('drops an event without a presentation id when no presentation can take it', async () => {
+  it('ignores events that carry no presentation id', async () => {
     const { helium, native } = loadHelium();
-    const { id, onAnyEvent, onPaywallUnavailable } = await presentAndOpen(helium, native);
+    await helium.initialize(CONFIG);
+    const onAnyEvent = jest.fn();
+    const onPaywallUnavailable = jest.fn();
+    const onPaywallSkip = jest.fn();
 
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent }, onPaywallUnavailable, onPaywallSkip });
+    const id = idOfCall(native, 0);
+    native.__emit('paywallEventHandlers', { type: 'paywallOpen', triggerName: TRIGGER, paywallName: 'test-paywall' });
     native.__emit('onPaywallUnavailableEvent', { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'paywallsNotDownloaded' });
-    perCall(native, id, 'purchasePressed');
+    native.__emit('onPaywallSkipEvent', { type: 'paywallSkipped', triggerName: TRIGGER, skipReason: 'targetingHoldout' });
+    perCall(native, id, 'paywallOpen');
 
     expect(onPaywallUnavailable).not.toHaveBeenCalled();
-    expect(eventTypes(onAnyEvent)).toEqual(['paywallOpen', 'purchasePressed']);
+    expect(onPaywallSkip).not.toHaveBeenCalled();
+    expect(eventTypes(onAnyEvent)).toEqual(['paywallOpen']);
+  });
+
+  it('keeps the presentation id off the events handed to the app', async () => {
+    const { helium, native } = loadHelium();
+    await helium.initialize(CONFIG);
+    const onAnyEvent = jest.fn();
+    const onEntitled = jest.fn();
+
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent }, onEntitled });
+    const id = idOfCall(native, 0);
+    perCall(native, id, 'paywallOpen');
+    native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: TRIGGER, presentationId: id });
+
+    expect(onAnyEvent.mock.calls[0][0]).not.toHaveProperty('presentationId');
+    expect(onEntitled.mock.calls[0][0]).not.toHaveProperty('presentationId');
   });
 
   it('clears every presentation on reset', async () => {

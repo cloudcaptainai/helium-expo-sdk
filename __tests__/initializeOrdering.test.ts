@@ -246,12 +246,14 @@ describe('presentUpsell ordering against initialize', () => {
 
     expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
 
+    const secondId = native.presentUpsell.mock.calls.at(-1)?.[4];
     native.__emit('paywallEventHandlers', {
       type: 'paywallOpen',
       triggerName: 'second',
       paywallName: 'test-paywall',
+      presentationId: secondId,
     });
-    native.__emit('onEntitledEvent', { type: 'subscription' });
+    native.__emit('onEntitledEvent', { type: 'subscription', presentationId: secondId });
 
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onEntitled).toHaveBeenCalledTimes(1);
