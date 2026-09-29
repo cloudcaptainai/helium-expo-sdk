@@ -83,12 +83,10 @@ describe('presentation routing', () => {
     const rejectedUnavailable = jest.fn();
 
     helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent: rejected }, onPaywallUnavailable: rejectedUnavailable });
-    const rejectedId = idOfCall(native, 1);
     global(native, { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'alreadyPresented' });
     perCall(native, id, 'purchasePressed');
     perCall(native, id, 'purchaseCancelled');
     perCall(native, id, 'purchaseRestoreFailed');
-    perCall(native, rejectedId, 'purchasePressed');
 
     expect(eventTypes(onAnyEvent)).toEqual(['paywallOpen', 'purchasePressed', 'purchaseCancelled', 'purchaseRestoreFailed']);
     expect(rejected).not.toHaveBeenCalled();
@@ -211,12 +209,13 @@ describe('presentation routing', () => {
     expect(onEntitled).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores close and skipped events on the global channel', async () => {
+  it('ignores lifecycle events on the global channel', async () => {
     const { helium, native } = loadHelium();
     const { id, onAnyEvent } = await presentAndOpen(helium, native);
 
     global(native, { type: 'paywallClose', triggerName: TRIGGER, isSecondTry: false });
     global(native, { type: 'paywallSkipped', triggerName: TRIGGER, skipReason: 'targetingHoldout' });
+    global(native, { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'alreadyPresented' });
     perCall(native, id, 'purchasePressed');
 
     expect(eventTypes(onAnyEvent)).toEqual(['paywallOpen', 'purchasePressed']);
@@ -234,25 +233,28 @@ describe('presentation routing', () => {
     expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
   });
 
-  it('resolves interleaved rejections by trigger', async () => {
+  it('drops every other presentation when one opens', async () => {
     const { helium, native } = loadHelium();
     await helium.initialize(CONFIG);
-    const first = jest.fn();
-    const second = jest.fn();
+    const earlierEntitled = jest.fn();
+    const current = jest.fn();
+    const repeat = jest.fn();
 
-    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent: first } });
-    helium.presentUpsell({ triggerName: OTHER_TRIGGER, eventHandlers: { onAnyEvent: second } });
-    const firstId = idOfCall(native, 0);
-    const secondId = idOfCall(native, 1);
-    perCall(native, firstId, 'paywallOpenFailed', TRIGGER, { paywallUnavailableReason: 'alreadyPresented' });
-    global(native, { type: 'paywallOpenFailed', triggerName: OTHER_TRIGGER, paywallUnavailableReason: 'alreadyPresented' });
-    perCall(native, firstId, 'paywallOpenFailed', TRIGGER, { paywallUnavailableReason: 'alreadyPresented' });
-    perCall(native, secondId, 'paywallOpen', OTHER_TRIGGER);
-    global(native, { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'alreadyPresented' });
-    perCall(native, firstId, 'paywallOpen');
+    helium.presentUpsell({ triggerName: TRIGGER, onEntitled: earlierEntitled });
+    const earlierId = idOfCall(native, 0);
+    perCall(native, earlierId, 'paywallOpen');
+    perCall(native, earlierId, 'paywallClose', TRIGGER, { isSecondTry: false });
+    helium.presentUpsell({ triggerName: OTHER_TRIGGER, eventHandlers: { onAnyEvent: current } });
+    helium.presentUpsell({ triggerName: OTHER_TRIGGER, eventHandlers: { onAnyEvent: repeat } });
+    const currentId = idOfCall(native, 1);
+    const repeatId = idOfCall(native, 2);
+    perCall(native, currentId, 'paywallOpen', OTHER_TRIGGER);
+    perCall(native, repeatId, 'purchasePressed', OTHER_TRIGGER);
+    native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: TRIGGER, presentationId: earlierId });
 
-    expect(eventTypes(first)).toEqual(['paywallOpenFailed', 'paywallOpenFailed']);
-    expect(second).not.toHaveBeenCalled();
+    expect(eventTypes(current)).toEqual(['paywallOpen']);
+    expect(repeat).not.toHaveBeenCalled();
+    expect(earlierEntitled).not.toHaveBeenCalled();
   });
 
   it('does not report a rejected repeat present as unavailable', async () => {
