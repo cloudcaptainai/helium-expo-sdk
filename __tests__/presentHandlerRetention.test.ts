@@ -233,31 +233,59 @@ describe('presentation routing', () => {
     expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
   });
 
-  it('drops every other presentation when one opens', async () => {
+  it('drops presentations that never opened when one opens', async () => {
+    const { helium, native } = loadHelium();
+    await helium.initialize(CONFIG);
+    const current = jest.fn();
+    const repeat = jest.fn();
+
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent: current } });
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent: repeat } });
+    const currentId = idOfCall(native, 0);
+    const repeatId = idOfCall(native, 1);
+    perCall(native, currentId, 'paywallOpen');
+    perCall(native, repeatId, 'purchasePressed');
+
+    expect(eventTypes(current)).toEqual(['paywallOpen']);
+    expect(repeat).not.toHaveBeenCalled();
+  });
+
+  it('keeps a closed presentation waiting on onEntitled when another paywall opens', async () => {
     const { helium, native } = loadHelium();
     await helium.initialize(CONFIG);
     const earlierEntitled = jest.fn();
-    const current = jest.fn();
-    const repeat = jest.fn();
 
     helium.presentUpsell({ triggerName: TRIGGER, onEntitled: earlierEntitled });
     const earlierId = idOfCall(native, 0);
     perCall(native, earlierId, 'paywallOpen');
     perCall(native, earlierId, 'paywallClose', TRIGGER, { isSecondTry: false });
-    helium.presentUpsell({ triggerName: OTHER_TRIGGER, eventHandlers: { onAnyEvent: current } });
-    helium.presentUpsell({ triggerName: OTHER_TRIGGER, eventHandlers: { onAnyEvent: repeat } });
-    const currentId = idOfCall(native, 1);
-    const repeatId = idOfCall(native, 2);
-    perCall(native, currentId, 'paywallOpen', OTHER_TRIGGER);
-    perCall(native, repeatId, 'purchasePressed', OTHER_TRIGGER);
+    helium.presentUpsell({ triggerName: OTHER_TRIGGER });
+    perCall(native, idOfCall(native, 1), 'paywallOpen', OTHER_TRIGGER);
+    native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: TRIGGER, presentationId: earlierId });
     native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: TRIGGER, presentationId: earlierId });
 
-    expect(eventTypes(current)).toEqual(['paywallOpen']);
-    expect(repeat).not.toHaveBeenCalled();
-    expect(earlierEntitled).not.toHaveBeenCalled();
+    expect(earlierEntitled).toHaveBeenCalledTimes(1);
   });
 
-  it('does not report a rejected repeat present as unavailable', async () => {
+  it('keeps a presentation that is still closing when another paywall opens', async () => {
+    const { helium, native } = loadHelium();
+    await helium.initialize(CONFIG);
+    const closing = jest.fn();
+    const closingEntitled = jest.fn();
+
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent: closing }, onEntitled: closingEntitled });
+    const closingId = idOfCall(native, 0);
+    perCall(native, closingId, 'paywallOpen');
+    helium.presentUpsell({ triggerName: OTHER_TRIGGER });
+    perCall(native, idOfCall(native, 1), 'paywallOpen', OTHER_TRIGGER);
+    perCall(native, closingId, 'paywallClose', TRIGGER, { isSecondTry: false });
+    native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: TRIGGER, presentationId: closingId });
+
+    expect(eventTypes(closing)).toEqual(['paywallOpen', 'paywallClose']);
+    expect(closingEntitled).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a rejected repeat present without reporting it as unavailable', async () => {
     const { helium, native } = loadHelium();
     await helium.initialize(CONFIG);
     const first = jest.fn();
@@ -269,13 +297,12 @@ describe('presentation routing', () => {
     const firstId = idOfCall(native, 0);
     const rejectedId = idOfCall(native, 1);
     native.__emit('onPaywallUnavailableEvent', { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'alreadyPresented', presentationId: rejectedId });
-    global(native, { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'alreadyPresented' });
-    perCall(native, firstId, 'paywallOpen');
     perCall(native, rejectedId, 'paywallOpen');
+    perCall(native, firstId, 'paywallOpen');
 
     expect(rejectedUnavailable).not.toHaveBeenCalled();
-    expect(eventTypes(first)).toEqual(['paywallOpen']);
     expect(rejected).not.toHaveBeenCalled();
+    expect(eventTypes(first)).toEqual(['paywallOpen']);
   });
 
   it('ignores a second-try miss reported as unavailable', async () => {

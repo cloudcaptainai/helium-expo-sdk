@@ -216,15 +216,18 @@ function setupEventListeners(config: HeliumConfig) {
   addPaywallUnavailableEventListener((event) => {
     try {
       const reason = event.paywallUnavailableReason;
-      if (reason === 'alreadyPresented' || reason === 'secondTryNoMatch') {
+      if (reason === 'secondTryNoMatch') {
         return;
       }
       const presentation = presentationFor(event.presentationId);
       if (!presentation) {
         return;
       }
-      const onPaywallUnavailable = presentation.onPaywallUnavailable;
       paywallPresentations.delete(presentation.id);
+      if (reason === 'alreadyPresented') {
+        return;
+      }
+      const onPaywallUnavailable = presentation.onPaywallUnavailable;
       console.log('[Helium] paywall open failed', event.paywallUnavailableReason);
       try {
         onPaywallUnavailable?.();
@@ -368,6 +371,7 @@ export const initialize = async (config: HeliumConfig) => {
 type PaywallPresentation = {
   id: string;
   triggerName: string;
+  opened: boolean;
   closed: boolean;
   eventHandlers?: PaywallEventHandlers;
   onPaywallUnavailable?: () => void;
@@ -393,9 +397,12 @@ function withoutPresentationId<T extends { presentationId?: string }>(event: T):
   return stripped;
 }
 
-function dropOtherPresentations(current: PaywallPresentation) {
-  paywallPresentations.clear();
-  paywallPresentations.set(current.id, current);
+function dropUnopenedPresentations(current: PaywallPresentation) {
+  paywallPresentations.forEach((presentation, id) => {
+    if (id !== current.id && !presentation.opened) {
+      paywallPresentations.delete(id);
+    }
+  });
 }
 
 function endPresentation(presentation: PaywallPresentation) {
@@ -426,6 +433,7 @@ export const presentUpsell = ({
   const presentation: PaywallPresentation = {
     id: nextPresentationId(triggerName),
     triggerName,
+    opened: false,
     closed: false,
     eventHandlers,
     onPaywallUnavailable,
@@ -520,7 +528,8 @@ function callPaywallEventHandlers(event: PresentationScoped<HeliumPaywallEvent>)
     return;
   }
   if (event.type === 'paywallOpen') {
-    dropOtherPresentations(presentation);
+    presentation.opened = true;
+    dropUnopenedPresentations(presentation);
   }
   if (presentation.eventHandlers) {
     dispatchPaywallEvent(presentation.eventHandlers, withoutPresentationId(event), 'presented');
