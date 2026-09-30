@@ -267,6 +267,27 @@ describe('presentation routing', () => {
     expect(earlierEntitled).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps only the most recently closed presentation waiting on onEntitled', async () => {
+    const { helium, native } = loadHelium();
+    await helium.initialize(CONFIG);
+    const staleEntitled = jest.fn();
+    const latestEntitled = jest.fn();
+
+    helium.presentUpsell({ triggerName: TRIGGER, onEntitled: staleEntitled });
+    const staleId = idOfCall(native, 0);
+    perCall(native, staleId, 'paywallOpen');
+    perCall(native, staleId, 'paywallClose', TRIGGER, { isSecondTry: false });
+    helium.presentUpsell({ triggerName: OTHER_TRIGGER, onEntitled: latestEntitled });
+    const latestId = idOfCall(native, 1);
+    perCall(native, latestId, 'paywallOpen', OTHER_TRIGGER);
+    perCall(native, latestId, 'paywallClose', OTHER_TRIGGER, { isSecondTry: false });
+    native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: TRIGGER, presentationId: staleId });
+    native.__emit('onEntitledEvent', { type: 'purchaseSucceeded', triggerName: OTHER_TRIGGER, presentationId: latestId });
+
+    expect(staleEntitled).not.toHaveBeenCalled();
+    expect(latestEntitled).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps a presentation that is still closing when another paywall opens', async () => {
     const { helium, native } = loadHelium();
     await helium.initialize(CONFIG);
