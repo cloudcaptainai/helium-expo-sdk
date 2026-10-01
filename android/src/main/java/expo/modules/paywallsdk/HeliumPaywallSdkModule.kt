@@ -423,29 +423,24 @@ class HeliumPaywallSdkModule : Module() {
           val skipReason = when (reason) {
             is PaywallNotShownReason.TargetingHoldout -> PaywallSkippedReason.TargetingHoldout
             is PaywallNotShownReason.AlreadyEntitled -> PaywallSkippedReason.AlreadyEntitled
-            is PaywallNotShownReason.Error -> {
-              val eventMap = mutableMapOf<String, Any>(
-                "type" to "paywallOpenFailed",
-                "triggerName" to trigger,
-                "paywallUnavailableReason" to (reason.unavailableReason?.rawValue ?: "unknown")
-              )
-              presentationId?.let { eventMap["presentationId"] = it }
-              NativeModuleManager.safeSendEvent("onPaywallUnavailableEvent", eventMap, this@HeliumPaywallSdkModule)
-              null
-            }
+            is PaywallNotShownReason.Error -> null
           }
-          skipReason?.let {
+          if (skipReason != null) {
             val eventMap = mutableMapOf<String, Any>(
               "type" to "paywallSkipped",
               "triggerName" to trigger,
-              "skipReason" to it.rawValue
+              "skipReason" to skipReason.rawValue
             )
-            presentationId?.let { id -> eventMap["presentationId"] = id }
-            NativeModuleManager.safeSendEvent(
-              "onPaywallSkipEvent",
-              eventMap,
-              this@HeliumPaywallSdkModule
+            presentationId?.let { eventMap["presentationId"] = it }
+            NativeModuleManager.safeSendEvent("onPaywallSkipEvent", eventMap, this@HeliumPaywallSdkModule)
+          } else if (reason is PaywallNotShownReason.Error) {
+            val eventMap = mutableMapOf<String, Any>(
+              "type" to "paywallOpenFailed",
+              "triggerName" to trigger,
+              "paywallUnavailableReason" to (reason.unavailableReason?.rawValue ?: "unknown")
             )
+            presentationId?.let { eventMap["presentationId"] = it }
+            NativeModuleManager.safeSendEvent("onPaywallUnavailableEvent", eventMap, this@HeliumPaywallSdkModule)
           }
         }
       )
