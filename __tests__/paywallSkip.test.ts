@@ -60,6 +60,9 @@ const SKIP_EVENT = {
   skipReason: 'targetingHoldout',
 };
 
+const idOfCall = (native: NativeModuleMock, index = 0): string => native.presentUpsell.mock.calls[index][4];
+const withId = (native: NativeModuleMock, event: Record<string, unknown>, index = 0) => ({ ...event, presentationId: idOfCall(native, index) });
+
 describe('onPaywallSkip routing', () => {
   it('delivers a skip event once and clears the handler', async () => {
     const { helium, native } = loadHelium();
@@ -67,11 +70,11 @@ describe('onPaywallSkip routing', () => {
     const onPaywallSkip = jest.fn();
 
     helium.presentUpsell({ triggerName: 'go_online', onPaywallSkip });
-    native.__emit('onPaywallSkipEvent', SKIP_EVENT);
+    native.__emit('onPaywallSkipEvent', withId(native, SKIP_EVENT));
 
     expect(onPaywallSkip).toHaveBeenCalledWith(SKIP_EVENT);
 
-    native.__emit('onPaywallSkipEvent', SKIP_EVENT);
+    native.__emit('onPaywallSkipEvent', withId(native, SKIP_EVENT));
 
     expect(onPaywallSkip).toHaveBeenCalledTimes(1);
   });
@@ -88,18 +91,16 @@ describe('onPaywallSkip routing', () => {
     };
 
     helium.presentUpsell({ triggerName: 'go_online', onEntitled, onPaywallSkip });
-    native.__emit('onPaywallSkipEvent', entitledSkip);
-
-    expect(onPaywallSkip).not.toHaveBeenCalled();
-
-    native.__emit('onEntitledEvent', entitledSkip);
+    native.__emit('onEntitledEvent', withId(native, entitledSkip));
 
     expect(onEntitled).toHaveBeenCalledTimes(1);
     expect(onEntitled).toHaveBeenCalledWith(entitledSkip);
     expect(onPaywallSkip).not.toHaveBeenCalled();
 
-    native.__emit('onPaywallSkipEvent', entitledSkip);
+    native.__emit('onEntitledEvent', withId(native, entitledSkip));
+    native.__emit('onPaywallSkipEvent', withId(native, entitledSkip));
 
+    expect(onEntitled).toHaveBeenCalledTimes(1);
     expect(onPaywallSkip).not.toHaveBeenCalled();
   });
 
@@ -110,7 +111,7 @@ describe('onPaywallSkip routing', () => {
     const onPaywallSkip = jest.fn();
 
     helium.presentUpsell({ triggerName: 'go_online', onPaywallSkip });
-    native.__emit('onEntitledEvent', { type: 'paywallSkipped' });
+    native.__emit('onEntitledEvent', withId(native, { type: 'paywallSkipped' }));
 
     expect(onPaywallSkip).toHaveBeenCalledWith({
       type: 'paywallSkipped',
@@ -127,7 +128,7 @@ describe('onPaywallSkip routing', () => {
     const onPaywallSkip = jest.fn();
 
     helium.presentUpsell({ triggerName: 'go_online', onPaywallSkip });
-    native.__emit('onPaywallSkipEvent', { type: 'paywallSkipped' });
+    native.__emit('onPaywallSkipEvent', withId(native, { type: 'paywallSkipped' }));
 
     expect(onPaywallSkip).toHaveBeenCalledWith({
       type: 'paywallSkipped',
@@ -147,19 +148,20 @@ describe('onPaywallSkip routing', () => {
     });
 
     helium.presentUpsell({ triggerName: 'first', onPaywallUnavailable });
-    native.__emit('onHeliumPaywallEvent', {
+    native.__emit('onPaywallUnavailableEvent', {
       type: 'paywallOpenFailed',
       triggerName: 'first',
       paywallUnavailableReason: 'notInitialized',
+      presentationId: native.presentUpsell.mock.calls[0][4],
     });
 
     expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
 
-    native.__emit('onPaywallSkipEvent', {
+    native.__emit('onPaywallSkipEvent', withId(native, {
       type: 'paywallSkipped',
       triggerName: 'second',
       skipReason: 'targetingHoldout',
-    });
+    }, 1));
 
     expect(onPaywallSkip).toHaveBeenCalledTimes(1);
   });
@@ -170,8 +172,8 @@ describe('onPaywallSkip routing', () => {
     const onPaywallSkip = jest.fn();
 
     helium.presentUpsell({ triggerName: 'go_online', onPaywallSkip });
-    native.__emit('onHeliumPaywallEvent', { type: 'paywallClose', triggerName: 'go_online' });
-    native.__emit('onPaywallSkipEvent', SKIP_EVENT);
+    native.__emit('paywallEventHandlers', withId(native, { type: 'paywallClose', triggerName: 'go_online' }));
+    native.__emit('onPaywallSkipEvent', withId(native, SKIP_EVENT));
 
     expect(onPaywallSkip).not.toHaveBeenCalled();
   });

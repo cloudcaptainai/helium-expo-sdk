@@ -1,15 +1,6 @@
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-export type HeliumPaywallSdkModuleEvents = {
-  onHeliumPaywallEvent: (params: HeliumPaywallEvent) => void;
-  onDelegateActionEvent: (params: DelegateActionEvent) => void;
-  paywallEventHandlers: (params: HeliumPaywallEvent) => void;
-  onHeliumLogEvent: (params: HeliumLogEvent) => void;
-  onEntitledEvent: (params?: PaywallEntitledEvent) => void;
-  onPaywallSkipEvent: (params: PaywallSkippedEvent) => void;
-};
-
 /** A log event emitted by the Helium SDK. */
 export interface HeliumLogEvent {
   /** Numeric log level (1=error, 2=warn, 3=info, 4=debug, 5=trace). */
