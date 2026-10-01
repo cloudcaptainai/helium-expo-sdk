@@ -226,11 +226,45 @@ describe('presentation routing', () => {
     const { id, onAnyEvent, onPaywallUnavailable } = await presentAndOpen(helium, native);
     jest.spyOn(console, 'log').mockImplementation(() => {});
 
+    perCall(native, id, 'paywallOpenFailed', TRIGGER, { paywallUnavailableReason: 'webviewRenderFail' });
     native.__emit('onPaywallUnavailableEvent', { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'webviewRenderFail', presentationId: id });
     perCall(native, id, 'purchasePressed');
 
-    expect(eventTypes(onAnyEvent)).toEqual(['paywallOpen']);
+    expect(eventTypes(onAnyEvent)).toEqual(['paywallOpen', 'paywallOpenFailed']);
     expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
+  });
+
+  it('delivers an open failure that native reports after onPaywallUnavailable', async () => {
+    const { helium, native } = loadHelium();
+    await helium.initialize(CONFIG);
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    const onAnyEvent = jest.fn();
+    const onPaywallUnavailable = jest.fn();
+
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent }, onPaywallUnavailable });
+    const id = idOfCall(native, 0);
+    native.__emit('onPaywallUnavailableEvent', { type: 'paywallOpenFailed', triggerName: TRIGGER, paywallUnavailableReason: 'paywallsNotDownloaded', presentationId: id });
+    perCall(native, id, 'paywallOpenFailed', TRIGGER, { paywallUnavailableReason: 'paywallsNotDownloaded' });
+    perCall(native, id, 'purchasePressed');
+
+    expect(onPaywallUnavailable).toHaveBeenCalledTimes(1);
+    expect(eventTypes(onAnyEvent)).toEqual(['paywallOpenFailed']);
+  });
+
+  it('delivers a skip that native reports after onPaywallSkip', async () => {
+    const { helium, native } = loadHelium();
+    await helium.initialize(CONFIG);
+    const onAnyEvent = jest.fn();
+    const onPaywallSkip = jest.fn();
+
+    helium.presentUpsell({ triggerName: TRIGGER, eventHandlers: { onAnyEvent }, onPaywallSkip });
+    const id = idOfCall(native, 0);
+    native.__emit('onPaywallSkipEvent', { type: 'paywallSkipped', triggerName: TRIGGER, skipReason: 'targetingHoldout', presentationId: id });
+    perCall(native, id, 'paywallSkipped');
+    perCall(native, id, 'purchasePressed');
+
+    expect(onPaywallSkip).toHaveBeenCalledTimes(1);
+    expect(eventTypes(onAnyEvent)).toEqual(['paywallSkipped']);
   });
 
   it('drops presentations that never opened when one opens', async () => {

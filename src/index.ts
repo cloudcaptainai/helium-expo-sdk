@@ -189,8 +189,12 @@ function setupEventListeners(config: HeliumConfig) {
       const onEntitled = presentation.onEntitled;
       presentation.onEntitled = undefined;
       if (onEntitled) {
-        if (isSkip || presentation.closed) {
+        if (presentation.closed) {
           paywallPresentations.delete(presentation.id);
+        } else if (isSkip) {
+          presentation.onPaywallSkip = undefined;
+          presentation.onPaywallUnavailable = undefined;
+          finishPresentation(presentation);
         }
         try {
           onEntitled(entitledEvent);
@@ -223,11 +227,15 @@ function setupEventListeners(config: HeliumConfig) {
       if (!presentation) {
         return;
       }
-      paywallPresentations.delete(presentation.id);
       if (reason === 'alreadyPresented') {
+        paywallPresentations.delete(presentation.id);
         return;
       }
       const onPaywallUnavailable = presentation.onPaywallUnavailable;
+      presentation.onPaywallUnavailable = undefined;
+      presentation.onEntitled = undefined;
+      presentation.onPaywallSkip = undefined;
+      finishPresentation(presentation);
       console.log('[Helium] paywall open failed', event.paywallUnavailableReason);
       try {
         onPaywallUnavailable?.();
@@ -373,6 +381,7 @@ type PaywallPresentation = {
   triggerName: string;
   opened: boolean;
   closed: boolean;
+  ended: boolean;
   eventHandlers?: PaywallEventHandlers;
   onPaywallUnavailable?: () => void;
   onEntitled?: (event?: PaywallEntitledEvent) => void;
@@ -403,6 +412,14 @@ function dropUnopenedPresentations(current: PaywallPresentation) {
       paywallPresentations.delete(id);
     }
   });
+}
+
+function finishPresentation(presentation: PaywallPresentation) {
+  if (presentation.ended) {
+    paywallPresentations.delete(presentation.id);
+  } else {
+    presentation.ended = true;
+  }
 }
 
 function endPresentation(presentation: PaywallPresentation) {
@@ -440,6 +457,7 @@ export const presentUpsell = ({
     triggerName,
     opened: false,
     closed: false,
+    ended: false,
     eventHandlers,
     onPaywallUnavailable,
     onEntitled,
@@ -511,7 +529,10 @@ function dispatchPaywallSkip(
 ) {
   const onPaywallSkip = presentation?.onPaywallSkip;
   if (presentation) {
-    paywallPresentations.delete(presentation.id);
+    presentation.onPaywallSkip = undefined;
+    presentation.onEntitled = undefined;
+    presentation.onPaywallUnavailable = undefined;
+    finishPresentation(presentation);
   }
   if (!event?.triggerName || !event?.skipReason) {
     console.warn('[Helium] paywallSkipped event is missing triggerName or skipReason', event);
@@ -543,6 +564,8 @@ function callPaywallEventHandlers(event: PresentationScoped<HeliumPaywallEvent>)
     endPresentation(presentation);
   } else if (event.type === 'paywallOpenFailed' && event.paywallUnavailableReason === 'alreadyPresented') {
     paywallPresentations.delete(presentation.id);
+  } else if ((event.type === 'paywallOpenFailed' && !event.isSecondTry) || event.type === 'paywallSkipped') {
+    finishPresentation(presentation);
   }
 }
 
