@@ -293,6 +293,7 @@ public class HeliumPaywallSdkModule: Module {
                 onAnyEvent: { event in
                     var eventDict = event.toDictionary()
                     applyEventFieldAliases(&eventDict)
+                    attachBanditReason(&eventDict, trigger: trigger)
                     if let presentationId {
                         eventDict["presentationId"] = presentationId
                     }
@@ -754,6 +755,16 @@ fileprivate class DefaultPurchaseDelegate: StoreKitDelegate {
     override func onPaywallEvent(_ event: any HeliumEvent) {
         eventHandler(event)
     }
+}
+
+private func attachBanditReason(_ eventDict: inout [String: Any], trigger: String) {
+#if HELIUM_HAS_BANDIT_REASON
+    guard eventDict["paywallUnavailableReason"] as? String == PaywallUnavailableReason.triggerHasNoPaywall.rawValue,
+          let reason = HeliumFetchedConfigManager.shared.getBanditReasonForTrigger(eventDict["triggerName"] as? String ?? trigger) else {
+        return
+    }
+    eventDict["reason"] = reason
+#endif
 }
 
 /// Modifies native event dictionary fields to match expected TypeScript types.

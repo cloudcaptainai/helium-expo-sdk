@@ -13,6 +13,8 @@ export function dispatchPaywallEvent(
           type: 'paywallOpen',
           triggerName: event.triggerName ?? 'unknown',
           paywallName: event.paywallName ?? 'unknown',
+          paywallUnavailableReason: event.paywallUnavailableReason,
+          reason: event.reason,
           isSecondTry: event.isSecondTry ?? false,
           viewType,
         });
@@ -50,6 +52,7 @@ export function dispatchPaywallEvent(
           paywallName: event.paywallName ?? 'unknown',
           error: event.error ?? 'Unknown error',
           paywallUnavailableReason: event.paywallUnavailableReason,
+          reason: event.reason,
           isSecondTry: event.isSecondTry ?? false,
         });
         break;

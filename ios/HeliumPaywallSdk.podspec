@@ -22,9 +22,14 @@ Pod::Spec.new do |s|
   s.dependency 'Helium', '4.13.0'
 
   # Swift/Objective-C compatibility
-  s.pod_target_xcconfig = {
+  pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
   }
+  helium_version = Gem::Version.new(s.attributes_hash['dependencies']['Helium'].first)
+  if helium_version >= Gem::Version.new('4.14.0')
+    pod_target_xcconfig['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = '$(inherited) HELIUM_HAS_BANDIT_REASON'
+  end
+  s.pod_target_xcconfig = pod_target_xcconfig
 
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
 end

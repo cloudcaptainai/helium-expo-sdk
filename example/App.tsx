@@ -109,7 +109,7 @@ export default function App() {
                     console.log('eventHandler close', e.type);
                   },
                   onOpenFailed: async (e) => {
-                    console.log('eventHandler openFail', e.type);
+                    console.log('eventHandler openFail', e.type, e.paywallUnavailableReason, e.reason);
                   }
                 },
                 // dontShowIfAlreadyEntitled: true,

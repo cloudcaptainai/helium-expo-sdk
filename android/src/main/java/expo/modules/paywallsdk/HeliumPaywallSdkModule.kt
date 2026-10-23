@@ -16,6 +16,7 @@ import com.tryhelium.paywall.core.event.HeliumEvent
 import com.tryhelium.paywall.core.event.HeliumEventDictionaryMapper
 import com.tryhelium.paywall.core.event.PaywallEventHandlers
 import com.tryhelium.paywall.core.event.PaywallSkippedReason
+import com.tryhelium.paywall.core.event.PaywallUnavailableReason
 import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraits.Companion.create
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
@@ -395,6 +396,7 @@ class HeliumPaywallSdkModule : Module() {
         onAnyEvent = { event ->
           val eventMap = HeliumEventDictionaryMapper.toDictionary(event).toMutableMap()
           applyEventFieldAliases(eventMap)
+          attachBanditReason(eventMap, trigger)
           presentationId?.let { eventMap["presentationId"] = it }
           NativeModuleManager.safeSendEvent(
             "paywallEventHandlers",
@@ -890,6 +892,14 @@ class BridgingLogger : HeliumLogger {
     )
     NativeModuleManager.safeSendEvent("onHeliumLogEvent", eventData)
   }
+}
+
+private fun attachBanditReason(eventMap: MutableMap<String, Any?>, trigger: String) {
+  if (eventMap["paywallUnavailableReason"] != PaywallUnavailableReason.TRIGGER_HAS_NO_PAYWALL.rawValue || !Helium.isInitialized) return
+  val reasonTrigger = eventMap["triggerName"] as? String ?: trigger
+  runCatching {
+    Helium::class.java.getMethod("getBanditReasonForTrigger", String::class.java).invoke(Helium.shared, reasonTrigger) as? String
+  }.getOrNull()?.let { eventMap["reason"] = it }
 }
 
 /**

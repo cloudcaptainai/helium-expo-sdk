@@ -62,6 +62,9 @@ export type HeliumPaywallEvent = {
    */
   timestamp?: number;
   paywallUnavailableReason?: string;
+  /** The server's explanation for a trigger having no paywall. Present on `paywallOpen` / `paywallOpenFailed`
+   * when `paywallUnavailableReason` is `triggerHasNoPaywall` and the server supplied one. */
+  reason?: string;
   /** Reason the paywall was skipped. Present on `paywallSkipped` events. */
   skipReason?: PaywallSkippedReason;
   customPaywallActionName?: string;
@@ -328,6 +331,8 @@ export interface PaywallOpenEvent {
   triggerName: string;
   paywallName: string;
   paywallUnavailableReason?: string;
+  /** The server's explanation when the trigger has no paywall and the fallback paywall opened instead. */
+  reason?: string;
   isSecondTry: boolean;
   loadTimeTakenMS?: number;
   loadingBudgetMS?: number;
@@ -363,6 +368,8 @@ export interface PaywallOpenFailedEvent {
   paywallName: string;
   error: string;
   paywallUnavailableReason?: string;
+  /** The server's explanation when the trigger has no paywall. */
+  reason?: string;
   isSecondTry: boolean;
   loadTimeTakenMS?: number;
   loadingBudgetMS?: number;
