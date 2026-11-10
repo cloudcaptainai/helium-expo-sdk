@@ -118,8 +118,13 @@ export class RevenueCatHeliumHandler {
 
     try {
       const purchaseResult = await Purchases.purchaseStoreProduct(rcProduct);
-      const transactionId = purchaseResult.transaction?.transactionIdentifier;
-      return this.evaluatePurchaseResult(purchaseResult.customerInfo, productId, transactionId);
+      const transaction = purchaseResult.transaction;
+      return this.evaluatePurchaseResult(
+        purchaseResult.customerInfo,
+        productId,
+        transaction?.transactionIdentifier,
+        transaction?.productIdentifier,
+      );
     } catch (error) {
       return this.handlePurchasesError(error);
     }
@@ -236,12 +241,23 @@ export class RevenueCatHeliumHandler {
   }
 
   // Helper function to process purchase result
-  private evaluatePurchaseResult(customerInfo: CustomerInfo, productId: string, transactionId?: string): HeliumPurchaseResult {
+  private evaluatePurchaseResult(
+    customerInfo: CustomerInfo,
+    productId: string,
+    transactionId?: string,
+    transactionProductId?: string,
+  ): HeliumPurchaseResult {
     if (!this.isProductActive(customerInfo, productId)) {
       console.log('[Helium] Purchase succeeded but product not immediately active in customerInfo:', productId);
     }
 
-    return {status: 'purchased', transactionId, productId};
+    // A same-group plan change on iOS can return the existing transaction for a different
+    // product, so report the transaction's own product to keep the pair consistent.
+    return {
+      status: 'purchased',
+      transactionId: transactionId || undefined,
+      productId: transactionProductId || productId,
+    };
   }
 
   // Helper function to handle RevenueCat purchase errors
