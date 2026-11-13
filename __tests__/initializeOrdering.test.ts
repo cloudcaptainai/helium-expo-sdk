@@ -450,7 +450,7 @@ describe('initialize against callers that await it', () => {
       expect.objectContaining({ apiKey: CONFIG_AFTER_RESET.apiKey }),
     );
   });
-  it('holds an initialize until every overlapping reset has completed, even when the later one settles first', async () => {
+  it('holds an initialize until every overlapping reset has completed, and runs native resets one at a time', async () => {
     const { helium, native, fileSystem } = loadHelium();
     const initializing = helium.initialize(CONFIG);
     fileSystem.__finishWrite();
