@@ -450,6 +450,56 @@ describe('initialize against callers that await it', () => {
       expect.objectContaining({ apiKey: CONFIG_AFTER_RESET.apiKey }),
     );
   });
+  it('holds an initialize until every overlapping reset has completed, and runs native resets one at a time', async () => {
+    const { helium, native, fileSystem } = loadHelium();
+    const initializing = helium.initialize(CONFIG);
+    fileSystem.__finishWrite();
+    await initializing;
+
+    const pendingNativeResets: Array<() => void> = [];
+    let nativeResetsInFlight = 0;
+    let maxNativeResetsInFlight = 0;
+    native.resetHelium.mockImplementation(() => new Promise<void>((resolve) => {
+      nativeResetsInFlight += 1;
+      maxNativeResetsInFlight = Math.max(maxNativeResetsInFlight, nativeResetsInFlight);
+      pendingNativeResets.push(() => {
+        nativeResetsInFlight -= 1;
+        resolve();
+      });
+    }));
+    const finishLatestNativeReset = () => pendingNativeResets.pop()?.();
+
+    const resetA = helium.resetHelium({ clearUserTraits: false });
+    const resetB = helium.resetHelium({ clearUserTraits: false });
+    await flushMicrotasks();
+
+    finishLatestNativeReset();
+    await flushMicrotasks();
+    const reinitializing = helium.initialize(CONFIG_AFTER_RESET);
+    await flushMicrotasks();
+    fileSystem.__finishWrite();
+    await flushMicrotasks();
+
+    expect(native.initialize).toHaveBeenCalledTimes(1);
+
+    while (pendingNativeResets.length > 0) {
+      finishLatestNativeReset();
+      await flushMicrotasks();
+    }
+    await Promise.all([resetA, resetB]);
+    await flushMicrotasks();
+    fileSystem.__finishWrite();
+    await reinitializing;
+
+    expect(native.resetHelium).toHaveBeenCalledTimes(2);
+    expect(maxNativeResetsInFlight).toBe(1);
+    expect(native.initialize).toHaveBeenCalledTimes(2);
+    expect(native.initialize).toHaveBeenLastCalledWith(
+      expect.objectContaining({ apiKey: CONFIG_AFTER_RESET.apiKey }),
+    );
+    expect(native.initialize.mock.invocationCallOrder[1])
+      .toBeGreaterThan(Math.max(...native.resetHelium.mock.invocationCallOrder));
+  });
 });
 
 describe('wrapper SDK info', () => {

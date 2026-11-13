@@ -695,7 +695,9 @@ export const resetHelium = async (options?: ResetHeliumOptions): Promise<void> =
   paywallPresentations.clear();
   removeAllHeliumListeners();
 
+  const previousReset = pendingReset;
   const resetting = (async () => {
+    await previousReset;
     try {
       await HeliumPaywallSdkModule.resetHelium(
         options?.clearUserTraits ?? true,
