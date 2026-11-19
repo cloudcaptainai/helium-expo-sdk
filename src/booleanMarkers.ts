@@ -23,7 +23,9 @@ export function convertBooleansToMarkers(input: Record<string, any> | undefined)
  * Helper to recursively convert booleans in any value type
  */
 function convertValueBooleansToMarkers(value: any): any {
-  if (typeof value === 'boolean') {
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? String(value) : value.toISOString();
+  } else if (typeof value === 'boolean') {
     return value ? "__helium_rn_bool_true__" : "__helium_rn_bool_false__";
   } else if (value && typeof value === 'object' && !Array.isArray(value)) {
     return convertBooleansToMarkers(value);
