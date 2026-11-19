@@ -30,7 +30,7 @@ function convertValueBooleansToMarkers(value: any): any {
   } else if (value && typeof value === 'object' && !Array.isArray(value)) {
     return convertBooleansToMarkers(value);
   } else if (value && Array.isArray(value)) {
-    return value.filter((item) => item != null).map(convertValueBooleansToMarkers);
+    return value.map(convertValueBooleansToMarkers);
   }
   return value;
 }
