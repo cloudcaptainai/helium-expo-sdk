@@ -671,7 +671,8 @@ export const setThirdPartyAnalyticsAnonymousId = (anonymousId: string | null): v
  * Replaces all custom user traits with the provided traits. Traits are persisted across app sessions.
  *
  * Traits apply to analytics right away. Paywall targeting uses the traits present when Helium
- * initializes, so to target on updated traits, call `resetHelium()` and `initialize()` again.
+ * initializes, so to target on updated traits, call `resetHelium({ clearUserTraits: false })` and
+ * then `initialize()` again without passing outdated `customUserTraits`.
  */
 export const setUserTraits = (traits: Record<string, any>): void => {
   try {
@@ -686,7 +687,8 @@ export const setUserTraits = (traits: Record<string, any>): void => {
  * Traits are persisted across app sessions.
  *
  * Traits apply to analytics right away. Paywall targeting uses the traits present when Helium
- * initializes, so to target on updated traits, call `resetHelium()` and `initialize()` again.
+ * initializes, so to target on updated traits, call `resetHelium({ clearUserTraits: false })` and
+ * then `initialize()` again without passing outdated `customUserTraits`.
  */
 export const addUserTraits = (traits: Record<string, any>): void => {
   try {

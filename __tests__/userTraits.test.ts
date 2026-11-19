@@ -29,6 +29,14 @@ test('setUserTraits converts booleans to bridge markers', () => {
   });
 });
 
+test('setUserTraits sends dates as ISO strings and drops nulls in arrays', () => {
+  setUserTraits({ signedUpAt: new Date('2026-01-02T03:04:05.000Z'), tags: ['a', null, 'b'] });
+  expect(nativeModule.setUserTraits).toHaveBeenCalledWith({
+    signedUpAt: '2026-01-02T03:04:05.000Z',
+    tags: ['a', 'b'],
+  });
+});
+
 test('addUserTraits converts booleans to bridge markers', () => {
   addUserTraits({ optedIn: false });
   expect(nativeModule.addUserTraits).toHaveBeenCalledWith({
