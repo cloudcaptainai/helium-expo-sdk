@@ -18,6 +18,7 @@ import com.tryhelium.paywall.core.event.PaywallEventHandlers
 import com.tryhelium.paywall.core.event.PaywallSkippedReason
 import com.tryhelium.paywall.core.HeliumUserTraits
 import com.tryhelium.paywall.core.HeliumUserTraits.Companion.create
+import com.tryhelium.paywall.core.HeliumUserTraitsArgument
 import com.tryhelium.paywall.core.HeliumPaywallTransactionStatus
 import com.tryhelium.paywall.core.HeliumLightDarkMode
 import com.tryhelium.paywall.core.HeliumWrapperSdkConfig
@@ -31,6 +32,10 @@ import com.android.billingclient.api.ProductDetails
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.ref.WeakReference
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.coroutines.resume
 
 // Record data classes for type-safe return values
@@ -517,6 +522,18 @@ class HeliumPaywallSdkModule : Module() {
       Helium.identity.thirdPartyAnalyticsAnonymousId = anonymousId
     }
 
+    Function("setUserTraits") { traits: Map<String, Any> ->
+      convertToHeliumUserTraits(traits)?.let { Helium.identity.setUserTraits(it) }
+    }
+
+    Function("addUserTraits") { traits: Map<String, Any> ->
+      convertToHeliumUserTraits(traits)?.let { Helium.identity.addUserTraits(it) }
+    }
+
+    Function("getUserTraits") { ->
+      Helium.identity.getUserTraits().traits.mapValues { (_, value) -> convertTraitArgumentToValue(value) }
+    }
+
     // Check if user has entitlement for a specific paywall
     AsyncFunction("hasEntitlementForPaywall") Coroutine { trigger: String ->
       val result = Helium.entitlements.hasEntitlementForPaywall(trigger)
@@ -752,6 +769,25 @@ class HeliumPaywallSdkModule : Module() {
     if (input == null) return null
     val convertedInput = convertMarkersToBooleans(input) ?: return null
     return convertedInput.create()
+  }
+
+  private fun convertTraitArgumentToValue(argument: HeliumUserTraitsArgument): Any {
+    return when (argument) {
+      is HeliumUserTraitsArgument.StringParam -> argument.value
+      is HeliumUserTraitsArgument.IntParam -> argument.value
+      is HeliumUserTraitsArgument.LongParam -> argument.value
+      is HeliumUserTraitsArgument.DoubleParam -> argument.value
+      is HeliumUserTraitsArgument.BooleanParam -> argument.value
+      is HeliumUserTraitsArgument.DateParam -> formatIso8601(argument.value)
+      is HeliumUserTraitsArgument.Array -> argument.items.map { convertTraitArgumentToValue(it) }
+      is HeliumUserTraitsArgument.Complex -> argument.properties.mapValues { (_, value) -> convertTraitArgumentToValue(value) }
+    }
+  }
+
+  private fun formatIso8601(date: Date): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+    formatter.timeZone = TimeZone.getTimeZone("UTC")
+    return formatter.format(date)
   }
 
 }
