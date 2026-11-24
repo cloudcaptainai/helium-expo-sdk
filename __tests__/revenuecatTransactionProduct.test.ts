@@ -22,7 +22,7 @@ jest.mock('react-native-purchases', () => ({
 }));
 
 import Purchases from 'react-native-purchases';
-import { createRevenueCatPurchaseConfig, transactionIdMadeSince } from '../src/revenuecat';
+import { createRevenueCatPurchaseConfig, transactionIdMadeSince } from '../src/revenuecat/revenuecat';
 
 const tappedAtMs = Date.parse('2026-01-10T12:00:00.400Z');
 
