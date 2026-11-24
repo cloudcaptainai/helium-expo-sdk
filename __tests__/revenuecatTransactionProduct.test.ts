@@ -1,7 +1,7 @@
 /**
- * A same-group plan change on iOS can make RevenueCat return the existing transaction for a
- * different product than the one tapped. The purchase result must pair that transaction with
- * its own product so the native SDK doesn't attribute it to the tapped one.
+ * A same-group plan change on iOS that takes effect at renewal makes RevenueCat hand back the
+ * existing transaction, which can belong to another product. Only a transaction made during this
+ * purchase may be reported, paired with its own product.
  */
 
 jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
@@ -22,7 +22,9 @@ jest.mock('react-native-purchases', () => ({
 }));
 
 import Purchases from 'react-native-purchases';
-import { createRevenueCatPurchaseConfig } from '../src/revenuecat';
+import { createRevenueCatPurchaseConfig, transactionIdMadeSince } from '../src/revenuecat';
+
+const tappedAtMs = Date.parse('2026-01-10T12:00:00.400Z');
 
 const customerInfo = {
   entitlements: { active: {} },
@@ -30,17 +32,35 @@ const customerInfo = {
   allPurchasedProductIdentifiers: ['annual'],
 };
 
-function purchaseReturns(transaction: { transactionIdentifier: string; productIdentifier: string } | null) {
+function purchaseReturns(
+  transaction: { transactionIdentifier: string; productIdentifier: string; purchaseDate: string } | null,
+) {
   (Purchases.purchaseStoreProduct as jest.Mock).mockResolvedValue({ customerInfo, transaction });
 }
 
 describe('RevenueCat iOS purchase result', () => {
-  it('reports the transaction product when RevenueCat returns a transaction for another product', async () => {
-    purchaseReturns({ transactionIdentifier: 'txn_annual', productIdentifier: 'annual' });
+  beforeEach(() => {
+    jest.spyOn(Date, 'now').mockReturnValue(tappedAtMs);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('reports a transaction made during the purchase with its own product', async () => {
+    purchaseReturns({ transactionIdentifier: 'txn_annual', productIdentifier: 'annual', purchaseDate: '2026-01-10T12:00:05Z' });
 
     const result = await createRevenueCatPurchaseConfig().makePurchaseIOS!('monthly');
 
     expect(result).toEqual({ status: 'purchased', transactionId: 'txn_annual', productId: 'annual' });
+  });
+
+  it('leaves out an existing transaction returned by a deferred plan change', async () => {
+    purchaseReturns({ transactionIdentifier: 'txn_annual', productIdentifier: 'annual', purchaseDate: '2025-12-01T09:30:00Z' });
+
+    const result = await createRevenueCatPurchaseConfig().makePurchaseIOS!('monthly');
+
+    expect(result).toEqual({ status: 'purchased', transactionId: undefined, productId: 'monthly' });
   });
 
   it('reports the tapped product when RevenueCat returns no transaction', async () => {
@@ -49,5 +69,15 @@ describe('RevenueCat iOS purchase result', () => {
     const result = await createRevenueCatPurchaseConfig().makePurchaseIOS!('monthly');
 
     expect(result).toEqual({ status: 'purchased', transactionId: undefined, productId: 'monthly' });
+  });
+});
+
+describe('transactionIdMadeSince', () => {
+  it('keeps a transaction dated in the same second as the tap', () => {
+    expect(transactionIdMadeSince({ transactionIdentifier: 'txn_1', purchaseDate: '2026-01-10T12:00:00Z' }, tappedAtMs)).toBe('txn_1');
+  });
+
+  it('leaves out a transaction without a readable date', () => {
+    expect(transactionIdMadeSince({ transactionIdentifier: 'txn_1', purchaseDate: '' }, tappedAtMs)).toBeUndefined();
   });
 });

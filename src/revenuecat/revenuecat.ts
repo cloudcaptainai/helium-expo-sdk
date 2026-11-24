@@ -22,6 +22,25 @@ export interface RevenueCatConfig {
   disablePaddlePurchaseSync?: boolean;
 }
 
+/**
+ * Returns the transaction's ID when the store made it at or after `tappedAtMs`, otherwise undefined.
+ *
+ * A same-group plan change that takes effect at renewal hands back the existing, older transaction,
+ * which must not be attributed to this purchase. Leaving the ID out lets the native SDK look up the
+ * purchase itself.
+ */
+export function transactionIdMadeSince(
+  transaction: { transactionIdentifier: string; purchaseDate: string },
+  tappedAtMs: number,
+): string | undefined {
+  if (!transaction.transactionIdentifier) return undefined;
+  const purchasedAtMs = Date.parse(transaction.purchaseDate);
+  if (Number.isNaN(purchasedAtMs)) return undefined;
+  // Store purchase dates can be truncated to whole seconds.
+  const tappedAtSecondMs = tappedAtMs - (tappedAtMs % 1000);
+  return purchasedAtMs >= tappedAtSecondMs ? transaction.transactionIdentifier : undefined;
+}
+
 export function createRevenueCatPurchaseConfig(config?: RevenueCatConfig): HeliumPurchaseConfig {
   const rcHandler = new RevenueCatHeliumHandler(config);
   return {
@@ -92,19 +111,20 @@ export class RevenueCatHeliumHandler {
   }
 
   async makePurchaseIOS(productId: string): Promise<HeliumPurchaseResult> {
+    const tappedAtMs = Date.now();
     await this.setUpPromise;
     // Keep this value as up-to-date as possible
     await this.syncRevenueCatAppUserId();
-    const result = await this.attemptPurchaseIOS(productId);
+    const result = await this.attemptPurchaseIOS(productId, tappedAtMs);
 
     if (this.isRetryableResult(result)) {
       await this.delay(1000);
-      return this.attemptPurchaseIOS(productId);
+      return this.attemptPurchaseIOS(productId, tappedAtMs);
     }
     return result;
   }
 
-  private async attemptPurchaseIOS(productId: string): Promise<PurchaseAttemptResult> {
+  private async attemptPurchaseIOS(productId: string, tappedAtMs: number): Promise<PurchaseAttemptResult> {
     let rcProduct: PurchasesStoreProduct | undefined;
     try {
       rcProduct = await this.getProduct(productId);
@@ -122,7 +142,7 @@ export class RevenueCatHeliumHandler {
       return this.evaluatePurchaseResult(
         purchaseResult.customerInfo,
         productId,
-        transaction?.transactionIdentifier,
+        transaction ? transactionIdMadeSince(transaction, tappedAtMs) : undefined,
         transaction?.productIdentifier,
       );
     } catch (error) {
@@ -251,12 +271,11 @@ export class RevenueCatHeliumHandler {
       console.log('[Helium] Purchase succeeded but product not immediately active in customerInfo:', productId);
     }
 
-    // A same-group plan change on iOS can return the existing transaction for a different
-    // product, so report the transaction's own product to keep the pair consistent.
+    // Keep the reported product paired with the reported transaction.
     return {
       status: 'purchased',
       transactionId: transactionId || undefined,
-      productId: transactionProductId || productId,
+      productId: (transactionId && transactionProductId) || productId,
     };
   }
 
