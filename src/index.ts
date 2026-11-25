@@ -608,7 +608,19 @@ function logHeliumEvent(event: HeliumLogEvent) {
   }
 }
 
+/**
+ * Hides the most recently presented paywall.
+ *
+ * Paywalls shown with `presentUpsell` hide themselves (for example after a purchase or when the
+ * user closes them), so a normal presentation flow does not need to call this.
+ */
 export const hideUpsell = HeliumPaywallSdkModule.hideUpsell;
+/**
+ * Hides all presented paywalls.
+ *
+ * Paywalls shown with `presentUpsell` hide themselves (for example after a purchase or when the
+ * user closes them), so a normal presentation flow does not need to call this.
+ */
 export const hideAllUpsells = HeliumPaywallSdkModule.hideAllUpsells;
 export const getDownloadStatus = HeliumPaywallSdkModule.getDownloadStatus;
 export const setRevenueCatAppUserId = HeliumPaywallSdkModule.setRevenueCatAppUserId;
